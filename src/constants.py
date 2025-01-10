@@ -1,0 +1,10 @@
+class Handler:
+    START = "start"
+    BOOKING = "Забронировать"
+    CANCEL_BOOKING = "Отменить бронирование"
+    CHANGE_BOOKING_DATE = "Перенести бронирование"
+    AVAILABLE_DATES = "Свободные даты"
+    PRICE = "Стоимость аренды"
+    GIFT_CERTIFICATE = "Подарочный сертификат"
+    QUESTION = "Задать нам вопрос"
+    CONTACT = "Связаться с администратором"
