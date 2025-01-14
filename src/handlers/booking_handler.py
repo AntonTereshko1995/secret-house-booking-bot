@@ -1,19 +1,29 @@
-from telegram import InlineKeyboardMarkup, ReplyKeyboardRemove, Update
-from telegram import (InlineKeyboardButton, ReplyKeyboardMarkup, Update, KeyboardButton)
-from telegram.ext import (ContextTypes)
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.main import CAR_COLOR
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
+from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler)
 
-# async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE)  -> None:
-#     reply_keyboard = [
-#         [InlineKeyboardButton("LOL")]]
+USER_NAME, TARIFF, PHOTOSHOOT, SECRET_ROOM, SAUNA, PAY, SELECT_BEDROOM, START_DATE, FINISH_DATE, NUMBER_OF_PEOPLE, COMMENT, SALE, END = map(chr, range(0, 13))
 
-#     await update.message.reply_text(
-#         'LOL в <b>The Secret House!</b>\n'
-#         'Вы находитесь в основное меню.\n'
-#         'Выберете для Вас интересующий пункт.',
-#         parse_mode='HTML',
-#         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
+def get_handler() -> ConversationHandler:
+    menu_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', handle)],
+        states={
+            MENU: [CallbackQueryHandler(select_menu)],
+            # CAR_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, car_type)],
+            # CAR_COLOR: [CallbackQueryHandler(car_color)],
+            # CAR_MILEAGE_DECISION: [CallbackQueryHandler(car_mileage_decision)],
+            # CAR_MILEAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, car_mileage)],
+            # PHOTO: [
+            #     MessageHandler(filters.PHOTO, photo),
+            #     CommandHandler('skip', skip_photo)
+            # ],
+            # SUMMARY: [MessageHandler(filters.ALL, summary)]
+        },
+        fallbacks=[CommandHandler('cancel', handle)])
+    return menu_handler
     
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the user's car type."""

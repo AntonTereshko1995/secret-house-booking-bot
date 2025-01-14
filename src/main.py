@@ -258,32 +258,14 @@ def main() -> None:
     """Run the bot."""
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    menu_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start_handler.handle)],
-        states={
-            MENU: [CallbackQueryHandler(start_handler.select_menu)],
-            # CAR_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, car_type)],
-            # CAR_COLOR: [CallbackQueryHandler(car_color)],
-            # CAR_MILEAGE_DECISION: [CallbackQueryHandler(car_mileage_decision)],
-            # CAR_MILEAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, car_mileage)],
-            # PHOTO: [
-            #     MessageHandler(filters.PHOTO, photo),
-            #     CommandHandler('skip', skip_photo)
-            # ],
-            # SUMMARY: [MessageHandler(filters.ALL, summary)]
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-    application.add_handler(menu_handler)
-
-    application.add_handler(CommandHandler("booking", booking_handler.handle))
-    application.add_handler(CommandHandler("cancel_booking", cancel_booking_handler.handle))
-    application.add_handler(CommandHandler("change_booking_date", change_booking_date_handler.handle))
-    application.add_handler(CommandHandler("available_dates", available_dates_handler.handle))
-    application.add_handler(CommandHandler("question", question_handler.handle))
-    application.add_handler(CommandHandler("price", price_handler.handle))
-    application.add_handler(CommandHandler("gift_certificate", gift_certificate_handler.handle))
-    application.add_handler(CommandHandler("contact", contact_handler.handle))
+    application.add_handler(start_handler.get_handler)
+    application.add_handler(booking_handler.get_handler)
+    application.add_handler(cancel_booking_handler.get_handler)
+    application.add_handler(change_booking_date_handler.get_handler)
+    application.add_handler(available_dates_handler.get_handler)
+    application.add_handler(price_handler.get_handler)
+    application.add_handler(question_handler.get_handler)
+    application.add_handler(gift_certificate_handler.get_handler)
 
     # Handle the case when a user sends /start but they're not in a conversation
     application.add_handler(CommandHandler('start', start_handler.handle))

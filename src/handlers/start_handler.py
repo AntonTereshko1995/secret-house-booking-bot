@@ -3,11 +3,20 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes)
-from src.constants import BOOKING, CANCEL_BOOKING, CHANGE_BOOKING_DATE, AVAILABLE_DATES, PRICE, GIFT_CERTIFICATE, QUESTIONS, MENU
+from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler)
 from src.handlers import booking_handler, change_booking_date_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler 
 
-async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+BOOKING, CANCEL_BOOKING, CHANGE_BOOKING_DATE, AVAILABLE_DATES, QUESTIONS, PRICE, GIFT_CERTIFICATE = map(chr, range(0, 7))
+MENU = 1
+
+def get_handler() -> ConversationHandler:
+    menu_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', show_menu)],
+        states={ MENU: [CallbackQueryHandler(select_menu)] },
+        fallbacks=[CommandHandler('cancel', show_menu)])
+    return menu_handler
+
+async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [
         [InlineKeyboardButton("Забронировать", callback_data=str(BOOKING))],
         [InlineKeyboardButton("Отменить бронирование", callback_data=str(CANCEL_BOOKING))],
@@ -28,7 +37,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def select_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     menu = update.callback_query.data
-
     if menu == str(BOOKING):
         await booking_handler.handle(update, context)
         return
