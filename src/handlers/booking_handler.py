@@ -9,7 +9,7 @@ from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, Cal
 USER_NAME, TARIFF, PHOTOSHOOT, SECRET_ROOM, SAUNA, PAY, SELECT_BEDROOM, START_DATE, FINISH_DATE, NUMBER_OF_PEOPLE, COMMENT, SALE, END = map(chr, range(0, 13))
 
 def get_handler() -> ConversationHandler:
-    menu_handler = ConversationHandler(
+    handler = ConversationHandler(
         entry_points=[CommandHandler('booking', enter_user)],
         states={
             USER_NAME: [CallbackQueryHandler(enter_user)],
@@ -36,11 +36,8 @@ def get_handler() -> ConversationHandler:
             # SUMMARY: [MessageHandler(filters.ALL, summary)]
         },
         fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
-    return menu_handler
+    return handler
     
-async def call_from_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await enter_user(update, context)
-
 async def enter_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the user's car type."""
     # user = update.message.from_user

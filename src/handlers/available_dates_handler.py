@@ -9,7 +9,7 @@ from src.handlers import start_handler
 END = 1
 
 def get_handler() -> ConversationHandler:
-    menu_handler = ConversationHandler(
+    handler = ConversationHandler(
         entry_points=[CommandHandler('available_dates', send_dates)],
         states={ 
             # USER_NAME: [CallbackQueryHandler(enter_user)],
@@ -17,10 +17,7 @@ def get_handler() -> ConversationHandler:
             # END: [CallbackQueryHandler(finish_message)] 
             },
         fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
-    return menu_handler
-
-async def call_from_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await send_dates(update, context)
+    return handler
 
 async def send_dates(update: Update, context: CallbackContext):
     update.message.reply_text("Привет! Я твой бот. Чем могу помочь?")

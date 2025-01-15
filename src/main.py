@@ -258,12 +258,6 @@ def main() -> None:
     """Run the bot."""
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # menu_handler = ConversationHandler(
-    #     entry_points=[CommandHandler('start', start_handler.show_menu)],
-    #     states={ MENU: [CallbackQueryHandler(start_handler.select_menu)] },
-    #     fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
-
-    # application.add_handler(menu_handler)
     application.add_handler(start_handler.get_handler())
     application.add_handler(booking_handler.get_handler())
     application.add_handler(cancel_booking_handler.get_handler())
