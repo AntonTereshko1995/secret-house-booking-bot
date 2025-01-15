@@ -6,7 +6,7 @@ from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler, CallbackContext)
 from src.handlers import start_handler
 
-USER_NAME, OLD_START_DATE, NEW_START_DATE, NEW_FINISH_DATE, END = map(chr, range(0, 4))
+USER_NAME, OLD_START_DATE, NEW_START_DATE, NEW_FINISH_DATE, END = map(chr, range(0, 5))
 
 def get_handler() -> ConversationHandler:
     menu_handler = ConversationHandler(
@@ -20,6 +20,9 @@ def get_handler() -> ConversationHandler:
             },
         fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
     return menu_handler
+
+async def call_from_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await enter_user(update, context)
 
 async def enter_user(update: Update, context: CallbackContext):
     update.message.reply_text("Привет! Я твой бот. Чем могу помочь?")

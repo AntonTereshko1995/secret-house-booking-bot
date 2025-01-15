@@ -2,10 +2,11 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from src.handlers import start_handler
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (CallbackContext, ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler)
 
-USER_NAME, TARIFF, SECRET_ROOM, SAUNA, PAY, END = map(chr, range(0, 5))
+USER_NAME, TARIFF, SECRET_ROOM, SAUNA, PAY, END = map(chr, range(0, 6))
 
 def get_handler() -> ConversationHandler:
     menu_handler = ConversationHandler(
@@ -27,8 +28,11 @@ def get_handler() -> ConversationHandler:
             # ],
             # SUMMARY: [MessageHandler(filters.ALL, summary)]
         },
-        fallbacks=[CommandHandler('cancel', )])
+        fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
     return menu_handler
+
+async def call_from_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await enter_user(update, context)
 
 async def enter_user(update: Update, context: CallbackContext):
     update.message.reply_text("Привет! Я твой бот. Чем могу помочь?")

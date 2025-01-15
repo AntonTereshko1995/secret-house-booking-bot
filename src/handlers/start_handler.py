@@ -38,23 +38,23 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def select_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     menu = update.callback_query.data
     if menu == str(BOOKING):
-        await booking_handler.handle(update, context)
+        await booking_handler.call_from_menu(update, context)
         return
     elif menu == str(CANCEL_BOOKING):
-        await cancel_booking_handler.handle(update, context)
+        await cancel_booking_handler.call_from_menu(update, context)
         return
     elif menu == str(CHANGE_BOOKING_DATE):
-        await change_booking_date_handler.handle(update, context)
+        await change_booking_date_handler.call_from_menu(update, context)
         return
     elif menu == str(AVAILABLE_DATES):
-        await available_dates_handler.handle(update, context)
+        await available_dates_handler.call_from_menu(update, context)
         return
     elif menu == str(PRICE):
-        await price_handler.handle(update, context)
+        await price_handler.call_from_menu(update, context)
         return
     elif menu == str(GIFT_CERTIFICATE):
-        await gift_certificate_handler.handle(update, context)
+        await gift_certificate_handler.call_from_menu(update, context)
         return
     elif menu == str(QUESTIONS):
-        await question_handler.handle(update, context)
+        await question_handler.call_from_menu(update, context)
         return

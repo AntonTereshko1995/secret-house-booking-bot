@@ -8,9 +8,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton, InlineKeyboardMarkup)
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters, InvalidCallbackData)
 from src.jobs.reminders import run_reminder_jobs
-from src.handlers import booking_handler, change_booking_date_handler, start_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, contact_handler, available_dates_handler 
+from src.handlers import booking_handler, change_booking_date_handler, start_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler 
 from src.config import TELEGRAM_TOKEN
-from src.constants import BOOKING, CANCEL_BOOKING, CHANGE_BOOKING_DATE, AVAILABLE_DATES, MENU, PRICE, GIFT_CERTIFICATE, QUESTIONS, CONTACT
 
 # logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 # logger = logging.getLogger(__name__)
@@ -253,22 +252,29 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text('Bye! Hope to talk to you again soon.', reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
+MENU = 1
 
 def main() -> None:
     """Run the bot."""
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    application.add_handler(start_handler.get_handler)
-    application.add_handler(booking_handler.get_handler)
-    application.add_handler(cancel_booking_handler.get_handler)
-    application.add_handler(change_booking_date_handler.get_handler)
-    application.add_handler(available_dates_handler.get_handler)
-    application.add_handler(price_handler.get_handler)
-    application.add_handler(question_handler.get_handler)
-    application.add_handler(gift_certificate_handler.get_handler)
+    # menu_handler = ConversationHandler(
+    #     entry_points=[CommandHandler('start', start_handler.show_menu)],
+    #     states={ MENU: [CallbackQueryHandler(start_handler.select_menu)] },
+    #     fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
+
+    # application.add_handler(menu_handler)
+    application.add_handler(start_handler.get_handler())
+    application.add_handler(booking_handler.get_handler())
+    application.add_handler(cancel_booking_handler.get_handler())
+    application.add_handler(change_booking_date_handler.get_handler())
+    application.add_handler(available_dates_handler.get_handler())
+    application.add_handler(price_handler.get_handler())
+    application.add_handler(question_handler.get_handler())
+    application.add_handler(gift_certificate_handler.get_handler())
 
     # Handle the case when a user sends /start but they're not in a conversation
-    application.add_handler(CommandHandler('start', start_handler.handle))
+    application.add_handler(CommandHandler('start', start_handler.show_menu))
 
     application.run_polling()
 

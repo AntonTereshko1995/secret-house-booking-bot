@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from src.handlers import start_handler
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler)
 
@@ -9,9 +10,21 @@ USER_NAME, TARIFF, PHOTOSHOOT, SECRET_ROOM, SAUNA, PAY, SELECT_BEDROOM, START_DA
 
 def get_handler() -> ConversationHandler:
     menu_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', handle)],
+        entry_points=[CommandHandler('booking', enter_user)],
         states={
-            MENU: [CallbackQueryHandler(select_menu)],
+            USER_NAME: [CallbackQueryHandler(enter_user)],
+            TARIFF: [CallbackQueryHandler(select_tariff)],
+            PHOTOSHOOT: [CallbackQueryHandler(include_photoshoot)],
+            SECRET_ROOM: [CallbackQueryHandler(include_secret_room)],
+            SAUNA: [CallbackQueryHandler(include_sauna)],
+            SELECT_BEDROOM: [CallbackQueryHandler(select_bedroom)],
+            NUMBER_OF_PEOPLE: [CallbackQueryHandler(select_number_of_people)],
+            START_DATE: [CallbackQueryHandler(select_start_date)],
+            FINISH_DATE: [CallbackQueryHandler(select_finish_date)],
+            COMMENT: [CallbackQueryHandler(add_comment)],
+            SALE: [CallbackQueryHandler(select_sale)],
+            PAY: [CallbackQueryHandler(pay)],
+            END: [CallbackQueryHandler(finish_message)],
             # CAR_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, car_type)],
             # CAR_COLOR: [CallbackQueryHandler(car_color)],
             # CAR_MILEAGE_DECISION: [CallbackQueryHandler(car_mileage_decision)],
@@ -22,10 +35,13 @@ def get_handler() -> ConversationHandler:
             # ],
             # SUMMARY: [MessageHandler(filters.ALL, summary)]
         },
-        fallbacks=[CommandHandler('cancel', handle)])
+        fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
     return menu_handler
     
-async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def call_from_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await enter_user(update, context)
+
+async def enter_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the user's car type."""
     # user = update.message.from_user
     # context.user_data['car_type'] = update.message.text
@@ -48,4 +64,52 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
 
-    return CAR_COLOR
+    return TARIFF
+
+async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return PHOTOSHOOT
+
+async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SECRET_ROOM
+
+async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def select_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def select_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def add_comment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def select_sale(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
+
+async def finish_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # await update.message.reply_text('<b>Please choose:</b>', parse_mode='HTML', reply_markup=reply_markup)
+    return SAUNA
