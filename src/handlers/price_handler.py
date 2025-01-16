@@ -13,14 +13,18 @@ def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(send_prices, pattern=f"^{str(PRICE)}$")],
         states={ },
-        fallbacks=[CallbackQueryHandler(end_price_menu, pattern=f"^{str(END)}$")],
+        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{str(END)}$")],
         map_to_parent={
             # Return to top level menu
             END: MENU,
             # End conversation altogether
             STOPPING: END,
-        },)
+        })
     return handler
+
+async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await menu_handler.show_menu(update, context)
+    return END
 
 async def send_prices(update: Update, context: CallbackContext):
     price_images = file_service.get_price_media()
@@ -35,6 +39,3 @@ async def send_prices(update: Update, context: CallbackContext):
         reply_markup=reply_markup)
     return MENU
 
-async def end_price_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await menu_handler.show_menu(update, context)
-    return END
