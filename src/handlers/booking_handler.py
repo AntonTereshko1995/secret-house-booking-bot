@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.handlers import start_handler
+from src.handlers import menu_handler
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler)
 
@@ -35,7 +35,7 @@ def get_handler() -> ConversationHandler:
             # ],
             # SUMMARY: [MessageHandler(filters.ALL, summary)]
         },
-        fallbacks=[CommandHandler('cancel', start_handler.show_menu)])
+        fallbacks=[CommandHandler('cancel', menu_handler.show_menu)])
     return handler
     
 async def enter_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
