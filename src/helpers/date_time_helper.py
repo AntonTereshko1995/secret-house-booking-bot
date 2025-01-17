@@ -1,4 +1,5 @@
 import datetime
+from dateutil import parser
 
 def get_month_name(month: int):
     if (month == 1):
@@ -32,5 +33,19 @@ def get_future_months(count_future_months: int):
     for number in range(count_future_months - 1):
         next_month = today.replace(day=28) + datetime.timedelta(days=4)
         months[next_month.month] = get_month_name(next_month.month)
-
     return months
+
+def parse_date(date_string, date_format="%d.%m.%Y"):
+    try:
+        if isinstance(date_string, str):
+            # Преобразуем строку в дату
+            date_obj = parser.parse(date_string)
+        elif isinstance(date_string, datetime):
+            date_obj = date_string
+        else:
+            raise TypeError("Дата должна быть строкой или объектом datetime")
+        
+        return date_obj.strftime(date_format)
+    except ValueError as e:
+        print(e)
+        return None
