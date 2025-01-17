@@ -7,18 +7,17 @@ from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters)
 from src.handlers import menu_handler
 from src.helpers import string_helper, date_time_helper
-from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, CHECK_USER_NAME, START_DATE
+from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, SET_BOOKING_DATE
 
 user_contact = ''
 start_booking_date = datetime.date.min
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(enter_user_name, pattern=f"^{str(CANCEL_BOOKING)}$")],
+        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(CANCEL_BOOKING)}$")],
         states={ 
-            CHECK_USER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_name)],
-            START_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_start_date)], 
-            # CANCEL_RESULT_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, result_message)], 
+            VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
+            SET_BOOKING_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_booking_date)], 
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{str(BACK)}$")], 
             },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{str(END)}$")],
@@ -34,19 +33,26 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     return END
 
-async def enter_user_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text="Напишите Ваш <b>Telegram</b>.\n"
-        "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-        "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
-        reply_markup=reply_markup)
-    return CHECK_USER_NAME
+    message = "Напишите Ваш <b>Telegram</b>.\n Формат ввода @user_name (обязательно начинайте ввод с @).\n Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n"
 
-async def check_user_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if (update.callback_query != None):
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(
+            text=message,
+            parse_mode='HTML',
+            reply_markup=reply_markup)
+    else:
+        await update.message.edit_text(
+            text=message,
+            parse_mode='HTML',
+            reply_markup=reply_markup)
+    return VALIDATE_USER
+
+async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
         user_input = update.message.text
         is_valid = string_helper.is_valid_user_name(user_input)
@@ -60,7 +66,7 @@ async def check_user_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Формат даты: 01.04.2025",
                 reply_markup=reply_markup)
 
-            return START_DATE
+            return SET_BOOKING_DATE
         else:
             await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
                                             "Повторите ввод еще раз.")
@@ -68,9 +74,9 @@ async def check_user_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Ошибка: Пустая строка.\n"
                                         "Повторите ввод еще раз.")
 
-    return CHECK_USER_NAME
+    return VALIDATE_USER
 
-async def enter_start_date(update: Update, context: CallbackContext):
+async def enter_booking_date(update: Update, context: CallbackContext):
     if update.message and update.message.text:
         date_input = update.message.text
         date = date_time_helper.parse_date(date_input)
@@ -86,4 +92,4 @@ async def enter_start_date(update: Update, context: CallbackContext):
     else:
         await update.message.reply_text("Ошибка: Пустая строка.\n"
                                         "Повторите ввод еще раз.")
-    return START_DATE
+    return SET_BOOKING_DATE
