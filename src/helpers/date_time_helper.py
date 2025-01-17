@@ -1,4 +1,5 @@
 import datetime
+from datetime import datetime, time, date
 from dateutil import parser
 
 def get_month_name(month: int):
@@ -35,17 +36,21 @@ def get_future_months(count_future_months: int):
         months[next_month.month] = get_month_name(next_month.month)
     return months
 
-def parse_date(date_string, date_format="%d.%m.%Y"):
+def parse_date(date_string: str, date_format="%d.%m.%Y") -> datetime:
     try:
-        if isinstance(date_string, str):
-            # Преобразуем строку в дату
-            date_obj = parser.parse(date_string)
-        elif isinstance(date_string, datetime):
-            date_obj = date_string
-        else:
-            raise TypeError("Дата должна быть строкой или объектом datetime")
-        
-        return date_obj.strftime(date_format)
-    except ValueError as e:
+        date = datetime.strptime(date_string, date_format)
+        return date
+    except (ValueError, AttributeError) as e:
         print(e)
         return None
+   
+def parse_time(time_string: str) -> time:
+    try:
+        hours = int(time_string)
+        if (hours >= 0 and hours < 24):
+            return time(hour=hours, minute=0)
+        else:
+            return None
+    except (ValueError, AttributeError) as e:
+        print(e)
+        return False
