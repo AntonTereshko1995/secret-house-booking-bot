@@ -60,6 +60,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text="Напишите Ваш <b>Telegram</b>.\n"
         "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
         "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
 
