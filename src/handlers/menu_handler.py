@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler)
 from src.constants import AVAILABLE_DATES, BOOKING, CANCEL_BOOKING, CHANGE_BOOKING_DATE, GIFT_CERTIFICATE, MENU, PRICE, QUESTIONS, SUBSCRIPTION
-from src.handlers import booking_handler, change_booking_date_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler 
+from src.handlers import booking_handler, change_booking_date_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler, subscription_handler 
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -15,6 +15,7 @@ def get_handler() -> ConversationHandler:
             MENU: [
                 booking_handler.get_handler(),
                 cancel_booking_handler.get_handler(),
+                subscription_handler.get_handler(),
                 change_booking_date_handler.get_handler(),
                 available_dates_handler.get_handler(),
                 price_handler.get_handler(),

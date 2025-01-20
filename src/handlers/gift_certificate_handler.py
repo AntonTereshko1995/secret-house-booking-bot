@@ -1,4 +1,3 @@
-import datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -73,10 +72,10 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
 
             keyboard = [
-                [InlineKeyboardButton(tariff_helper.get_tariff_name(Tariff.INCOGNITA), callback_data=f"{Tariff.INCOGNITA.value}")],
-                [InlineKeyboardButton(tariff_helper.get_tariff_name(Tariff.DAY), callback_data=f"{Tariff.DAY.value}")],
-                [InlineKeyboardButton(tariff_helper.get_tariff_name(Tariff.HOURS_12), callback_data=f"{Tariff.HOURS_12.value}")],
-                [InlineKeyboardButton(tariff_helper.get_tariff_name(Tariff.WORKER), callback_data=f"{Tariff.WORKER.value}")],
+                [InlineKeyboardButton(tariff_helper.get_name(Tariff.INCOGNITA), callback_data=f"{Tariff.INCOGNITA.value}")],
+                [InlineKeyboardButton(tariff_helper.get_name(Tariff.DAY), callback_data=f"{Tariff.DAY.value}")],
+                [InlineKeyboardButton(tariff_helper.get_name(Tariff.HOURS_12), callback_data=f"{Tariff.HOURS_12.value}")],
+                [InlineKeyboardButton(tariff_helper.get_name(Tariff.WORKER), callback_data=f"{Tariff.WORKER.value}")],
                 [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
@@ -99,7 +98,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     global tariff
-    tariff = tariff_helper.extract_tariff_by_str(data)
+    tariff = tariff_helper.get_by_str(data)
     if tariff == Tariff.DAY:
         return await confirm_pay(update)
     elif tariff == Tariff.INCOGNITA:
@@ -136,7 +135,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
     
     keyboard = [
-        [InlineKeyboardButton("Подтвердить покупку.", callback_data=str(CONFIRM))],
+        [InlineKeyboardButton("Подтвердить оплату.", callback_data=str(CONFIRM))],
         [InlineKeyboardButton("Отмена", callback_data=str(END))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = 123
@@ -166,7 +165,7 @@ async def confirm_pay(update: Update):
     text=f"Общая сумма оплаты {price} BYN.\n"
         "В стоимость входит: НУЖЕН СПИСОК.\n"
         "\n"
-        "Подтвердить покупку сертификата?\n",
+        "Подтверждаете покупку сертификата?\n",
     reply_markup=reply_markup)
     return PAY
 
@@ -195,7 +194,7 @@ async def sauna_message(update: Update):
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
     text="Планируете ли Вы пользоваться сауной?\n"
-        f"Стоимость СУММА для тарифа '{tariff_helper.get_tariff_name(tariff)}'.",
+        f"Стоимость СУММА для тарифа '{tariff_helper.get_name(tariff)}'.",
     reply_markup=reply_markup)
     return INCLUDE_SAUNA
 
@@ -205,7 +204,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text="Спасибо Вам за доверие к The Secret House.\n"
-        "Скоро мы свяжемся с Вами.\n",
+            "Скоро мы свяжемся с Вами.\n",
         reply_markup=reply_markup)
     return MENU
 
