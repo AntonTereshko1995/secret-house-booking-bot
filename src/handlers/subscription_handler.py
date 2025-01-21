@@ -32,10 +32,10 @@ def get_handler() -> ConversationHandler:
             SUBSCRIPTION_TYPE: [CallbackQueryHandler(select_subscription_type)],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
             PAY: [CallbackQueryHandler(pay)],
-            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{str(CONFIRM)}$")],
-            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{str(BACK)}$")],
+            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
+            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
         },
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{str(END)}$")],
+        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             END: MENU,
             STOPPING: END,
@@ -47,7 +47,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
@@ -64,7 +64,7 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
         [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_3), callback_data=f"{SubscriptionType.VISITS_3.value}")],
         [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_5), callback_data=f"{SubscriptionType.VISITS_5.value}")],
         [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_8), callback_data=f"{SubscriptionType.VISITS_8.value}")],
-        [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
@@ -103,8 +103,8 @@ async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Перейти к оплате.", callback_data=str(PAY))],
-        [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+        [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
+        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = 123
 
@@ -122,8 +122,8 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
     
     keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату.", callback_data=str(CONFIRM))],
-        [InlineKeyboardButton("Отмена", callback_data=str(END))]]
+        [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
+        [InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = 123
 
@@ -143,7 +143,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRM
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(

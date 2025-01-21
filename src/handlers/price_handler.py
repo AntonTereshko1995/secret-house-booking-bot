@@ -13,7 +13,7 @@ def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(send_prices, pattern=f"^{str(PRICE)}$")],
         states={ },
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{str(END)}$")],
+        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             # Return to top level menu
             END: MENU,
@@ -30,7 +30,7 @@ async def send_prices(update: Update, context: CallbackContext):
     price_images = file_service.get_price_media()
     await context.bot.send_media_group(chat_id=update.effective_chat.id, media=price_images)
 
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()

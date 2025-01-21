@@ -18,10 +18,10 @@ def get_handler() -> ConversationHandler:
         states={ 
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
             SET_BOOKING_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_booking_date)], 
-            CONFIRM: [CallbackQueryHandler(confirm_cancel_booking, pattern=f"^{str(CONFIRM)}$")], 
-            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{str(BACK)}$")], 
+            CONFIRM: [CallbackQueryHandler(confirm_cancel_booking, pattern=f"^{CONFIRM}$")], 
+            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")], 
             },
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{str(END)}$")],
+        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             END: MENU,
             STOPPING: END,
@@ -33,7 +33,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
@@ -51,7 +51,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         is_valid = string_helper.is_valid_user_contact(user_input)
         if is_valid:
             user_contact = user_input
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
                 text="Введите дату заезда Вашего бронирования.\n"
@@ -77,8 +77,8 @@ async def enter_booking_date(update: Update, context: CallbackContext):
             booking_date = date
 
             keyboard = [
-                [InlineKeyboardButton("Подтвердить", callback_data=str(CONFIRM))],
-                [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+                [InlineKeyboardButton("Подтвердить", callback_data=CONFIRM)],
+                [InlineKeyboardButton("Назад в меню", callback_data=END)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(f"Подтвердите отмену бронирования на {booking_date.strftime('%d.%m.%Y')}.", reply_markup=reply_markup)
             return CONFIRM
@@ -91,7 +91,7 @@ async def enter_booking_date(update: Update, context: CallbackContext):
     return SET_BOOKING_DATE
 
 async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(

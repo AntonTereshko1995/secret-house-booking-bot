@@ -1,5 +1,4 @@
-import datetime
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from dateutil import parser
 
 def get_month_name(month: int):
@@ -29,10 +28,10 @@ def get_month_name(month: int):
         return "Декабрь"
 
 def get_future_months(count_future_months: int):
-    today = datetime.date.today()
+    today = date.today()
     months = { today.month: get_month_name(today.month)}
     for number in range(count_future_months - 1):
-        next_month = today.replace(day=28) + datetime.timedelta(days=4)
+        next_month = today.replace(day=28) + timedelta(days=4)
         months[next_month.month] = get_month_name(next_month.month)
     return months
 
@@ -53,4 +52,4 @@ def parse_time(time_string: str) -> time:
             return None
     except (ValueError, AttributeError) as e:
         print(e)
-        return False
+        return None

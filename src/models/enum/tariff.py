@@ -7,3 +7,4 @@ class Tariff(Enum):
     INCOGNITA_DAY = 3
     INCOGNITA_HOURS = 4
     SUBSCRIPTION = 5
+    GIFT = 6

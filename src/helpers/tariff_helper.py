@@ -8,11 +8,13 @@ def get_name(tariff: Tariff) -> str:
     elif (tariff == Tariff.WORKER):
         return "Рабочий"
     elif (tariff == Tariff.INCOGNITA_DAY):
-        return "Инкогнито на 12 часов"
-    elif (tariff == Tariff.INCOGNITA_HOURS):
         return "Инкогнито на сутки"
+    elif (tariff == Tariff.INCOGNITA_HOURS):
+        return "Инкогнито на 12 часов"
     elif (tariff == Tariff.SUBSCRIPTION):
-        return "Абонемент на сутки"
+        return "Абонемент"
+    elif (tariff == Tariff.GIFT):
+        return "Подарочный сертификат"
 
 def get_by_value(value: int) -> Tariff:
     if (value == Tariff.DAY.value):
@@ -27,6 +29,8 @@ def get_by_value(value: int) -> Tariff:
         return Tariff.INCOGNITA_DAY
     elif (value == Tariff.SUBSCRIPTION.value):
         return Tariff.SUBSCRIPTION    
+    elif (value == Tariff.GIFT.value):
+        return Tariff.GIFT 
 
 def get_by_str(value_str: str) -> Tariff:
     value = int(value_str)
