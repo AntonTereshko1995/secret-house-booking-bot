@@ -7,10 +7,12 @@ def get_name(tariff: Tariff) -> str:
         return "12 часов"
     elif (tariff == Tariff.WORKER):
         return "Рабочий"
-    elif (tariff == Tariff.INCOGNITA):
-        return "Инкогнито"
+    elif (tariff == Tariff.INCOGNITA_DAY):
+        return "Инкогнито на 12 часов"
+    elif (tariff == Tariff.INCOGNITA_HOURS):
+        return "Инкогнито на сутки"
     elif (tariff == Tariff.SUBSCRIPTION):
-        return "Абонемент"
+        return "Абонемент на сутки"
 
 def get_by_value(value: int) -> Tariff:
     if (value == Tariff.DAY.value):
@@ -19,8 +21,10 @@ def get_by_value(value: int) -> Tariff:
         return Tariff.HOURS_12
     elif (value == Tariff.WORKER.value):
         return Tariff.WORKER
-    elif (value == Tariff.INCOGNITA.value):
-        return Tariff.INCOGNITA
+    elif (value == Tariff.INCOGNITA_HOURS.value):
+        return Tariff.INCOGNITA_HOURS
+    elif (value == Tariff.INCOGNITA_DAY.value):
+        return Tariff.INCOGNITA_DAY
     elif (value == Tariff.SUBSCRIPTION.value):
         return Tariff.SUBSCRIPTION    
 

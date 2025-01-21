@@ -13,6 +13,7 @@ from src.constants import (
     MENU, 
     STOPPING, 
     GIFT_CERTIFICATE, 
+    SET_USER,
     VALIDATE_USER, 
     SELECT_TARIFF, 
     INCLUDE_SECRET_ROOM, 
@@ -28,8 +29,9 @@ is_secret_room_included = False
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(GIFT_CERTIFICATE)}$")],
+        entry_points=[CallbackQueryHandler(generate_tariff_menu, pattern=f"^{str(GIFT_CERTIFICATE)}$")],
         states={
+            SET_USER: [CallbackQueryHandler(enter_user_contact)],
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
             SELECT_TARIFF: [CallbackQueryHandler(select_tariff)],
             INCLUDE_SECRET_ROOM: [CallbackQueryHandler(include_secret_room)],
@@ -63,6 +65,21 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         reply_markup=reply_markup)
     return VALIDATE_USER
 
+async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton(tariff_helper.get_name(Tariff.INCOGNITA_DAY), callback_data=f"{Tariff.INCOGNITA_DAY.value}")],
+        [InlineKeyboardButton(tariff_helper.get_name(Tariff.INCOGNITA_HOURS), callback_data=f"{Tariff.INCOGNITA_HOURS.value}")],
+        [InlineKeyboardButton(tariff_helper.get_name(Tariff.DAY), callback_data=f"{Tariff.DAY.value}")],
+        [InlineKeyboardButton(tariff_helper.get_name(Tariff.HOURS_12), callback_data=f"{Tariff.HOURS_12.value}")],
+        [InlineKeyboardButton(tariff_helper.get_name(Tariff.WORKER), callback_data=f"{Tariff.WORKER.value}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text="Выберете тариф для сертификата.\n",
+        reply_markup=reply_markup)
+    return SELECT_TARIFF    
+
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
         user_input = update.message.text
@@ -70,18 +87,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-
-            keyboard = [
-                [InlineKeyboardButton(tariff_helper.get_name(Tariff.INCOGNITA), callback_data=f"{Tariff.INCOGNITA.value}")],
-                [InlineKeyboardButton(tariff_helper.get_name(Tariff.DAY), callback_data=f"{Tariff.DAY.value}")],
-                [InlineKeyboardButton(tariff_helper.get_name(Tariff.HOURS_12), callback_data=f"{Tariff.HOURS_12.value}")],
-                [InlineKeyboardButton(tariff_helper.get_name(Tariff.WORKER), callback_data=f"{Tariff.WORKER.value}")],
-                [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете тариф для сертификата.\n",
-                reply_markup=reply_markup)
-            return SELECT_TARIFF
+            return await confirm_pay(update)
         else:
             await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
                                             "Повторите ввод еще раз.")
@@ -99,13 +105,11 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global tariff
     tariff = tariff_helper.get_by_str(data)
-    if tariff == Tariff.DAY:
-        return await confirm_pay(update)
-    elif tariff == Tariff.INCOGNITA:
-        return await confirm_pay(update)
-    elif tariff == Tariff.HOURS_12:
-        return await secret_room_message(update)
-    elif tariff == Tariff.WORKER:
+    
+    if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
+        # return await confirm_pay(update)
+        return await enter_user_contact(update, context)
+    elif tariff == Tariff.HOURS_12 or tariff == Tariff.WORKER:
         return await secret_room_message(update)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,7 +131,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global is_sauna_included
     is_sauna_included = bool(update.callback_query.data)
-    return await confirm_pay(update)
+    return await enter_user_contact(update, context)
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -160,8 +164,7 @@ async def confirm_pay(update: Update):
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = 123
 
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await update.message.reply_text(
     text=f"Общая сумма оплаты {price} BYN.\n"
         "В стоимость входит: НУЖЕН СПИСОК.\n"
         "\n"
@@ -180,7 +183,7 @@ async def secret_room_message(update: Update):
 
     await update.callback_query.edit_message_text(
         text="Планируете ли Вы пользоваться 'Секретной комнатой'?\n"
-            f"Стоимость СУММА для тарифа '{tariff_helper.get_tariff_name(tariff)}'.",
+            f"Стоимость СУММА для тарифа '{tariff_helper.get_name(tariff)}'.",
     reply_markup=reply_markup)
     return INCLUDE_SECRET_ROOM
 

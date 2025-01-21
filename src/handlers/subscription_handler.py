@@ -106,7 +106,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
     text=f"Общая сумма оплаты {price} BYN.\n"
-        f"В стоимость входит: {subscription_helper.get_name(subscription_type)}.\n"
+        f"В стоимость входит: абонемент на {subscription_helper.get_name(subscription_type)}.\n"
         "\n"
         "Подтверждаете покупку абонемента?\n",
     reply_markup=reply_markup)

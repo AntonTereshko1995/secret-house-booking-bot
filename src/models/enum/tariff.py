@@ -4,5 +4,6 @@ class Tariff(Enum):
     HOURS_12 = 0
     DAY = 1
     WORKER = 2
-    INCOGNITA = 3
-    SUBSCRIPTION = 4
+    INCOGNITA_DAY = 3
+    INCOGNITA_HOURS = 4
+    SUBSCRIPTION = 5
