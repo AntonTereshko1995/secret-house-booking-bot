@@ -12,6 +12,7 @@ from src.constants import (
     END,
     MENU, 
     STOPPING, 
+    SET_USER,
     VALIDATE_USER, 
     SUBSCRIPTION,
     SUBSCRIPTION_TYPE,
@@ -24,8 +25,9 @@ subscription_type = SubscriptionType
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(SUBSCRIPTION)}$")],
+        entry_points=[CallbackQueryHandler(generate_subscription_menu, pattern=f"^{str(SUBSCRIPTION)}$")],
         states={
+            SET_USER: [CallbackQueryHandler(enter_user_contact)],
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
             SUBSCRIPTION_TYPE: [CallbackQueryHandler(select_subscription_type)],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
@@ -57,6 +59,20 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         reply_markup=reply_markup)
     return VALIDATE_USER
 
+async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_3), callback_data=f"{SubscriptionType.VISITS_3.value}")],
+        [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_5), callback_data=f"{SubscriptionType.VISITS_5.value}")],
+        [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_8), callback_data=f"{SubscriptionType.VISITS_8.value}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text="Выберете удобный для Вас абонемент.\n"
+            "В каждый абонемент входит аренда на 12 часов, 2 спальные комнаты и секретная комната.\n",
+        reply_markup=reply_markup)
+    return SUBSCRIPTION_TYPE
+
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
         user_input = update.message.text
@@ -64,18 +80,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-
-            keyboard = [
-                [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_3), callback_data=f"{SubscriptionType.VISITS_3.value}")],
-                [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_5), callback_data=f"{SubscriptionType.VISITS_5.value}")],
-                [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_8), callback_data=f"{SubscriptionType.VISITS_8.value}")],
-                [InlineKeyboardButton("Назад в меню", callback_data=str(END))]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете удобный для Вас абонемент.\n"
-                    "В каждый абонемент входит аренда на 12 часов, 2 спальные комнаты и секретная комната.\n",
-                reply_markup=reply_markup)
-            return SUBSCRIPTION_TYPE
+            return await confirm_pay(update, context)
         else:
             await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
                                             "Повторите ввод еще раз.")
@@ -94,7 +99,7 @@ async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT
     global subscription_type
     subscription_type = subscription_helper.get_by_str(data)
 
-    return await confirm_pay(update, context)
+    return await enter_user_contact(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -103,8 +108,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = 123
 
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await update.message.reply_text(
     text=f"Общая сумма оплаты {price} BYN.\n"
         f"В стоимость входит: абонемент на {subscription_helper.get_name(subscription_type)}.\n"
         "\n"
