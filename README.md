@@ -14,7 +14,9 @@ A powerful Telegram bot developed to automate the house booking process, streaml
   Streamlines the entire booking process, including:
   - Date selection
   - Booking confirmation
-  - Payment processing  
+  - Payment processing
+  - Change the booking date
+  - Cancel booking  
   Automation covers over **80% of operations**, reducing manual effort and increasing efficiency.  
 
 - **AI-Powered Customer Support**:  
@@ -39,31 +41,6 @@ A powerful Telegram bot developed to automate the house booking process, streaml
   - OpenAI GPT for AI-powered customer interactions
 - **Infrastructure**: Microsoft Azure (containerized deployment)
 - **Other Tools**: Logging and monitoring systems for performance tracking
-
----
-
-### **How to Run Locally**
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/telegram-house-booking-bot.git
-   cd telegram-house-booking-bot
-   ```
-
-2. **Set up the environment**:
-   - Create a virtual environment and install dependencies:
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate  # On Windows: venv\Scripts\activate
-     pip install -r requirements.txt
-     ```
-   - Add your bot token and OpenAI API key to the `.env` file.
-
-3. **Run the bot**:
-   ```bash
-   python bot.py
-   ```
-
 ---
 
 ### **Future Improvements**
@@ -77,7 +54,3 @@ A powerful Telegram bot developed to automate the house booking process, streaml
 ### **Contributions**
 
 Feel free to fork the repository, open issues, or submit pull requests! All contributions are welcome. 😊
-
----
-
-If you'd like, I can help format the actual `README.md` file or add more details. Let me know! 🚀 
