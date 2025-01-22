@@ -1,7 +1,6 @@
 import sys
 import os
 
-from src.models.enum.tariff import Tariff
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from datetime import datetime
@@ -11,6 +10,7 @@ from src.handlers import menu_handler
 from src.helpers import string_helper, string_helper, date_time_helper, tariff_helper, sale_halper, bedroom_halper
 from src.models.enum.sale import Sale
 from src.models.enum.bedroom import Bedroom
+from src.models.enum.tariff import Tariff
 from src.constants import (
     BACK, 
     END,
