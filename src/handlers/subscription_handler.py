@@ -1,12 +1,13 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
 from src.helpers import string_helper, subscription_helper
 from src.models.enum.subscription_type import SubscriptionType
+from src.models.rental_price import RentalPrice
+from src.services.calculation_rate_service import CalculationRateService
 from src.constants import (
     BACK, 
     END,
@@ -20,8 +21,11 @@ from src.constants import (
     CONFIRM_PAY,
     CONFIRM)
 
-user_contact = ""
-subscription_type = SubscriptionType
+user_contact: str
+subscription_type: SubscriptionType
+rate_service = CalculationRateService()
+rental_rate: RentalPrice
+price: int
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -53,8 +57,8 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text="Напишите Ваш <b>Telegram</b>.\n"
-        "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-        "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+            "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
+            "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
@@ -96,8 +100,9 @@ async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT
     if (data == str(END)):
         return await back_navigation(update, context)
 
-    global subscription_type
+    global subscription_type, rental_rate
     subscription_type = subscription_helper.get_by_str(data)
+    rental_rate = rate_service.get_subscription(subscription_type)
 
     return await enter_user_contact(update, context)
 
@@ -106,11 +111,14 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    price = 123
+    
+    global price
+    price = rate_service.calculate_price(rental_rate, False, True, True)
+    categories = rate_service.get_price_categories(rental_rate, False, True, True)
 
     await update.message.reply_text(
     text=f"Общая сумма оплаты {price} BYN.\n"
-        f"В стоимость входит: абонемент на {subscription_helper.get_name(subscription_type)}.\n"
+        f"В стоимость входит: абонемент на {categories}.\n"
         "\n"
         "Подтверждаете покупку абонемента?\n",
     reply_markup=reply_markup)

@@ -38,19 +38,19 @@ from src.constants import (
     CONFIRM_PAY,
     CONFIRM)
 
-user_contact = ""
-tariff = Tariff
-is_sauna_included = False
-is_secret_room_included = False
-is_photoshoot_included = False
-is_white_room_included = False
-is_green_room_included = False
-comment = ""
-sale = Sale.NONE
-customer_sale_comment = ""
-number_of_customers = 0
-start_booking_date = datetime.today()
-finish_booking_date = datetime.today()
+user_contact: str
+tariff: Tariff
+is_sauna_included: bool
+is_secret_room_included: bool
+is_photoshoot_included: bool
+is_white_room_included: bool
+is_green_room_included: bool
+comment: str
+sale: Sale
+customer_sale_comment: str
+number_of_customers: int
+start_booking_date: datetime
+finish_booking_date: datetime
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
