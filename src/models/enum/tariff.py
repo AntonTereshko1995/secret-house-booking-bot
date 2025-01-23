@@ -7,4 +7,5 @@ class Tariff(Enum):
     INCOGNITA_DAY = 3
     INCOGNITA_HOURS = 4
     SUBSCRIPTION = 5
+    # TODO: have to remove. Do not use in tariff_rete.json.
     GIFT = 6

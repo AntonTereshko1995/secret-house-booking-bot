@@ -1,9 +1,8 @@
 import sys
 import os
-
-from src.models.enum.tariff import Tariff
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+from src.models.rental_price import RentalPrice
+from src.services.calculation_rate_service import CalculationRateService
 from datetime import datetime
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
@@ -11,6 +10,7 @@ from src.handlers import menu_handler
 from src.helpers import string_helper, string_helper, date_time_helper, tariff_helper, sale_halper, bedroom_halper
 from src.models.enum.sale import Sale
 from src.models.enum.bedroom import Bedroom
+from src.models.enum.tariff import Tariff
 from src.constants import (
     BACK, 
     END,
@@ -38,19 +38,24 @@ from src.constants import (
     CONFIRM_PAY,
     CONFIRM)
 
-user_contact = ""
-tariff = Tariff
+MAX_PEOPLE = 6
+
+user_contact: str
+tariff: Tariff
 is_sauna_included = False
 is_secret_room_included = False
 is_photoshoot_included = False
 is_white_room_included = False
 is_green_room_included = False
-comment = ""
-sale = Sale.NONE
-customer_sale_comment = ""
-number_of_customers = 0
-start_booking_date = datetime.today()
-finish_booking_date = datetime.today()
+comment: str
+sale: Sale
+customer_sale_comment: str
+number_of_customers: int
+start_booking_date: datetime
+finish_booking_date: datetime
+rate_service = CalculationRateService()
+rental_rate: RentalPrice
+price: int
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -115,13 +120,9 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (data == str(END)):
         return await back_navigation(update, context)
 
-    global tariff
+    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included
     tariff = tariff_helper.get_by_str(data)
-    
-    global is_sauna_included
-    global is_secret_room_included
-    global is_white_room_included
-    global is_green_room_included
+    rental_rate  = rate_service.get_tariff(tariff)
 
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
         is_sauna_included = True
@@ -179,7 +180,7 @@ async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return await back_navigation(update, context)
 
     global is_photoshoot_included
-    is_photoshoot_included = bool(update.callback_query.data)
+    is_photoshoot_included = eval(update.callback_query.data)
     return await count_of_people_message(update, context)
 
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -192,7 +193,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     global is_sauna_included
-    is_sauna_included = bool(update.callback_query.data)
+    is_sauna_included = eval(update.callback_query.data)
     return await count_of_people_message(update, context)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -202,7 +203,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
         return await back_navigation(update, context)
 
     global is_secret_room_included
-    is_secret_room_included = bool(data)
+    is_secret_room_included = eval(data)
 
     return await sauna_message(update, context)
 
@@ -227,11 +228,9 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
 
-    is_added = bool(update.callback_query.data)
+    is_added = eval(update.callback_query.data)
     if is_added:
-        global is_green_room_included
-        global is_white_room_included
-
+        global is_green_room_included, is_white_room_included
         if is_green_room_included:
             is_white_room_included = True
         else:
@@ -249,6 +248,8 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
     return await start_date_message(update, context)
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included
+
     # TODO: logic to get tariff
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
         is_sauna_included = True
@@ -385,11 +386,15 @@ async def confirm_pay(update: Update):
         [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    price = 123
 
+    global price
+    is_additional_bedroom_included = is_white_room_included and is_white_room_included
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_customers, sale)
+    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_customers)
+    photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
     await update.message.reply_text(
-    text=f"Общая сумма оплаты {price} BYN.\n"
-        "В стоимость входит: НУЖЕН СПИСОК.\n"
+    text=f"Общая сумма оплаты {price} руб.\n"
+        f"В стоимость входит: {categories}{photoshoot_text}.\n"
         "\n"
         "Подтверждаете покупку бронирования дома?\n",
     reply_markup=reply_markup)
@@ -404,10 +409,9 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
         [InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    price = 123
 
     await update.callback_query.edit_message_text(
-    text=f"Общая сумма оплаты {price} BYN.\n"
+    text=f"Общая сумма оплаты {price} руб.\n"
         "\n"
         "Информация для оплаты (Альфа-Банк):\n"
         "по номеру телефона +375257908378\n"
@@ -431,7 +435,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=str(True))],
         [InlineKeyboardButton("Нет", callback_data=str(False))],
@@ -455,7 +458,7 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await update.callback_query.edit_message_text(
         text="Планируете ли Вы пользоваться 'Секретной комнатой'?\n"
-            f"Стоимость СУММА для тарифа '{tariff_helper.get_name(tariff)}'.",
+            f"Стоимость {rental_rate.secret_room_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
     reply_markup=reply_markup)
     return INCLUDE_SECRET_ROOM
 
@@ -484,8 +487,11 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    additional_people_text = "" if rental_rate.max_people == MAX_PEOPLE else f"Дополнительная оплата за челоаека {rental_rate.extra_people_price} руб."
     await update.callback_query.edit_message_text(
-        text="Какое колличество гостей будет присуствовать?", 
+        text="Какое колличество гостей будет присуствовать?\n"
+            f"Для {rental_rate.name} максимальное колличество гостей {rental_rate.max_people} чел.\n"
+            f"{additional_people_text}", 
         reply_markup=reply_markup)
     return NUMBER_OF_PEOPLE
 
@@ -508,7 +514,7 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
     text="Планируете ли Вы пользоваться сауной?\n"
-        f"Стоимость СУММА для тарифа '{tariff_helper.get_name(tariff)}'.",
+        f"Стоимость {rental_rate.sauna_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
     reply_markup=reply_markup)
     return INCLUDE_SAUNA
 
@@ -566,6 +572,6 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text="Нужна ли Вам вторая спальная комната?\n"
-            f"Стоимость СУММА для тарифа '{tariff_helper.get_name(tariff)}'.",
+            f"Стоимость {rental_rate.second_bedroom_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
         reply_markup=reply_markup)
     return ADDITIONAL_BEDROOM

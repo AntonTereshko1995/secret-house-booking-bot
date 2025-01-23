@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext)
 from src.handlers import menu_handler
-from src.services import file_service
+from src.services.file_service import FileService
 from src.constants import END, MENU, PRICE, STOPPING
 
 def get_handler() -> ConversationHandler:
@@ -15,9 +15,7 @@ def get_handler() -> ConversationHandler:
         states={ },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
-            # Return to top level menu
             END: MENU,
-            # End conversation altogether
             STOPPING: END,
         })
     return handler
@@ -27,6 +25,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return END
 
 async def send_prices(update: Update, context: CallbackContext):
+    file_service = FileService()
     price_images = file_service.get_price_media()
     await context.bot.send_media_group(chat_id=update.effective_chat.id, media=price_images)
 

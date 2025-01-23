@@ -1,13 +1,12 @@
 import sys
 import os
 import logging
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from telegram import Update
 from telegram.ext import Application
 from src.handlers import menu_handler
-from src.config import TELEGRAM_TOKEN
+from src.config.config import TELEGRAM_TOKEN
 import logging
 
 # Enable logging

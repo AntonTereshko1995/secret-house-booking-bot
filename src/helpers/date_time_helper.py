@@ -1,31 +1,31 @@
 from datetime import datetime, time, date, timedelta
-from dateutil import parser
 
 def get_month_name(month: int):
-    if (month == 1):
-        return "Январь"
-    elif (month == 2):
-        return "Февраль"
-    elif (month == 3):
-        return "Март"
-    elif (month == 4):
-        return "Апрель"
-    elif (month == 5):
-        return "Май"
-    elif (month == 6):
-        return "Июнь"
-    elif (month == 7):
-        return "Июль"
-    elif (month == 7):
-        return "Август"
-    elif (month == 8):
-        return "Сентябрь"
-    elif (month == 9):
-        return "Октябрь"
-    elif (month == 10):
-        return "Ноябрь"
-    elif (month == 11):
-        return "Декабрь"
+    match month:
+        case 1:
+            return "Январь"
+        case 2:
+            return "Февраль"
+        case 3:
+            return "Март"
+        case 4:
+            return "Апрель"
+        case 5:
+            return "Май"
+        case 6:
+            return "Июнь"
+        case 7:
+            return "Июль"
+        case 8:
+            return "Август"
+        case 9:
+            return "Сентябрь"
+        case 10:
+            return "Октябрь"
+        case 11:
+            return "Ноябрь"
+        case 12:
+            return "Декабрь"
 
 def get_future_months(count_future_months: int):
     today = date.today()

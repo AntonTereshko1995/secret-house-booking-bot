@@ -7,7 +7,7 @@ from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandle
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper
 from src.constants import END, MENU, AVAILABLE_DATES, STOPPING, GET_AVAILABLE_DATES, BACK
-from src.config import PERIOD_IN_MONTHS
+from src.config.config import PERIOD_IN_MONTHS
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
