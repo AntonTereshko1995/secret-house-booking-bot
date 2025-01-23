@@ -118,7 +118,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
     text=f"Общая сумма оплаты {price} BYN.\n"
-        f"В стоимость входит: абонемент на {categories}.\n"
+        f"В стоимость входит: {categories}.\n"
         "\n"
         "Подтверждаете покупку абонемента?\n",
     reply_markup=reply_markup)
