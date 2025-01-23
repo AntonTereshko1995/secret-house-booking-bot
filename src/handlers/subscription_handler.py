@@ -65,9 +65,15 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_3), callback_data=f"{SubscriptionType.VISITS_3.value}")],
-        [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_5), callback_data=f"{SubscriptionType.VISITS_5.value}")],
-        [InlineKeyboardButton(subscription_helper.get_name(SubscriptionType.VISITS_8), callback_data=f"{SubscriptionType.VISITS_8.value}")],
+        [InlineKeyboardButton(
+            f"{subscription_helper.get_name(SubscriptionType.VISITS_3)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_3)} руб", 
+            callback_data=f"{SubscriptionType.VISITS_3.value}")],
+        [InlineKeyboardButton(
+            f"{subscription_helper.get_name(SubscriptionType.VISITS_5)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_5)} руб", 
+            callback_data=f"{SubscriptionType.VISITS_5.value}")],
+        [InlineKeyboardButton(
+            f"{subscription_helper.get_name(SubscriptionType.VISITS_8)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_8)} руб", 
+            callback_data=f"{SubscriptionType.VISITS_8.value}")],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
