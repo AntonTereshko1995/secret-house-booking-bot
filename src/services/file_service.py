@@ -10,7 +10,7 @@ from src.models.rental_price import RentalPrice
 @singleton
 class FileService:
     _IMAGE_FOLDER = "assets/images/"
-    _TARIFF_JSON = "src/data/tariff_rate.json"
+    _TARIFF_JSON = "src/config/tariff_rate.json"
 
     def get_price_media(self) -> List[InputMediaPhoto]:
         if not os.path.exists(self._IMAGE_FOLDER):

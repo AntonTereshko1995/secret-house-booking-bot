@@ -1,7 +1,8 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+from src.models.rental_price import RentalPrice
+from src.services.calculation_rate_service import CalculationRateService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
@@ -16,16 +17,21 @@ from src.constants import (
     SET_USER,
     VALIDATE_USER, 
     SELECT_TARIFF, 
+    ADDITIONAL_BEDROOM,
     INCLUDE_SECRET_ROOM, 
     INCLUDE_SAUNA, 
     PAY,
     CONFIRM_PAY,
     CONFIRM)
 
-user_contact = ""
-tariff = Tariff
-is_sauna_included = False
-is_secret_room_included = False
+user_contact: str
+tariff: Tariff
+is_sauna_included: bool
+is_secret_room_included: bool
+is_additional_bedroom_included: bool
+rate_service = CalculationRateService()
+rental_rate: RentalPrice
+price: int
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -36,6 +42,7 @@ def get_handler() -> ConversationHandler:
             SELECT_TARIFF: [CallbackQueryHandler(select_tariff)],
             INCLUDE_SECRET_ROOM: [CallbackQueryHandler(include_secret_room)],
             INCLUDE_SAUNA: [CallbackQueryHandler(include_sauna)],
+            ADDITIONAL_BEDROOM: [CallbackQueryHandler(select_additional_bedroom)],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
             PAY: [CallbackQueryHandler(pay)],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
@@ -87,7 +94,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-            return await confirm_pay(update)
+            return await confirm_pay(update, context)
         else:
             await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
                                             "Повторите ввод еще раз.")
@@ -103,14 +110,27 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (data == str(END)):
         return await back_navigation(update, context)
 
-    global tariff
+    global tariff, rental_rate
     tariff = tariff_helper.get_by_str(data)
-    
+    rental_rate = rate_service.get_tariff(tariff)
+
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
-        # return await confirm_pay(update)
+        global is_sauna_included, is_secret_room_included, is_additional_bedroom_included
+        is_sauna_included = True
+        is_secret_room_included = True
+        is_additional_bedroom_included = True
         return await enter_user_contact(update, context)
     elif tariff == Tariff.HOURS_12 or tariff == Tariff.WORKER:
-        return await secret_room_message(update)
+        return await additional_bedroom_message(update, context)
+
+async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    if (update.callback_query.data == str(END)):
+        return await back_navigation(update, context)
+
+    global is_additional_bedroom_included
+    is_additional_bedroom_included = bool(update.callback_query.data)
+    return await secret_room_message(update, context)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -121,7 +141,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
     global is_secret_room_included
     is_secret_room_included = bool(data)
 
-    return await sauna_message(update)
+    return await sauna_message(update, context)
 
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -142,8 +162,6 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
         [InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    price = 123
-
     await update.callback_query.edit_message_text(
     text=f"Общая сумма оплаты {price} BYN.\n"
         "\n"
@@ -157,22 +175,24 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup=reply_markup)
     return CONFIRM
 
-async def confirm_pay(update: Update):
+async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    price = 123
 
+    global price
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
+    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
     await update.message.reply_text(
-    text=f"Общая сумма оплаты {price} BYN.\n"
-        "В стоимость входит: НУЖЕН СПИСОК.\n"
-        "\n"
-        "Подтверждаете покупку сертификата?\n",
-    reply_markup=reply_markup)
+        text=f"Общая сумма оплаты {price} руб.\n"
+            f"В стоимость входит: {categories}.\n"
+            "\n"
+            "Подтверждаете покупку сертификата?\n",
+        reply_markup=reply_markup)
     return PAY
 
-async def secret_room_message(update: Update):
+async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     
     keyboard = [
@@ -183,11 +203,11 @@ async def secret_room_message(update: Update):
 
     await update.callback_query.edit_message_text(
         text="Планируете ли Вы пользоваться 'Секретной комнатой'?\n"
-            f"Стоимость СУММА для тарифа '{tariff_helper.get_name(tariff)}'.",
+            f"Стоимость {rental_rate.secret_room_price} руб. для тарифа '{tariff_helper.get_name(tariff)}'.",
     reply_markup=reply_markup)
     return INCLUDE_SECRET_ROOM
 
-async def sauna_message(update: Update):
+async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=str(True))],
         [InlineKeyboardButton("Нет", callback_data=str(False))],
@@ -197,7 +217,7 @@ async def sauna_message(update: Update):
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
     text="Планируете ли Вы пользоваться сауной?\n"
-        f"Стоимость СУММА для тарифа '{tariff_helper.get_name(tariff)}'.",
+        f"Стоимость {rental_rate.sauna_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
     reply_markup=reply_markup)
     return INCLUDE_SAUNA
 
@@ -210,3 +230,17 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Скоро мы свяжемся с Вами.\n",
         reply_markup=reply_markup)
     return MENU
+
+async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Да", callback_data=str(True))],
+        [InlineKeyboardButton("Нет", callback_data=str(False))],
+        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text="Нужна ли Вам вторая спальная комната?\n"
+            f"Стоимость {rental_rate.second_bedroom_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
+        reply_markup=reply_markup)
+    return ADDITIONAL_BEDROOM

@@ -1,10 +1,12 @@
 import sys
 import os
+from dataclasses import dataclass
 from datetime import datetime
 from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+@dataclass
 class RentalPrice:
     tariff: Tariff
     name: str
