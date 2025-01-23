@@ -1,24 +1,36 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.models.enum.tariff import Tariff
+from datetime import datetime
 from unittest.mock import Base
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
-class Booking(Base):
+class BookingBase(Base):
     __tablename__ = 'booking'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    start_date = Column(DateTime, unique=True, nullable=False)
-    end_date = Column(String, unique=True, nullable=False)
-    tariff = Column(Integer, unique=False, nullable=False) 
-    has_photoshoot = Column(Boolean, unique=False, nullable=False)
-    has_sauna = Column(Boolean, unique=False, nullable=False)
-    has_white_bedroom = Column(Boolean, unique=False, nullable=False)
-    has_green_bedroom = Column(Boolean, unique=False, nullable=False)
-    has_secret_room = Column(Boolean, unique=False, nullable=False, default=True)
-    has_contract = Column(Boolean, unique=False, nullable=False, default=True)
-    is_canceled = Column(Boolean, unique=False, nullable=False)
-    is_data_changed = Column(Boolean, unique=False, nullable=False)
-    number_of_guests = Column(Integer, unique=False, nullable=False, default=2)
-    prepayment = Column(Float, nullable=False, nullable=False)
-    price = Column(Float, nullable=False, nullable=False)
-
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
     user = relationship("User")
+    start_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
+    end_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
+    tariff: Mapped[Tariff] = mapped_column(Integer, nullable=False)
+    has_photoshoot: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_sauna: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_white_bedroom: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_green_bedroom: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_secret_room: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_canceled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_data_changed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    number_of_guests: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_prepaymented: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    price: Mapped[float] = mapped_column(Float, nullable=False, default=False)
+    gift_id: Mapped[int] = mapped_column(ForeignKey("gift.id"), nullable=True)
+    gift = relationship("Gift")
+    subscription_id: Mapped[int] = mapped_column(ForeignKey("subscription.id"), nullable=True)
+    subscription = relationship("Subscription")
+
+    def __repr__(self) -> str:
+        return f"BookingBase(id={self.id}, user={self.user_id}, tariff={self.tariff}, start_date={self.start_date}, end_date={self.end_date})"

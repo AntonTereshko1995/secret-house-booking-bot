@@ -1,20 +1,16 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from db.models.base import Base
+from db.models.booking import BookingBase
+from db.models.gift import GiftBase
+from db.models.subscription import SubscriptioBase
+from db.models.user import UserBase
+from sqlalchemy import create_engine
+from src.config.config import DATABASE_URL
 import os
 
-Base = declarative_base()
+engine = create_engine(DATABASE_URL, echo=True)
 
-engine = create_engine(os.getenv('DATABASE_URL'))
-Session = sessionmaker(bind=engine)
-session = Session()
-
-Base.metadata.create_all(engine)
-
-# # Создаем новый товар
-# new_item = Item(name="Sample Item", price=19.99)
-# session.add(new_item)
-# session.commit()
-# Проверяем, добавился ли товар
-# item = session.query(Item).filter_by(name="Sample Item").first()
-# print(item.name, item.price)
+def create_db_and_tables() -> None:
+	Base.metadata.create_all(engine)
