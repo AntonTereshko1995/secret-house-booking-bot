@@ -129,7 +129,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
         return await back_navigation(update, context)
 
     global is_additional_bedroom_included
-    is_additional_bedroom_included = bool(update.callback_query.data)
+    is_additional_bedroom_included = eval(update.callback_query.data)
     return await secret_room_message(update, context)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -139,7 +139,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
         return await back_navigation(update, context)
 
     global is_secret_room_included
-    is_secret_room_included = bool(data)
+    is_secret_room_included = eval(data)
 
     return await sauna_message(update, context)
 
@@ -150,7 +150,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     global is_sauna_included
-    is_sauna_included = bool(update.callback_query.data)
+    is_sauna_included = eval(update.callback_query.data)
     return await enter_user_contact(update, context)
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -163,7 +163,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
-    text=f"Общая сумма оплаты {price} BYN.\n"
+    text=f"Общая сумма оплаты {price} руб.\n"
         "\n"
         "Информация для оплаты (Альфа-Банк):\n"
         "по номеру телефона +375257908378\n"

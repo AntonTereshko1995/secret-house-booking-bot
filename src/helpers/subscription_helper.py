@@ -1,11 +1,11 @@
 from src.models.enum.subscription_type import SubscriptionType
 
-def get_name(tariff: SubscriptionType) -> str:
-    if (tariff == SubscriptionType.VISITS_3):
+def get_name(subscription_type: SubscriptionType) -> str:
+    if (subscription_type == SubscriptionType.VISITS_3):
         return "3 посещения"
-    elif (tariff == SubscriptionType.VISITS_5):
+    elif (subscription_type == SubscriptionType.VISITS_5):
         return "5 посещений"
-    elif (tariff == SubscriptionType.VISITS_8):
+    elif (subscription_type == SubscriptionType.VISITS_8):
         return "8 посещений"
 
 def get_by_value(value: int) -> SubscriptionType:

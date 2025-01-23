@@ -117,7 +117,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     categories = rate_service.get_price_categories(rental_rate, False, True, True)
 
     await update.message.reply_text(
-    text=f"Общая сумма оплаты {price} BYN.\n"
+    text=f"Общая сумма оплаты {price} руб.\n"
         f"В стоимость входит: {categories}.\n"
         "\n"
         "Подтверждаете покупку абонемента?\n",
@@ -136,7 +136,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     price = 123
 
     await update.callback_query.edit_message_text(
-    text=f"Общая сумма оплаты {price} BYN.\n"
+    text=f"Общая сумма оплаты {price} руб.\n"
         "\n"
         "Информация для оплаты (Альфа-Банк):\n"
         "по номеру телефона +375257908378\n"

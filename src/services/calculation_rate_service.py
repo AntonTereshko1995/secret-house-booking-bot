@@ -1,6 +1,7 @@
 import sys
 import os
-from datetime import datetime
+from src.helpers import sale_halper
+from src.models.enum.sale import Sale
 from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
 from src.models.rental_price import RentalPrice
@@ -28,7 +29,9 @@ class CalculationRateService:
             rental_price: RentalPrice, 
             is_sauna: bool, 
             is_secret_room: bool, 
-            is_second_room: bool) -> int:
+            is_second_room: bool,
+            count_people: int = 0,
+            sale: Sale = Sale.NONE) -> int:
         price = rental_price.price
         if is_sauna:
             price += rental_price.sauna_price
@@ -36,6 +39,12 @@ class CalculationRateService:
             price += rental_price.secret_room_price
         if is_second_room:
             price += rental_price.second_bedroom_price
+        if count_people > rental_price.max_people:
+            price += (count_people - rental_price.max_people) * rental_price.extra_people_price
+        if sale != Sale.NONE:
+            percentage = sale_halper.get_percentage_sale(sale)
+            price = price - price * (percentage / 100)
+        
         return price
     
     def get_price_categories(
@@ -43,7 +52,8 @@ class CalculationRateService:
             rental_price: RentalPrice, 
             is_sauna: bool, 
             is_secret_room: bool, 
-            is_second_room: bool) -> str:
+            is_second_room: bool,
+            count_people: int = 0) -> str:
         categories = rental_price.name
         if is_sauna:
             categories += f", сауна"
@@ -51,6 +61,9 @@ class CalculationRateService:
             categories += f", секретная комната"
         if is_second_room:
             categories += f", дополнительная спальная комната"
+        if count_people > rental_price.max_people:
+            additional_people = count_people - rental_price.max_people
+            categories += f", дополнительно {additional_people} чел."
         return categories
 
     def _try_load_tariffs(self) -> List[RentalPrice]:
