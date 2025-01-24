@@ -1,10 +1,9 @@
 import sys
 import os
-
 from matplotlib.dates import relativedelta
-
-from src.date_time_picker import calendar_picker, hours_picker
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.date_time_picker import calendar_picker, hours_picker
+from src.services.database_service import DatabaseService
 from src.config.config import PERIOD_IN_MONTHS
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
@@ -12,7 +11,7 @@ from datetime import date, datetime
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
-from src.helpers import string_helper, string_helper, date_time_helper, tariff_helper, sale_halper, bedroom_halper
+from src.helpers import string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
 from src.models.enum.sale import Sale
 from src.models.enum.bedroom import Bedroom
 from src.models.enum.tariff import Tariff
@@ -59,6 +58,7 @@ number_of_customers: int
 start_booking_date: datetime
 finish_booking_date: datetime
 rate_service = CalculationRateService()
+database_service = DatabaseService()
 rental_rate: RentalPrice
 price: int
 
@@ -268,8 +268,13 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included
+# JXVGPDSBOYLAELJ
+    gift = database_service.get_gift_by_code(update.message.text)
+    if not gift:
+        return await write_code_message(update, context, True)
 
-    # TODO: logic to get tariff
+    global tariff
+    tariff = gift.tariff
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
         is_sauna_included = True
         is_secret_room_included = True
@@ -443,18 +448,26 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     reply_markup=reply_markup)
     return INCLUDE_SECRET_ROOM
 
-async def write_code_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def write_code_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if tariff == Tariff.GIFT:
+    if is_error:
+        message = "Ошибка: код введет не правильно или код устарел.\n"
+        "Введите код еще раз."
+    elif tariff == Tariff.GIFT:
         message = "Введите проверочный код от подарочного сертификата. Длинна кода 15 символов."
     elif tariff == Tariff.SUBSCRIPTION:
         message = "Введите проверочный код от абонемента. Длинна кода 15 символов."
 
-    await update.callback_query.edit_message_text(
-        text=message, 
-        reply_markup=reply_markup)
+    if update.message:
+        await update.message.reply_text(
+            text=message, 
+            reply_markup=reply_markup)
+    else:
+        await update.callback_query.edit_message_text(
+            text=message, 
+            reply_markup=reply_markup)
     return WRITE_CODE
 
 async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_TYPE):

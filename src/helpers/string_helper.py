@@ -1,3 +1,6 @@
+from random import choice
+from string import ascii_uppercase
+
 def is_valid_user_contact(text: str) -> bool:
     return (text.startswith("+375") and len(text) == 13) or (text.startswith("@") and len(text) > 1)
 
@@ -12,3 +15,6 @@ def convert_hours_to_time_string(hour: int) -> str:
         return f"{hour:02}:00"
     else:
         raise ValueError("Hour must be between 0 and 23.")
+    
+def get_generated_code() -> str:
+    return ''.join(choice(ascii_uppercase) for i in range(15))

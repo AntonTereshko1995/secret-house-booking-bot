@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.database_service import DatabaseService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
@@ -30,6 +32,7 @@ is_sauna_included: bool
 is_secret_room_included: bool
 is_additional_bedroom_included: bool
 rate_service = CalculationRateService()
+database_service = DatabaseService()
 rental_rate: RentalPrice
 price: int
 
@@ -168,6 +171,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
+    save_gift_information()
     keyboard = [
         [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
         [InlineKeyboardButton("Отмена", callback_data=END)]]
@@ -254,3 +258,7 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
             f"Стоимость {rental_rate.second_bedroom_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
         reply_markup=reply_markup)
     return ADDITIONAL_BEDROOM
+
+def save_gift_information():
+    code = string_helper.get_generated_code()
+    gift = database_service.add_gift(user_contact, tariff, is_sauna_included, is_secret_room_included, price, code)
