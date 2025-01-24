@@ -15,14 +15,24 @@ class CalculationRateService:
     _rates = List[RentalPrice]
 
     def get_tariff(self, tariff: Tariff) -> RentalPrice:
-        rates = self._try_load_tariffs()
-        selected_tariff = next((rate for rate in rates if rate.tariff == tariff.value), None)
+        tariffs = self._try_load_tariffs()
+        selected_tariff = next((rate for rate in tariffs if rate.tariff == tariff.value), None)
         return selected_tariff
     
     def get_subscription(self, subscription_type: SubscriptionType) -> RentalPrice:
         tariffs = self._try_load_tariffs()
         selected_subscription = next((tariff for tariff in tariffs if tariff.subscription_type == subscription_type.value), None)
         return selected_subscription
+
+    def get_price(self, tariff: Tariff = None, subscription_type: SubscriptionType = None) -> int:
+        tariffs = self._try_load_tariffs()
+        if tariff != None:
+            return next((rate.price for rate in tariffs if rate.tariff == tariff.value), None)
+
+        if subscription_type != None:
+            return next((tariff.price for tariff in tariffs if tariff.subscription_type == subscription_type.value), None)
+
+        return 0
 
     def calculate_price(
             self,

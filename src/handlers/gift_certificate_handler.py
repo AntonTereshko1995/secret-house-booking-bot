@@ -74,11 +74,21 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton(tariff_helper.get_name(Tariff.INCOGNITA_DAY), callback_data=f"{Tariff.INCOGNITA_DAY.value}")],
-        [InlineKeyboardButton(tariff_helper.get_name(Tariff.INCOGNITA_HOURS), callback_data=f"{Tariff.INCOGNITA_HOURS.value}")],
-        [InlineKeyboardButton(tariff_helper.get_name(Tariff.DAY), callback_data=f"{Tariff.DAY.value}")],
-        [InlineKeyboardButton(tariff_helper.get_name(Tariff.HOURS_12), callback_data=f"{Tariff.HOURS_12.value}")],
-        [InlineKeyboardButton(tariff_helper.get_name(Tariff.WORKER), callback_data=f"{Tariff.WORKER.value}")],
+        [InlineKeyboardButton(
+            f"{tariff_helper.get_name(Tariff.INCOGNITA_DAY)}. Сумма {rate_service.get_price(Tariff.INCOGNITA_DAY)} руб", 
+            callback_data=f"{Tariff.INCOGNITA_DAY.value}")],
+        [InlineKeyboardButton(
+            f"{tariff_helper.get_name(Tariff.INCOGNITA_HOURS)}. Сумма {rate_service.get_price(Tariff.INCOGNITA_HOURS)} руб",
+            callback_data=f"{Tariff.INCOGNITA_HOURS.value}")],
+        [InlineKeyboardButton(
+            f"{tariff_helper.get_name(Tariff.DAY)}. Сумма {rate_service.get_price(Tariff.DAY)} руб",
+            callback_data=f"{Tariff.DAY.value}")],
+        [InlineKeyboardButton(
+            f"{tariff_helper.get_name(Tariff.HOURS_12)}. Сумма от {rate_service.get_price(Tariff.HOURS_12)} руб",
+            callback_data=f"{Tariff.HOURS_12.value}")],
+        [InlineKeyboardButton(
+            f"{tariff_helper.get_name(Tariff.WORKER)}. Сумма от {rate_service.get_price(Tariff.WORKER)} руб",
+            callback_data=f"{Tariff.WORKER.value}")],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
