@@ -5,7 +5,10 @@ from datetime import datetime, date
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
-from src.helpers import string_helper, date_time_helper
+from src.helpers import string_helper
+from src.date_time_picker import calendar_picker, hours_picker
+from src.config.config import PERIOD_IN_MONTHS
+from dateutil.relativedelta import relativedelta
 from src.constants import (
     BACK, 
     END,
@@ -30,11 +33,11 @@ def get_handler() -> ConversationHandler:
         entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(CHANGE_BOOKING_DATE)}$")],
         states={ 
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            SET_OLD_START_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_old_start_date)], 
-            SET_START_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_start_date)], 
-            SET_START_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_start_time)], 
-            SET_FINISH_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_finish_date)], 
-            SET_FINISH_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_finish_time)], 
+            SET_OLD_START_DATE: [CallbackQueryHandler(enter_old_start_date)], 
+            SET_START_DATE: [CallbackQueryHandler(enter_start_date)], 
+            SET_START_TIME: [CallbackQueryHandler(enter_start_time)], 
+            SET_FINISH_DATE: [CallbackQueryHandler(enter_finish_date)], 
+            SET_FINISH_TIME: [CallbackQueryHandler(enter_finish_time)], 
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")], 
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
             },
@@ -69,15 +72,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Введите дату заезда Вашего бронирования.\n"
-                    "Формат даты: 01.04.2025",
-                reply_markup=reply_markup)
-
-            return SET_OLD_START_DATE
+            return await old_start_date_message(update, context)
         else:
             await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
                                             "Повторите ввод еще раз.")
@@ -88,122 +83,61 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return VALIDATE_USER
 
 async def enter_old_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        date_input = update.message.text
-        date = date_time_helper.parse_date(date_input)
-        if date != None:
-            global old_booking_date
-            old_booking_date = date
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Нашли Ваше бронирование.\n"
-                    "Введите дату на которую Вы хотите перенести бронирование.\n"
-                    "Формат даты: 01.04.2025", 
-                reply_markup=reply_markup)
-            return SET_START_DATE
-        else:
-            await update.message.reply_text("Ошибка: Дата введена не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    if selected:
+        global old_booking_date
+        old_booking_date = selected_date
+        return await start_date_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_OLD_START_DATE
 
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        date_input = update.message.text
-        date = date_time_helper.parse_date(date_input)
-        if date != None:
-            global new_booking_date
-            new_booking_date = date
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете часы бронирования.\n"
-                    "Формат времени: от 0 до 23. Пример: 13", 
-                reply_markup=reply_markup)
-            return SET_START_TIME
-        else:
-            await update.message.reply_text("Ошибка: Время введено не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    if selected:
+        global new_booking_date
+        new_booking_date = selected_date
+        return await start_time_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_START_DATE
 
 async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        time_input = update.message.text
-        time = date_time_helper.parse_time(time_input)
-        if (time != None):
-            global new_booking_date
-            new_booking_date = new_booking_date.replace(hour=time.hour)
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете дату завершения бронирования.\n"
-                    "Формат даты: 01.04.2025", 
-                reply_markup=reply_markup)
-            return SET_FINISH_DATE
-        else:
-            await update.message.reply_text("Ошибка: Время введено не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    selected, time, is_action = await hours_picker.process_hours_selection(update, context)
+    if selected:
+        global new_booking_date
+        new_booking_date = new_booking_date.replace(hour=time.hour)
+        return await finish_date_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_START_TIME
 
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        date_input = update.message.text
-        date = date_time_helper.parse_date(date_input)
-        if date != None:
-            global finish_booking_date
-            finish_booking_date = date
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете время завершения бронирования.\n"
-                    "Формат времени: от 0 до 23. Пример: 13", 
-                reply_markup=reply_markup)
-            return SET_FINISH_TIME
-        else:
-            await update.message.reply_text("Ошибка: Дата введена не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    if selected:
+        global finish_booking_date
+        finish_booking_date = selected_date
+        return await finish_time_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_FINISH_DATE
 
 async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        time_input = update.message.text
-        time = date_time_helper.parse_time(time_input)
-        if (time != None):
-            global finish_booking_date
-            finish_booking_date = finish_booking_date.replace(hour=time.hour)
-
-            keyboard = [
-                [InlineKeyboardButton("Подтвердить", callback_data=CONFIRM)],
-                [InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text=f"Подтвердите изменение даты бронирования с {old_booking_date.strftime('%d.%m.%Y')} "
-                f"на {new_booking_date.strftime('%d.%m.%Y %H:%M')} "
-                f"до {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.", 
-                reply_markup=reply_markup)
-            return CONFIRM
-        else:
-            await update.message.reply_text("Ошибка: Время введено не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    selected, time, is_action = await hours_picker.process_hours_selection(update, context)
+    if selected:
+        global finish_booking_date
+        finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        return await confirm_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_FINISH_TIME
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -214,3 +148,52 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=f"Бронирование успешно перенесено c {new_booking_date.strftime('%d.%m.%Y %H:%M')} до {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
         reply_markup=reply_markup)
     return MENU
+
+async def old_start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    await update.message.reply_text(
+        text="Введите дату заезда Вашего бронирования.\n",
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+    return SET_OLD_START_DATE
+
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    await update.callback_query.edit_message_text(
+        text="Нашли Ваше бронирование.\n"
+            "Введите дату на которую Вы хотите перенести бронирование.\n", 
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+    return SET_START_DATE
+
+async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text(
+        text="Выберете время заезда.\n", 
+        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню"))
+    return SET_START_TIME
+
+async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    await update.callback_query.edit_message_text(
+        text="Выберете дату завершения бронирования.\n", 
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+    return SET_FINISH_DATE
+
+async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text(
+        text="Выберете время заезда.\n", 
+        reply_markup=hours_picker.create_hours_picker())
+    return SET_FINISH_TIME
+
+async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Подтвердить", callback_data=CONFIRM)],
+        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text(
+        text=f"Подтвердите изменение даты бронирования с {old_booking_date.strftime('%d.%m.%Y')} "
+            f"на {new_booking_date.strftime('%d.%m.%Y %H:%M')} "
+            f"до {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.", 
+        reply_markup=reply_markup)
+    return CONFIRM
