@@ -1,21 +1,15 @@
 from datetime import datetime
 import sys
 import os
-
 from matplotlib.dates import relativedelta
-
 from models.booking import BookingBase
 from models.gift import GiftBase
 from models.subscription import SubscriptioBase
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import database
 from models.user import UserBase
-from src.helpers import sale_halper
-from src.models.enum.sale import Sale
 from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
-from src.models.rental_price import RentalPrice
-from src.services.file_service import FileService
 from typing import List
 from singleton_decorator import singleton
 from database import engine
@@ -238,6 +232,7 @@ class DatabaseService:
             end_date: datetime = None,
             is_canceled: bool = None,
             is_data_changed: bool = None,
+            price: float = None,
             is_prepaymented: bool = None) -> BookingBase:
         with self.Session() as session:
             try:
@@ -256,6 +251,8 @@ class DatabaseService:
                     booking.is_data_changed = is_data_changed
                 if is_prepaymented:
                     booking.is_prepaymented = is_prepaymented
+                if price:
+                    booking.price = price
 
                 session.commit()
                 print(f"Booking updated: {booking}")

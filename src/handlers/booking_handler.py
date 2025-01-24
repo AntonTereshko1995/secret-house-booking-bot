@@ -1,9 +1,14 @@
 import sys
 import os
+
+from matplotlib.dates import relativedelta
+
+from src.date_time_picker import calendar_picker, hours_picker
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.config.config import PERIOD_IN_MONTHS
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
-from datetime import datetime
+from datetime import date, datetime
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
@@ -70,10 +75,10 @@ def get_handler() -> ConversationHandler:
             SELECT_BEDROOM: [CallbackQueryHandler(select_bedroom)],
             ADDITIONAL_BEDROOM: [CallbackQueryHandler(select_additional_bedroom)],
             NUMBER_OF_PEOPLE: [CallbackQueryHandler(select_number_of_people)],
-            SET_START_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_start_date)], 
-            SET_START_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_start_time)], 
-            SET_FINISH_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_finish_date)], 
-            SET_FINISH_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_finish_time)],
+            SET_START_DATE: [CallbackQueryHandler(enter_start_date)], 
+            SET_START_TIME: [CallbackQueryHandler(enter_start_time)], 
+            SET_FINISH_DATE: [CallbackQueryHandler(enter_finish_date)], 
+            SET_FINISH_TIME: [CallbackQueryHandler(enter_finish_time)],
             WRITE_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, write_secret_code)],
             COMMENT: [
                 CallbackQueryHandler(write_comment),
@@ -279,88 +284,49 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await count_of_people_message(update, context)
 
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        date_input = update.message.text
-        date = date_time_helper.parse_date(date_input)
-        if date != None:
-            global new_booking_date
-            new_booking_date = date
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете часы бронирования.\n"
-                    "Формат времени: от 0 до 23. Пример: 13", 
-                reply_markup=reply_markup)
-            return SET_START_TIME
-        else:
-            await update.message.reply_text("Ошибка: Дата введена не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    if selected:
+        global new_booking_date
+        new_booking_date = selected_date
+        return await start_time_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_START_DATE
 
 async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        time_input = update.message.text
-        time = date_time_helper.parse_time(time_input)
-        if (time != None):
-            global new_booking_date
-            new_booking_date = new_booking_date.replace(hour=time.hour)
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете дату завершения бронирования.\n"
-                    "Формат даты: 01.04.2025", 
-                reply_markup=reply_markup)
-            return SET_FINISH_DATE
-        else:
-            await update.message.reply_text("Ошибка: Время введено не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    selected, time, is_action = await hours_picker.process_hours_selection(update, context)
+    if selected:
+        global new_booking_date
+        new_booking_date = new_booking_date.replace(hour=time.hour)
+        return await finish_date_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_START_TIME
 
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        date_input = update.message.text
-        date = date_time_helper.parse_date(date_input)
-        if date != None:
-            global finish_booking_date
-            finish_booking_date = date
-
-            keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                text="Выберете время завершения бронирования.\n"
-                    "Формат времени: от 0 до 23. Пример: 13", 
-                reply_markup=reply_markup)
-            return SET_FINISH_TIME
-        else:
-            await update.message.reply_text("Ошибка: Дата введена не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    if selected:
+        global finish_booking_date
+        finish_booking_date = selected_date
+        return await finish_time_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_FINISH_DATE
 
 async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        time_input = update.message.text
-        time = date_time_helper.parse_time(time_input)
-        if (time != None):
-            global finish_booking_date
-            finish_booking_date = finish_booking_date.replace(hour=time.hour)
-            return await comment_message(update, context)
-        else:
-            await update.message.reply_text("Ошибка: Время введено не корректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+    await update.callback_query.answer()
+    selected, time, is_action = await hours_picker.process_hours_selection(update, context)
+    if selected:
+        global finish_booking_date
+        finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        return await comment_message(update, context)
+    elif is_action:
+        return await back_navigation(update, context)
     return SET_FINISH_TIME
 
 async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -510,13 +476,33 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=reply_markup)
     return NUMBER_OF_PEOPLE
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(
-        text="Введите дату бронирование.\n"
-            "Формат даты: 01.04.2025", 
-        reply_markup=reply_markup)
+        text="Выберете время заезда.\n", 
+        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню"))
+    return SET_START_TIME
+
+async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    await update.callback_query.edit_message_text(
+        text="Выберете дату завершения бронирования.\n", 
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+    return SET_FINISH_DATE
+
+async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.edit_message_text(
+        text="Выберете время заезда.\n", 
+        reply_markup=hours_picker.create_hours_picker())
+    return SET_FINISH_TIME
+
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    await update.callback_query.edit_message_text(
+        text="Нашли Ваше бронирование.\n"
+            "Введите дату на которую Вы хотите перенести бронирование.\n", 
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -538,7 +524,7 @@ async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Пропустить", callback_data=str(SKIP))],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
+    await update.callback_query.edit_message_text(
         text=f"Введите комментарий:", 
         reply_markup=reply_markup)
     return COMMENT
