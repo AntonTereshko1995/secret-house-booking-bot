@@ -1,7 +1,8 @@
 import sys
 import os
-from matplotlib.dates import relativedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from matplotlib.dates import relativedelta
+from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
 from src.config.config import PERIOD_IN_MONTHS
@@ -61,6 +62,7 @@ rate_service = CalculationRateService()
 database_service = DatabaseService()
 rental_rate: RentalPrice
 price: int
+gift: GiftBase
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -267,14 +269,17 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
     return await start_date_message(update, context)
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included
+    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included, gift
 # JXVGPDSBOYLAELJ
+    global tariff, gift
     gift = database_service.get_gift_by_code(update.message.text)
     if not gift:
         return await write_code_message(update, context, True)
 
-    global tariff
     tariff = gift.tariff
+    rental_rate  = rate_service.get_tariff(tariff)
+    await update.message.reply_text(f"Поздравляем. Вы активировали сертификат для {rental_rate.name}")
+
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
         is_sauna_included = True
         is_secret_room_included = True
@@ -339,11 +344,19 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.answer()
         if (update.callback_query.data == str(END)):
             return await back_navigation(update, context)
-        return await sale_message(update, context)
+        
+        if not gift:
+            return await sale_message(update, context)
+        else:
+            return await confirm_booking(update, context)
 
     global comment
     comment = update.message.text
-    return await sale_message(update, context)
+
+    if not gift:
+        return await sale_message(update, context)
+    else:
+        return await confirm_booking(update, context)
 
 async def select_sale(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
@@ -420,17 +433,24 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=str(True))],
         [InlineKeyboardButton("Нет", callback_data=str(False))],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.edit_message_text(
-        text="Нужна ли Вам фото сессия?\n"
-            f"Входит в стоимость для выбранного тарифа.",
-    reply_markup=reply_markup)
+    message = "Нужна ли Вам фото сессия?\n"
+    f"Входит в стоимость для выбранного тарифа."
+    if update.message == None:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(
+            text=message,
+        reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(
+            text=message,
+        reply_markup=reply_markup)
+
     return INCLUDE_PHOTOSHOOT
 
 async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
