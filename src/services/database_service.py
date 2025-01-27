@@ -3,6 +3,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import database
+from src.models.enum.sale import Sale
 from db.models.base import Base
 from db.models.user import UserBase
 from db.models.gift import GiftBase
@@ -53,8 +54,8 @@ class DatabaseService:
                 print(f"User created: {new_user}")
                 return new_user
             except Exception as e:
-                session.rollback()
                 print(f"Error in get_or_create_user: {e}")
+                session.rollback()
 
     def get_user_by_contact(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -202,6 +203,9 @@ class DatabaseService:
             has_secret_room: bool, 
             number_of_guests: int, 
             price: float, 
+            comment: str,
+            sale: Sale,
+            sale_comment: str,
             gift_id: int = None, 
             subscription_id: int = None) -> BookingBase:
         user = self.get_or_create_user(user_contact)
@@ -218,16 +222,23 @@ class DatabaseService:
                     has_green_bedroom = has_green_bedroom,
                     has_secret_room = has_secret_room,
                     number_of_guests = number_of_guests,
-                    gift_id = gift_id,
-                    subscription_id = subscription_id,
+                    comment = comment,
+                    sale = sale,
+                    sale_comment = sale_comment,
                     price = price)
+                
+                if gift_id:
+                    new_booking.gift_id = gift_id
+                if subscription_id:
+                    new_booking.subscription_id = subscription_id
+
                 session.add(new_booking)
                 session.commit()
                 print(f"Booking added: {new_booking}")
                 return new_booking
             except Exception as e:
-                session.rollback()
                 print(f"Error adding booking: {e}")
+                session.rollback()
 
     def get_booking_by_start_date(
             self, 
