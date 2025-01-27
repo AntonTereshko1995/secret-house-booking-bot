@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
@@ -24,6 +25,7 @@ from src.constants import (
 user_contact: str
 subscription_type: SubscriptionType
 rate_service = CalculationRateService()
+database_service = DatabaseService()
 rental_rate: RentalPrice
 price: int
 
@@ -64,6 +66,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return VALIDATE_USER
 
 async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reset_variables()
     keyboard = [
         [InlineKeyboardButton(
             f"{subscription_helper.get_name(SubscriptionType.VISITS_3)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_3)} руб", 
@@ -135,11 +138,12 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
+    save_subscription_information()
     keyboard = [
         [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
         [InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    price = 123
+    price = rental_rate.price
 
     await update.callback_query.edit_message_text(
     text=f"Общая сумма оплаты {price} руб.\n"
@@ -153,7 +157,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный код.\n"
         "Код мы можете вводить в пункте меню 'Забронировать' и автоматически будут списываться брони.\n"
         "Держите код в тайне!\n",
-    reply_markup=reply_markup)
+        reply_markup=reply_markup)
     return CONFIRM
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,3 +169,14 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Скоро мы свяжемся с Вами.\n",
         reply_markup=reply_markup)
     return MENU
+
+def save_subscription_information():
+    code = string_helper.get_generated_code()
+    subscription = database_service.add_subscription(user_contact, subscription_type, price, code)
+
+def reset_variables():
+    global user_contact, subscription_type, rental_rate, price
+    user_contact = None
+    subscription_type = None
+    rental_rate = None
+    price = None

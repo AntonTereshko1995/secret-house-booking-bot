@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from db.models.decorator.type_decorator import IntEnumType
 from src.models.enum.tariff import Tariff
 from datetime import datetime
 from db.models.base import Base
@@ -15,7 +16,7 @@ class BookingBase(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
     start_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
     end_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
-    tariff: Mapped[Tariff] = mapped_column(Integer, nullable=False)
+    tariff: Mapped[Tariff] = mapped_column(IntEnumType(Tariff), nullable=False)
     has_photoshoot: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     has_sauna: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     has_white_bedroom: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

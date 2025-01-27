@@ -76,6 +76,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return VALIDATE_USER
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reset_variables()
     keyboard = [
         [InlineKeyboardButton(
             f"{tariff_helper.get_name(Tariff.INCOGNITA_DAY)}. Сумма {rate_service.get_price(Tariff.INCOGNITA_DAY)} руб", 
@@ -262,3 +263,13 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
 def save_gift_information():
     code = string_helper.get_generated_code()
     gift = database_service.add_gift(user_contact, tariff, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, price, code)
+
+def reset_variables():
+    global user_contact, tariff, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, rental_rate, price
+    user_contact = None
+    tariff = None
+    is_sauna_included = None
+    is_secret_room_included = None
+    is_additional_bedroom_included = None
+    rental_rate = None
+    price = None

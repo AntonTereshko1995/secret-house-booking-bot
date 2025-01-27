@@ -47,7 +47,7 @@ class DatabaseService:
                     print(f"User already exists: {user}")
                     return user
 
-                new_user = UserBase(email=contact)
+                new_user = UserBase(contact=contact)
                 session.add(new_user)
                 session.commit()
                 print(f"User created: {new_user}")
@@ -124,6 +124,7 @@ class DatabaseService:
         with self.Session() as session:
             gift = session.scalar(select(GiftBase)
                 .where((GiftBase.code == code) & (GiftBase.is_done == False)))
+                # Main logic
                 # .where((GiftBase.code == code) & (GiftBase.is_paymented == True) & (GiftBase.is_done == False)))
             return gift
 
@@ -183,7 +184,9 @@ class DatabaseService:
     
     def get_subscription_by_code(self, code: str) -> SubscriptionBase:
         with self.Session() as session:
-            gift = session.scalar(select(SubscriptionBase).where(SubscriptionBase.code == code))
+            gift = session.scalar(select(SubscriptionBase)
+                .where((SubscriptionBase.code == code) & (SubscriptionBase.is_done == False)))
+                # .where((SubscriptionBase.code == code) & (SubscriptionBase.is_paymented == True) & (SubscriptionBase.is_done == False)))
             return gift
         
     def add_booking(

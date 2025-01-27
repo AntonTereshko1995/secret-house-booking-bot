@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from matplotlib.dates import relativedelta
+from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
@@ -64,6 +65,7 @@ database_service = DatabaseService()
 rental_rate: RentalPrice
 price: int
 gift: GiftBase
+subscription: SubscriptionBase
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -187,13 +189,14 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-            if not gift:
-                return await confirm_pay(update, context)
-            else:
+
+            if gift or subscription:
                 if is_any_additional_payment():
                     return await confirm_pay(update, context)
                 else:
                     return await confirm_booking(update, context)
+            else:
+                return await confirm_pay(update, context)
         else:
             await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
                                             "Повторите ввод еще раз.")
@@ -226,6 +229,9 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if gift:
         return await navigate_next_step_for_gift(update, context)
+    
+    if subscription:
+        return await navigate_next_step_for_subscription(update, context)
     
     return await count_of_people_message(update, context)
 
@@ -290,30 +296,10 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
     return await start_date_message(update, context)
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global tariff, rental_rate, gift
-    # PXRCMNLQITKTAXF work 
-    # PJKJESOHSJEVEWK work + suna
-    # LNGJZHMMQPHTILU work + secret
-    # ZXJVSZUIPRGVSWK work + bedroom
-    # TVINZAGCILPYCSD work + suna + secret
-    # DYGFCMLEVPLPYTJ work + suna + bedroom
-    # EWYZTLAVASSOBMK work + secret + bedroom
-    # VZNESLNAERVVQIJ work + secret + bedroom + sauna
-    # JVYGYDRKKNIACFW day
-    # OZNOJTTIQSUSHAK inkognito 12
-    gift = database_service.get_gift_by_code(update.message.text)
-    if not gift:
-        return await write_code_message(update, context, True)
-
-    tariff = gift.tariff
-    rental_rate  = rate_service.get_tariff(tariff)
-    categories = rate_service.get_price_categories(rental_rate, gift.has_sauna, gift.has_secret_room, gift.has_additional_bedroom)
-    await update.message.reply_text(
-        f"Поздравляем! Вы активировали сертификат!\n"
-        f"В сертификат входи: {categories}")
-    
-    init_fields_for_gift()
-    return await navigate_next_step_for_gift(update, context)
+    if (tariff == Tariff.GIFT):
+        return await initi_gift_code(update, context)
+    else:
+        return await initi_subscription_code(update, context)
 
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -366,19 +352,14 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.answer()
         if (update.callback_query.data == str(END)):
             return await back_navigation(update, context)
-        
-        if not gift:
-            return await sale_message(update, context)
-        else:
-            return await enter_user_contact(update, context)
-
-    global comment
-    comment = update.message.text
-
-    if not gift:
-        return await sale_message(update, context)
     else:
+        global comment
+        comment = update.message.text
+
+    if gift or subscription:
         return await enter_user_contact(update, context)
+    else:
+        return await sale_message(update, context)
 
 async def select_sale(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
@@ -412,17 +393,18 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_customers)
     photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
 
-    if not gift:
-        message = (f"Общая сумма оплаты {price} руб.\n"
-            f"В стоимость входит: {categories}{photoshoot_text}.\n"
+    if gift or subscription:
+        payed_price = gift.price if gift else rental_rate.price
+        price = price - payed_price
+        message = (f"Общая сумма доплаты {price} руб.\n"
+            f"В стоимость входит: {categories}{photoshoot_text}\n"
             f"Дата и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             f"Дата и время выезда: {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "\n"
             "Подтверждаете покупку бронирования дома?\n")
     else:
-        price = price - gift.price
-        message = (f"Общая сумма доплаты {price} руб.\n"
-            f"В стоимость входит: {categories}{photoshoot_text}\n"
+        message = (f"Общая сумма оплаты {price} руб.\n"
+            f"В стоимость входит: {categories}{photoshoot_text}.\n"
             f"Дата и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             f"Дата и время выезда: {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "\n"
@@ -443,7 +425,19 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if not gift:
+    if gift or subscription:
+        message = (f"Общая сумма доплаты {price} руб.\n"
+            "\n"
+            "Информация для оплаты (Альфа-Банк):\n"
+            "по номеру телефона +375257908378\n"
+            "или\n"
+            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
+            "или\n"
+            "наличкой при заселении.\n"
+            "\n"
+            "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
+            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n")
+    else:
         sale_text = "Скидка применена." if sale != Sale.NONE else ""
         message = (f"Общая сумма оплаты {price} руб. {sale_text}\n"
             "\n"
@@ -456,18 +450,6 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
             "\n"
             "Остальную сумму нужно оплатить при заселении переводом или наличкой."
-            "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
-            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n")
-    else:
-        message = (f"Общая сумма доплаты {price} руб.\n"
-            "\n"
-            "Информация для оплаты (Альфа-Банк):\n"
-            "по номеру телефона +375257908378\n"
-            "или\n"
-            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
-            "или\n"
-            "наличкой при заселении.\n"
-            "\n"
             "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
             "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n")
 
@@ -586,7 +568,7 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(
-        text="Выберете время завершения бронирования.\n", 
+        text="Выберете время начала бронирования.\n", 
         reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню"))
     return SET_START_TIME
 
@@ -600,7 +582,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(
-        text="Выберете время заезда.\n", 
+        text="Выберете время завершения бронирования.\n", 
         reply_markup=hours_picker.create_hours_picker())
     return SET_FINISH_TIME
 
@@ -608,8 +590,7 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     today = date.today()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     await update.callback_query.edit_message_text(
-        text="Нашли Ваше бронирование.\n"
-            "Введите дату на которую Вы хотите перенести бронирование.\n", 
+        text="Выберете дату бронирования.\n", 
         reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
@@ -699,19 +680,25 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
     return ADDITIONAL_BEDROOM
 
 def is_any_additional_payment() -> bool:
-    if not gift:
-        return False
+    if gift:
+        if gift.has_secret_room != is_secret_room_included:
+            return True
+        elif gift.has_sauna != is_sauna_included:
+            return True
+        elif gift.has_additional_bedroom != is_additional_bedroom_included:
+            return True
+        elif number_of_customers > rental_rate.max_people:
+            return True
+        else:
+            return False
     
-    if gift.has_secret_room != is_secret_room_included:
-        return True
-    elif gift.has_sauna != is_sauna_included:
-        return True
-    elif gift.has_additional_bedroom != is_additional_bedroom_included:
-        return True
-    elif number_of_customers > rental_rate.max_people:
-        return True
-    else:
-        return False
+    if subscription:
+        if is_sauna_included:
+            return True
+        elif number_of_customers > rental_rate.max_people:
+            return True
+
+    return False
     
 async def navigate_next_step_for_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not gift:
@@ -732,6 +719,15 @@ async def navigate_next_step_for_gift(update: Update, context: ContextTypes.DEFA
         return await sauna_message(update, context)
     
     return await count_of_people_message(update, context)
+
+async def navigate_next_step_for_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not subscription:
+        return
+
+    if is_sauna_included == None:
+        return await sauna_message(update, context)
+    
+    return await count_of_people_message(update, context)
     
 def init_fields_for_gift():
     if not gift:
@@ -747,10 +743,10 @@ def init_fields_for_gift():
         is_additional_bedroom_included = True
         is_white_room_included = True
         is_green_room_included = True
-    
+
 def reset_variables():
-    global user_contact, tariff, is_sauna_included, is_secret_room_included, is_photoshoot_included, is_additional_bedroom_included, is_white_room_included, is_green_room_included, comment, sale, customer_sale_comment, number_of_customers
-    global start_booking_date, finish_booking_date, rate_service, database_service, rental_rate, price, gift
+    global user_contact, tariff, is_sauna_included, is_secret_room_included, is_photoshoot_included, is_additional_bedroom_included, is_white_room_included, is_green_room_included
+    global comment, sale, customer_sale_comment, number_of_customers, start_booking_date, finish_booking_date, rental_rate, price, gift, subscription
     user_contact = None
     tariff = None
     is_sauna_included = None
@@ -765,8 +761,52 @@ def reset_variables():
     number_of_customers = None
     start_booking_date = None
     finish_booking_date = None
-    rate_service = CalculationRateService()
-    database_service = DatabaseService()
     rental_rate = None
     price = None
     gift = None
+    subscription = None
+
+async def initi_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # PXRCMNLQITKTAXF work 
+    # PJKJESOHSJEVEWK work + suna
+    # LNGJZHMMQPHTILU work + secret
+    # ZXJVSZUIPRGVSWK work + bedroom
+    # TVINZAGCILPYCSD work + suna + secret
+    # DYGFCMLEVPLPYTJ work + suna + bedroom
+    # EWYZTLAVASSOBMK work + secret + bedroom
+    # VZNESLNAERVVQIJ work + secret + bedroom + sauna
+    # JVYGYDRKKNIACFW day
+    # OZNOJTTIQSUSHAK inkognito 12
+    global tariff, rental_rate, gift
+    gift = database_service.get_gift_by_code(update.message.text)
+    if not gift:
+        return await write_code_message(update, context, True)
+
+    tariff = gift.tariff
+    rental_rate  = rate_service.get_tariff(tariff)
+    categories = rate_service.get_price_categories(rental_rate, gift.has_sauna, gift.has_secret_room, gift.has_additional_bedroom)
+    await update.message.reply_text(
+        f"Поздравляем! Вы активировали сертификат!\n"
+        f"В сертификат входи: {categories}")
+    
+    init_fields_for_gift()
+    return await navigate_next_step_for_gift(update, context)
+
+async def initi_subscription_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # PLKOTORQQWSXANH
+    global tariff, rental_rate, subscription, is_secret_room_included, is_additional_bedroom_included, is_white_room_included, is_green_room_included
+    subscription = database_service.get_subscription_by_code(update.message.text)
+    if not subscription:
+        return await write_code_message(update, context, True)
+
+    rental_rate  = rate_service.get_subscription(subscription.subscription_type)
+    # categories = rate_service.get_price_categories(rental_rate, False, True, True)
+    await update.message.reply_text(
+        f"Отлично! Мы нашли Ваш '{rental_rate.name}'!\n"
+        f"У Вас осталось {subscription.subscription_type.value - subscription.number_of_visits} из {subscription.subscription_type.value} посещений.")
+    
+    is_secret_room_included = True
+    is_additional_bedroom_included = True
+    is_white_room_included = True
+    is_green_room_included = True
+    return await navigate_next_step_for_subscription(update, context)

@@ -15,6 +15,9 @@ class CalculationRateService:
     _rates = List[RentalPrice]
 
     def get_tariff(self, tariff: Tariff) -> RentalPrice:
+        if tariff == Tariff.SUBSCRIPTION:
+            return None
+        
         tariffs = self._try_load_tariffs()
         selected_tariff = next((rate for rate in tariffs if rate.tariff == tariff.value), None)
         return selected_tariff
