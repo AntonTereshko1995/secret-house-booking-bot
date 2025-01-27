@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -16,7 +16,7 @@ from typing import List
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from sqlalchemy import Date, cast, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
 
 @singleton
@@ -243,13 +243,14 @@ class DatabaseService:
     def get_booking_by_start_date(
             self, 
             user_contact: str, 
-            start_date: datetime) -> BookingBase:
+            start_date: date) -> BookingBase:
         user = self.get_user_by_contact(user_contact)
         if not user:
             return None
         
         with self.Session() as session:
-            booking = session.scalar(select(BookingBase).where(BookingBase.user_id == user and BookingBase.start_date == start_date))
+            booking = session.scalar(select(BookingBase)
+                .where((BookingBase.user_id == user) & (cast(BookingBase.start_date, Date) == start_date)))
             return booking
         
     def update_booking(

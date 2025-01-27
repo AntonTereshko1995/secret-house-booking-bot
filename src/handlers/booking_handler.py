@@ -568,6 +568,14 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=reply_markup) 
     return NUMBER_OF_PEOPLE
 
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    await update.callback_query.edit_message_text(
+        text="Выберете дату бронирования.\n", 
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+    return SET_START_DATE
+
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(
         text="Выберете время начала бронирования.\n", 
@@ -587,14 +595,6 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         text="Выберете время завершения бронирования.\n", 
         reply_markup=hours_picker.create_hours_picker())
     return SET_FINISH_TIME
-
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    today = date.today()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    await update.callback_query.edit_message_text(
-        text="Выберете дату бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
-    return SET_START_DATE
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
