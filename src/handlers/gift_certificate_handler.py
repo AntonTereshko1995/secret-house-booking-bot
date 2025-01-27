@@ -261,4 +261,4 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
 
 def save_gift_information():
     code = string_helper.get_generated_code()
-    gift = database_service.add_gift(user_contact, tariff, is_sauna_included, is_secret_room_included, price, code)
+    gift = database_service.add_gift(user_contact, tariff, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, price, code)

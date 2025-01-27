@@ -19,6 +19,7 @@ class GiftBase(Base):
     date_expired: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     tariff: Mapped[Tariff] = mapped_column(IntEnumType(Tariff), nullable=False)
     has_sauna: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_additional_bedroom: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     has_secret_room: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_paymented: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)

@@ -66,7 +66,8 @@ class DatabaseService:
             buyer_contact: str, 
             tariff: Tariff, 
             has_sauna: bool, 
-            has_secret_room: bool, 
+            has_secret_room: bool,
+            has_additional_bedroom: bool,
             price: float, 
             code: str) -> GiftBase:
         with self.Session() as session:
@@ -77,7 +78,8 @@ class DatabaseService:
                     tariff = tariff, 
                     date_expired = date_expired,
                     has_sauna = has_sauna,
-                    has_secret_room = has_secret_room, 
+                    has_secret_room = has_secret_room,
+                    has_additional_bedroom = has_additional_bedroom, 
                     price = price, 
                     code = code)
                 session.add(new_gift)

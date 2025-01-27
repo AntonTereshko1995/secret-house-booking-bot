@@ -51,7 +51,7 @@ class CalculationRateService:
             price += rental_price.second_bedroom_price
         if count_people > rental_price.max_people:
             price += (count_people - rental_price.max_people) * rental_price.extra_people_price
-        if sale != Sale.NONE:
+        if sale != None and sale != Sale.NONE:
             percentage = sale_halper.get_percentage_sale(sale)
             price = price - price * (percentage / 100)
         
@@ -64,7 +64,7 @@ class CalculationRateService:
             is_secret_room: bool, 
             is_second_room: bool,
             count_people: int = 0) -> str:
-        categories = rental_price.name
+        categories = f"{rental_price.name}, спальная комната"
         if is_sauna:
             categories += f", сауна"
         if is_secret_room:
