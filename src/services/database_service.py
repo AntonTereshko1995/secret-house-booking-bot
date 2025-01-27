@@ -1,13 +1,14 @@
 from datetime import datetime
 import sys
 import os
-from matplotlib.dates import relativedelta
-from models.booking import BookingBase
-from models.gift import GiftBase
-from models.subscription import SubscriptioBase
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import database
-from models.user import UserBase
+from db.models.base import Base
+from db.models.user import UserBase
+from db.models.gift import GiftBase
+from db.models.subscription import SubscriptionBase
+from db.models.booking import BookingBase
+from matplotlib.dates import relativedelta
 from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
 from typing import List
@@ -23,6 +24,8 @@ class DatabaseService:
         self.engine = engine
         self.Session = sessionmaker(bind=self.engine)
         database.create_db_and_tables()
+        # Base.metadata.drop_all(engine)  # Удаляет все таблицы
+        # Base.metadata.create_all(engine)  # Создаёт таблицы заново
 
     def add_user(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -31,6 +34,7 @@ class DatabaseService:
                 session.add(new_user)
                 session.commit()
                 print(f"User added: {new_user}")
+                return new_user
             except Exception as e:
                 session.rollback()
                 print(f"Error adding user: {e}")
@@ -62,7 +66,8 @@ class DatabaseService:
             buyer_contact: str, 
             tariff: Tariff, 
             has_sauna: bool, 
-            has_secret_room: bool, 
+            has_secret_room: bool,
+            has_additional_bedroom: bool,
             price: float, 
             code: str) -> GiftBase:
         with self.Session() as session:
@@ -73,15 +78,17 @@ class DatabaseService:
                     tariff = tariff, 
                     date_expired = date_expired,
                     has_sauna = has_sauna,
-                    has_secret_room = has_secret_room, 
+                    has_secret_room = has_secret_room,
+                    has_additional_bedroom = has_additional_bedroom, 
                     price = price, 
                     code = code)
                 session.add(new_gift)
                 session.commit()
                 print(f"Gift added: {new_gift}")
+                return new_gift
             except Exception as e:
-                session.rollback()
                 print(f"Error adding gift: {e}")
+                session.rollback()
 
     def update_gift(
             self, 
@@ -108,13 +115,16 @@ class DatabaseService:
 
                 session.commit()
                 print(f"Gift updated: {gift}")
+                return gift
             except Exception as e:
                 session.rollback()
                 print(f"Error updating Gift: {e}")
 
     def get_gift_by_code(self, code: str) -> GiftBase:
         with self.Session() as session:
-            gift = session.scalar(select(GiftBase).where(GiftBase.code == code))
+            gift = session.scalar(select(GiftBase)
+                .where((GiftBase.code == code) & (GiftBase.is_done == False)))
+                # .where((GiftBase.code == code) & (GiftBase.is_paymented == True) & (GiftBase.is_done == False)))
             return gift
 
     def add_subscription(
@@ -127,7 +137,7 @@ class DatabaseService:
         with self.Session() as session:
             try:
                 date_expired = datetime.today() + relativedelta(months=MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS)
-                new_subscription = SubscriptioBase(
+                new_subscription = SubscriptionBase(
                     user_id = user.id,
                     subscription_type = subscription_type, 
                     date_expired = date_expired,
@@ -136,6 +146,7 @@ class DatabaseService:
                 session.add(new_subscription)
                 session.commit()
                 print(f"Subscription added: {new_subscription}")
+                return new_subscription
             except Exception as e:
                 session.rollback()
                 print(f"Error adding Subscription: {e}")
@@ -146,10 +157,10 @@ class DatabaseService:
             date_expired: datetime = None,
             is_paymented: bool = None,
             is_done: bool = None,
-            number_of_visits: int = None) -> SubscriptioBase:
+            number_of_visits: int = None) -> SubscriptionBase:
         with self.Session() as session:
             try:
-                subscription = session.scalar(select(SubscriptioBase).where(SubscriptioBase.id == subscription_id))
+                subscription = session.scalar(select(SubscriptionBase).where(SubscriptionBase.id == subscription_id))
                 if not subscription:
                     print(f"Subscription with id {subscription_id} not found.")
                     return
@@ -165,13 +176,14 @@ class DatabaseService:
 
                 session.commit()
                 print(f"Subscription updated: {subscription}")
+                return subscription
             except Exception as e:
                 session.rollback()
                 print(f"Error updating Subscription: {e}")
     
-    def get_subscription_by_code(self, code: str) -> SubscriptioBase:
+    def get_subscription_by_code(self, code: str) -> SubscriptionBase:
         with self.Session() as session:
-            gift = session.scalar(select(SubscriptioBase).where(SubscriptioBase.code == code))
+            gift = session.scalar(select(SubscriptionBase).where(SubscriptionBase.code == code))
             return gift
         
     def add_booking(
@@ -188,7 +200,7 @@ class DatabaseService:
             number_of_guests: int, 
             price: float, 
             gift_id: int = None, 
-            subscription_id: int = None):
+            subscription_id: int = None) -> BookingBase:
         user = self.get_or_create_user(user_contact)
         with self.Session() as session:
             try:
@@ -209,6 +221,7 @@ class DatabaseService:
                 session.add(new_booking)
                 session.commit()
                 print(f"Booking added: {new_booking}")
+                return new_booking
             except Exception as e:
                 session.rollback()
                 print(f"Error adding booking: {e}")
@@ -216,7 +229,7 @@ class DatabaseService:
     def get_booking_by_start_date(
             self, 
             user_contact: str, 
-            start_date: datetime):
+            start_date: datetime) -> BookingBase:
         user = self.get_user_by_contact(user_contact)
         if not user:
             return None
@@ -256,6 +269,7 @@ class DatabaseService:
 
                 session.commit()
                 print(f"Booking updated: {booking}")
+                return booking
             except Exception as e:
                 session.rollback()
                 print(f"Error updating Booking: {e}")
