@@ -16,7 +16,7 @@ from typing import List
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Date, and_, cast, select
+from sqlalchemy import Date, and_, cast, func, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
 
 @singleton
@@ -283,17 +283,23 @@ class DatabaseService:
             return None
         
         with self.Session() as session:
-            booking = session.scalar(select(BookingBase)
-                .where((BookingBase.user_id == user) & (cast(BookingBase.start_date, Date) == start_date)))
+            booking = session.scalar(select(BookingBase).where(
+                and_(
+                    BookingBase.user_id == user.id,
+                    func.date(BookingBase.start_date) == start_date,
+                    BookingBase.is_canceled == False
+                )
+            ))
             return booking
-        
+            
     def get_booking_by_period(self, from_date: date, to_date: date):
         with self.Session() as session:
             bookings = session.scalars(
                 select(BookingBase).where(
                     and_(
                         BookingBase.start_date >= from_date,
-                        BookingBase.start_date <= to_date
+                        BookingBase.start_date <= to_date,
+                        BookingBase.is_canceled == False
                     )
                 )
             ).all()

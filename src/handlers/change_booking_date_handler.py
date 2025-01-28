@@ -93,7 +93,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def enter_old_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     if (update.callback_query.data == str(END)):
-            return await back_navigation(update, context)
+        return await back_navigation(update, context)
 
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
     if selected:
@@ -155,11 +155,14 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return SET_FINISH_TIME
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    updated_booking = database_service.update_booking(booking.id, start_date=new_booking_date, end_date=finish_booking_date)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text=f"Бронирование успешно перенесено c {new_booking_date.strftime('%d.%m.%Y %H:%M')} до {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
+        text=f"Бронирование успешно перенесено:\n"
+            f"c {new_booking_date.strftime('%d.%m.%Y %H:%M')} \n"
+            f"до {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
         reply_markup=reply_markup)
     return MENU
 
@@ -236,5 +239,5 @@ def reset_variables():
 
 def load_booking() -> bool:
     global booking
-    booking = database_service.get_booking_by_start_date(user_contact, old_booking_date)
+    booking = database_service.get_booking_by_start_date(user_contact, old_booking_date.date())
     return True if booking else False
