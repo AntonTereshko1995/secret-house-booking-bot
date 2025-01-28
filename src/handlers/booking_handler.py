@@ -348,6 +348,13 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_any_booking:
             return await start_date_message(update, context, True)
 
+        selected_duration = finish_booking_date - start_booking_date
+        duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
+        global rental_price
+        rental_price = rate_service.get_tariff(tariff)
+        if duration_booking_hours > rental_price.duration_hours:
+            return await start_date_message(update, context, incorrect_duration=True)
+
         return await comment_message(update, context)
     elif is_action:
         return await back_navigation(update, context)

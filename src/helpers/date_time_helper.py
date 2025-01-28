@@ -80,3 +80,6 @@ def get_free_time_slots(
         free_slots.append((previous_end.time(), day_end.time()))
 
     return free_slots
+
+def seconds_to_hours(seconds: int) -> float:
+    return seconds / 3600

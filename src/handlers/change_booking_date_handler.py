@@ -1,6 +1,8 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.models.rental_price import RentalPrice
+from src.services.calculation_rate_service import CalculationRateService
 from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
 from datetime import datetime, date, time, timedelta
@@ -32,7 +34,9 @@ finish_booking_date = datetime.today()
 max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
 min_date_booking = date.today() - relativedelta(day=1)
 database_service = DatabaseService()
+calculation_rate_service = CalculationRateService()
 booking: BookingBase = None
+rental_price: RentalPrice = None
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -67,8 +71,8 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text="Напишите Ваш <b>Telegram</b>.\n"
-        "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-        "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+            "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
+            "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
@@ -150,6 +154,17 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global finish_booking_date
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
+        if is_any_booking:
+            return await start_date_message(update, context, is_error=True)
+        
+        selected_duration = finish_booking_date - start_booking_date
+        duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
+        global rental_price
+        rental_price = calculation_rate_service.get_tariff(booking.tariff)
+        if duration_booking_hours > rental_price.duration_hours:
+            return await start_date_message(update, context, incorrect_duration=True)
+
         return await confirm_message(update, context)
     elif is_action:
         return await back_navigation(update, context)
@@ -174,12 +189,17 @@ async def old_start_date_message(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_OLD_START_DATE
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False):
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False, incorrect_duration: bool = False):
     today = date.today()
     if is_error:
         message = ("Ощибка! Время и дата выбране не правильно.\n"
                    "Дата начала и конца бронирования пересекается с другим бронированием.\n"
                    f"После каждого клиента нам нужно убрать дом. Для этого нам нужно {CLEANING_HOURS} часа.\n"
+                   "Повторите попытку заново.\n\n"
+                   "Выберете дату начала бронирования.")
+    elif incorrect_duration:
+        message = ("Ощибка! Максимальное продолжительсность тарифа превышена.\n"
+                   f"Длительность '{rental_price.name}': {rental_price.duration_hours} ч.\n"
                    "Повторите попытку заново.\n\n"
                    "Выберете дату начала бронирования.")
     else:
@@ -239,11 +259,12 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Напишите Ваш <b>Telegram</b>.\n"
             "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
             "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
 
 def reset_variables():
-    global user_contact, old_booking_date, start_booking_date, finish_booking_date, max_date_booking, min_date_booking, booking
+    global user_contact, old_booking_date, start_booking_date, finish_booking_date, max_date_booking, min_date_booking, booking, rental_price
     user_contact = ''
     old_booking_date = date.today()
     start_booking_date = datetime.today()
@@ -251,6 +272,7 @@ def reset_variables():
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = date.today() - timedelta(days=1)
     booking = None
+    rental_price = None
 
 def load_booking() -> bool:
     global booking
