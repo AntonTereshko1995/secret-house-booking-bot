@@ -6,14 +6,14 @@ from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
-from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT
+from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
-from src.helpers import string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
+from src.helpers import date_time_helper, string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
 from src.models.enum.sale import Sale
 from src.models.enum.bedroom import Bedroom
 from src.models.enum.tariff import Tariff
@@ -319,7 +319,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected, time, is_action = await hours_picker.process_hours_selection(update, context)
     if selected:
         global start_booking_date
-        start_booking_date = start_booking_date.replace(hour=time.hour)
+        start_booking_date = start_booking_date.replace(hour=time.hour, minute=time.minute)
         return await finish_date_message(update, context)
     elif is_action:
         return await back_navigation(update, context)
@@ -344,6 +344,10 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global finish_booking_date
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
+        if is_any_booking:
+            return await start_date_message(update, context, True)
+
         return await comment_message(update, context)
     elif is_action:
         return await back_navigation(update, context)
@@ -570,19 +574,30 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=reply_markup) 
     return NUMBER_OF_PEOPLE
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False):
+    if is_error:
+        message = ("Ощибка! Время и дата выбране не правильно.\n"
+                   "Дата начала и конца бронирования пересекается с другим бронированием.\n"
+                   f"После каждого клиента нам нужно убрать дом. Для этого нам нужно {CLEANING_HOURS} часа.\n"
+                   "Повторите попытку заново.\n\n"
+                   "Выберете дату начала бронирования.")
+    else:
+        message = "Выберете дату бронирования.\n"
+
     today = date.today()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = date.today() - timedelta(days=1)
     await update.callback_query.edit_message_text(
-        text="Выберете дату бронирования.\n", 
+        text=message, 
         reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    booking = database_service.get_booking_by_day(start_booking_date.date())
+    available_slots = date_time_helper.get_free_time_slots(booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
         text="Выберете время начала бронирования.\n", 
-        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню"))
+        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=start_booking_date.date()))
     return SET_START_TIME
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -595,9 +610,12 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     return SET_FINISH_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    booking = database_service.get_booking_by_day(finish_booking_date.date())
+    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
+    available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
         text="Выберете время завершения бронирования.\n", 
-        reply_markup=hours_picker.create_hours_picker())
+        reply_markup=hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=finish_booking_date.date()))
     return SET_FINISH_TIME
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
