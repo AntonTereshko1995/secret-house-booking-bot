@@ -2,10 +2,11 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.decorator.type_decorator import IntEnumType
+from src.models.enum.sale import Sale
 from src.models.enum.tariff import Tariff
 from datetime import datetime
 from db.models.base import Base
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -17,16 +18,20 @@ class BookingBase(Base):
     start_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
     end_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
     tariff: Mapped[Tariff] = mapped_column(IntEnumType(Tariff), nullable=False)
-    has_photoshoot: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    has_sauna: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    has_white_bedroom: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    has_green_bedroom: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    has_secret_room: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    is_canceled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    is_data_changed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_photoshoot: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_sauna: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_white_bedroom: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_green_bedroom: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_secret_room: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_canceled: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_data_changed: Mapped[bool] = mapped_column(Boolean, default=False)
     number_of_guests: Mapped[int] = mapped_column(Integer, nullable=False)
-    is_prepaymented: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    price: Mapped[float] = mapped_column(Float, nullable=False, default=False)
+    is_prepaymented: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_done: Mapped[bool] = mapped_column(Boolean, default=False)
+    price: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    comment: Mapped[str] = mapped_column(Float, nullable=True)
+    sale: Mapped[Sale] = mapped_column(IntEnumType(Sale), nullable=True)
+    sale_comment: Mapped[str] = mapped_column(Float, nullable=True)
     gift_id: Mapped[int] = mapped_column(ForeignKey("gift.id"), nullable=True)
     subscription_id: Mapped[int] = mapped_column(ForeignKey("subscription.id"), nullable=True)
     user = relationship("UserBase")

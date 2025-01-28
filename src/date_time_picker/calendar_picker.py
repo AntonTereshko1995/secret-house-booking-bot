@@ -7,7 +7,7 @@ import calendar
 def create_callback_data(action, year, month, day):
     return CALENDAR_CALLBACK + "_" + "_".join([action, str(year), str(month), str(day)])
 
-def create_calendar(year: int = None, month: int = None, max_date: date = None, action_text: str = " "):
+def create_calendar(year: int = None, month: int = None, min_date: date = None, max_date: date = None, action_text: str = " "):
     now = datetime.now()
     if year == None: year = now.year
     if month == None: month = now.month
@@ -29,7 +29,7 @@ def create_calendar(year: int = None, month: int = None, max_date: date = None, 
     for week in my_calendar:
         row = []
         for day in week:
-            if day == 0:
+            if day == 0 or (min_date != None and min_date.day >= day and month == min_date.month):
                 row.append(InlineKeyboardButton(" ",callback_data = data_ignore))
             else:
                 row.append(InlineKeyboardButton(str(day), callback_data = create_callback_data("DAY", year, month, day)))
@@ -37,14 +37,14 @@ def create_calendar(year: int = None, month: int = None, max_date: date = None, 
 
     #Last row - Buttons
     row=[]
-    if month != now.month:
+    if month != min_date.month:
         row.append(InlineKeyboardButton("<", callback_data = create_callback_data("PREV-MONTH", year, month, day)))
     else:
        row.append(InlineKeyboardButton(" ", callback_data = data_ignore))
 
     row.append(InlineKeyboardButton(action_text, callback_data = data_action))
 
-    if date(year, month, 1) != max_date:
+    if month != max_date.month:
         row.append(InlineKeyboardButton(">", callback_data = create_callback_data("NEXT-MONTH", year, month, day)))
     else:
        row.append(InlineKeyboardButton(" ", callback_data = data_ignore))
@@ -52,7 +52,7 @@ def create_calendar(year: int = None, month: int = None, max_date: date = None, 
     keyboard.append(row)
     return InlineKeyboardMarkup(keyboard)
 
-async def process_calendar_selection(update, context, max_date: date = None, action_text: str = " "):
+async def process_calendar_selection(update, context, min_date: date = None, max_date: date = None, action_text: str = " "):
     # Selected, Time, Is_action
     return_data = (False, None, False)
     query = update.callback_query
@@ -74,14 +74,14 @@ async def process_calendar_selection(update, context, max_date: date = None, act
             text=query.message.text,
             chat_id=query.message.chat_id,
             message_id=query.message.message_id,
-            reply_markup = create_calendar(int(prev_month.year), int(prev_month.month), max_date, action_text))
+            reply_markup = create_calendar(int(prev_month.year), int(prev_month.month), min_date, max_date, action_text))
     elif action == "NEXT-MONTH":
         next_month = curr + timedelta(days = 31)
         await context.bot.edit_message_text(
             text=query.message.text,
             chat_id=query.message.chat_id,
             message_id=query.message.message_id,
-            reply_markup = create_calendar(int(next_month.year), int(next_month.month), max_date, action_text))
+            reply_markup = create_calendar(int(next_month.year), int(next_month.month), min_date, max_date, action_text))
     else:
         await context.bot.answer_callback_query(callback_query_id = query.id, text = "Something went wrong!")
     return return_data

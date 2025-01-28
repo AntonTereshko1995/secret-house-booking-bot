@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import database
+from src.models.enum.sale import Sale
 from db.models.base import Base
 from db.models.user import UserBase
 from db.models.gift import GiftBase
@@ -15,7 +16,7 @@ from typing import List
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from sqlalchemy import Date, and_, cast, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
 
 @singleton
@@ -26,6 +27,40 @@ class DatabaseService:
         database.create_db_and_tables()
         # Base.metadata.drop_all(engine)  # Удаляет все таблицы
         # Base.metadata.create_all(engine)  # Создаёт таблицы заново
+        # self.add_booking(
+        #     "@1",
+        #     datetime(day=28, month=1, year=2025, hour=11),
+        #     datetime(day=28, month=1, year=2025, hour=20),
+        #     Tariff.HOURS_12,
+        #     False,
+        #     False,
+        #     True,
+        #     False,
+        #     False,
+        #     2,
+        #     1,
+        #     None,
+        #     None,
+        #     None,
+        #     None,
+        #     None)
+        # self.add_booking(
+        #     "@2",
+        #     datetime(day=29, month=1, year=2025, hour=0),
+        #     datetime(day=29, month=1, year=2025, hour=12),
+        #     Tariff.HOURS_12,
+        #     False,
+        #     False,
+        #     True,
+        #     False,
+        #     False,
+        #     2,
+        #     100,
+        #     None,
+        #     None,
+        #     None,
+        #     None,
+        #     None)
 
     def add_user(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -53,8 +88,8 @@ class DatabaseService:
                 print(f"User created: {new_user}")
                 return new_user
             except Exception as e:
-                session.rollback()
                 print(f"Error in get_or_create_user: {e}")
+                session.rollback()
 
     def get_user_by_contact(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -202,6 +237,9 @@ class DatabaseService:
             has_secret_room: bool, 
             number_of_guests: int, 
             price: float, 
+            comment: str,
+            sale: Sale,
+            sale_comment: str,
             gift_id: int = None, 
             subscription_id: int = None) -> BookingBase:
         user = self.get_or_create_user(user_contact)
@@ -218,29 +256,49 @@ class DatabaseService:
                     has_green_bedroom = has_green_bedroom,
                     has_secret_room = has_secret_room,
                     number_of_guests = number_of_guests,
-                    gift_id = gift_id,
-                    subscription_id = subscription_id,
+                    comment = comment,
+                    sale = sale,
+                    sale_comment = sale_comment,
                     price = price)
+                
+                if gift_id:
+                    new_booking.gift_id = gift_id
+                if subscription_id:
+                    new_booking.subscription_id = subscription_id
+
                 session.add(new_booking)
                 session.commit()
                 print(f"Booking added: {new_booking}")
                 return new_booking
             except Exception as e:
-                session.rollback()
                 print(f"Error adding booking: {e}")
+                session.rollback()
 
     def get_booking_by_start_date(
             self, 
             user_contact: str, 
-            start_date: datetime) -> BookingBase:
+            start_date: date) -> BookingBase:
         user = self.get_user_by_contact(user_contact)
         if not user:
             return None
         
         with self.Session() as session:
-            booking = session.scalar(select(BookingBase).where(BookingBase.user_id == user and BookingBase.start_date == start_date))
+            booking = session.scalar(select(BookingBase)
+                .where((BookingBase.user_id == user) & (cast(BookingBase.start_date, Date) == start_date)))
             return booking
         
+    def get_booking_by_period(self, from_date: date, to_date: date):
+        with self.Session() as session:
+            bookings = session.scalars(
+                select(BookingBase).where(
+                    and_(
+                        BookingBase.start_date >= from_date,
+                        BookingBase.start_date <= to_date
+                    )
+                )
+            ).all()
+            return bookings
+
     def update_booking(
             self, 
             booking_id: int,

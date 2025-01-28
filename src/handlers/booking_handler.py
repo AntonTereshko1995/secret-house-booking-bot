@@ -9,7 +9,7 @@ from src.services.database_service import DatabaseService
 from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
@@ -54,10 +54,10 @@ is_photoshoot_included: bool = None
 is_additional_bedroom_included: bool = None
 is_white_room_included = False
 is_green_room_included = False
-comment: str
+booking_comment: str
 sale = Sale.NONE
 customer_sale_comment: str
-number_of_customers: int
+number_of_guests: int
 start_booking_date: datetime
 finish_booking_date: datetime
 rate_service = CalculationRateService()
@@ -291,8 +291,8 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
 
-    global number_of_customers
-    number_of_customers = int(update.callback_query.data)
+    global number_of_guests
+    number_of_guests = int(update.callback_query.data)
     return await start_date_message(update, context)
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -304,7 +304,8 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    min_date_booking = date.today() - timedelta(days=1)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
     if selected:
         global start_booking_date
         start_booking_date = selected_date
@@ -327,7 +328,8 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    min_date_booking = start_booking_date.date() - timedelta(days=1)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
     if selected:
         global finish_booking_date
         finish_booking_date = selected_date
@@ -353,8 +355,8 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (update.callback_query.data == str(END)):
             return await back_navigation(update, context)
     else:
-        global comment
-        comment = update.message.text
+        global booking_comment
+        booking_comment = update.message.text
 
     if gift or subscription:
         return await enter_user_contact(update, context)
@@ -389,8 +391,8 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     global price, sale
-    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_customers, sale)
-    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_customers)
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, sale)
+    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests)
     photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
 
     if gift or subscription:
@@ -476,6 +478,8 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             text=message,
             reply_markup=reply_markup)
+        
+    save_booking_information()
     return MENU
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -566,6 +570,15 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=reply_markup) 
     return NUMBER_OF_PEOPLE
 
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = date.today() - timedelta(days=1)
+    await update.callback_query.edit_message_text(
+        text="Выберете дату бронирования.\n", 
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+    return SET_START_DATE
+
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(
         text="Выберете время начала бронирования.\n", 
@@ -575,9 +588,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
         text="Выберете дату завершения бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -585,14 +599,6 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         text="Выберете время завершения бронирования.\n", 
         reply_markup=hours_picker.create_hours_picker())
     return SET_FINISH_TIME
-
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    today = date.today()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    await update.callback_query.edit_message_text(
-        text="Выберете дату бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
-    return SET_START_DATE
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -687,7 +693,7 @@ def is_any_additional_payment() -> bool:
             return True
         elif gift.has_additional_bedroom != is_additional_bedroom_included:
             return True
-        elif number_of_customers > rental_rate.max_people:
+        elif number_of_guests > rental_rate.max_people:
             return True
         else:
             return False
@@ -695,7 +701,7 @@ def is_any_additional_payment() -> bool:
     if subscription:
         if is_sauna_included:
             return True
-        elif number_of_customers > rental_rate.max_people:
+        elif number_of_guests > rental_rate.max_people:
             return True
 
     return False
@@ -746,7 +752,7 @@ def init_fields_for_gift():
 
 def reset_variables():
     global user_contact, tariff, is_sauna_included, is_secret_room_included, is_photoshoot_included, is_additional_bedroom_included, is_white_room_included, is_green_room_included
-    global comment, sale, customer_sale_comment, number_of_customers, start_booking_date, finish_booking_date, rental_rate, price, gift, subscription
+    global booking_comment, sale, customer_sale_comment, number_of_guests, start_booking_date, finish_booking_date, rental_rate, price, gift, subscription
     user_contact = None
     tariff = None
     is_sauna_included = None
@@ -755,10 +761,10 @@ def reset_variables():
     is_additional_bedroom_included = None
     is_white_room_included = False
     is_green_room_included = False
-    comment = None
+    booking_comment = None
     sale = Sale.NONE
     customer_sale_comment = None
-    number_of_customers = None
+    number_of_guests = None
     start_booking_date = None
     finish_booking_date = None
     rental_rate = None
@@ -810,3 +816,22 @@ async def initi_subscription_code(update: Update, context: ContextTypes.DEFAULT_
     is_white_room_included = True
     is_green_room_included = True
     return await navigate_next_step_for_subscription(update, context)
+
+def save_booking_information():
+    booking = database_service.add_booking(
+        user_contact,
+        start_booking_date,
+        finish_booking_date,
+        tariff,
+        is_photoshoot_included,
+        is_sauna_included,
+        is_white_room_included,
+        is_green_room_included,
+        is_secret_room_included,
+        number_of_guests,
+        price,
+        booking_comment,
+        sale,
+        customer_sale_comment,
+        gift.id if gift else None,
+        subscription.id if subscription else None)
