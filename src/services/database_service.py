@@ -16,7 +16,7 @@ from typing import List
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Date, cast, select
+from sqlalchemy import Date, and_, cast, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
 
 @singleton
@@ -27,6 +27,40 @@ class DatabaseService:
         database.create_db_and_tables()
         # Base.metadata.drop_all(engine)  # Удаляет все таблицы
         # Base.metadata.create_all(engine)  # Создаёт таблицы заново
+        # self.add_booking(
+        #     "@1",
+        #     datetime(day=28, month=1, year=2025, hour=11),
+        #     datetime(day=28, month=1, year=2025, hour=20),
+        #     Tariff.HOURS_12,
+        #     False,
+        #     False,
+        #     True,
+        #     False,
+        #     False,
+        #     2,
+        #     1,
+        #     None,
+        #     None,
+        #     None,
+        #     None,
+        #     None)
+        # self.add_booking(
+        #     "@2",
+        #     datetime(day=29, month=1, year=2025, hour=0),
+        #     datetime(day=29, month=1, year=2025, hour=12),
+        #     Tariff.HOURS_12,
+        #     False,
+        #     False,
+        #     True,
+        #     False,
+        #     False,
+        #     2,
+        #     100,
+        #     None,
+        #     None,
+        #     None,
+        #     None,
+        #     None)
 
     def add_user(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -253,6 +287,18 @@ class DatabaseService:
                 .where((BookingBase.user_id == user) & (cast(BookingBase.start_date, Date) == start_date)))
             return booking
         
+    def get_booking_by_period(self, from_date: date, to_date: date):
+        with self.Session() as session:
+            bookings = session.scalars(
+                select(BookingBase).where(
+                    and_(
+                        BookingBase.start_date >= from_date,
+                        BookingBase.start_date <= to_date
+                    )
+                )
+            ).all()
+            return bookings
+
     def update_booking(
             self, 
             booking_id: int,

@@ -9,7 +9,7 @@ from src.services.database_service import DatabaseService
 from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
@@ -304,7 +304,8 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    min_date_booking = date.today() - timedelta(days=1)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
     if selected:
         global start_booking_date
         start_booking_date = selected_date
@@ -327,7 +328,8 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, max_date=max_date_booking, action_text="Назад в меню")
+    min_date_booking = start_booking_date.date() - timedelta(days=1)
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
     if selected:
         global finish_booking_date
         finish_booking_date = selected_date
@@ -571,9 +573,10 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
 async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = date.today() - timedelta(days=1)
     await update.callback_query.edit_message_text(
         text="Выберете дату бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -585,9 +588,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
         text="Выберете дату завершения бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
