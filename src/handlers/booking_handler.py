@@ -346,14 +346,14 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
-            return await start_date_message(update, context, True)
+            return await start_date_message(update, context, is_error=True)
 
-        selected_duration = finish_booking_date - start_booking_date
-        duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
-        global rental_price
-        rental_price = rate_service.get_tariff(tariff)
-        if duration_booking_hours > rental_price.duration_hours:
-            return await start_date_message(update, context, incorrect_duration=True)
+        # selected_duration = finish_booking_date - start_booking_date
+        # duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
+        # global rental_price
+        # rental_price = rate_service.get_tariff(tariff)
+        # if duration_booking_hours > rental_price.duration_hours:
+        #     return await start_date_message(update, context, incorrect_duration=True)
 
         return await comment_message(update, context)
     elif is_action:
@@ -402,8 +402,11 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     global price, sale
-    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, sale)
-    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests)
+    selected_duration = finish_booking_date - start_booking_date
+    duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
+    extra_hours = duration_booking_hours - rental_rate.duration_hours
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours, sale)
+    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours)
     photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
 
     if gift or subscription:
