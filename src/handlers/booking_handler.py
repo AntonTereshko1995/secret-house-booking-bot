@@ -348,13 +348,6 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_any_booking:
             return await start_date_message(update, context, is_error=True)
 
-        # selected_duration = finish_booking_date - start_booking_date
-        # duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
-        # global rental_price
-        # rental_price = rate_service.get_tariff(tariff)
-        # if duration_booking_hours > rental_price.duration_hours:
-        #     return await start_date_message(update, context, incorrect_duration=True)
-
         return await comment_message(update, context)
     elif is_action:
         return await back_navigation(update, context)
@@ -595,11 +588,11 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
         message = "Выберете дату бронирования.\n"
 
     today = date.today()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = date.today() - timedelta(days=1)
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = today - timedelta(days=1)
     await update.callback_query.edit_message_text(
         text=message, 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -612,11 +605,11 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
         text="Выберете дату завершения бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):

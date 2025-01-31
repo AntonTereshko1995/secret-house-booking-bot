@@ -186,7 +186,7 @@ async def old_start_date_message(update: Update, context: ContextTypes.DEFAULT_T
     today = date.today()
     await update.message.reply_text(
         text="Введите дату заезда Вашего бронирования.\n",
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_OLD_START_DATE
 
 async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False, incorrect_duration: bool = False):
@@ -207,7 +207,7 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
             "Введите дату на которую Вы хотите перенести бронирование.\n")
     await update.callback_query.edit_message_text(
         text=message, 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -219,11 +219,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return SET_START_TIME
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    today = date.today()
     min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
         text="Выберете дату завершения бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
