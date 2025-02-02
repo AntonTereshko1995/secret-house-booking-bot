@@ -18,3 +18,6 @@ def convert_hours_to_time_string(hour: int) -> str:
     
 def get_generated_code() -> str:
     return ''.join(choice(ascii_uppercase) for i in range(15))
+
+def bool_to_str(value: bool) -> str:
+    return "Да" if bool else "Нет"

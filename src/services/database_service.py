@@ -25,12 +25,13 @@ class DatabaseService:
         self.engine = engine
         self.Session = sessionmaker(bind=self.engine)
         database.create_db_and_tables()
+        
         # Base.metadata.drop_all(engine)  # Удаляет все таблицы
         # Base.metadata.create_all(engine)  # Создаёт таблицы заново
         # self.add_booking(
         #     "@1",
-        #     datetime(day=29, month=1, year=2025, hour=1),
-        #     datetime(day=29, month=1, year=2025, hour=7),
+        #     datetime(day=1, month=2, year=2025, hour=1),
+        #     datetime(day=3, month=2, year=2025, hour=7),
         #     Tariff.HOURS_12,
         #     False,
         #     False,
@@ -46,8 +47,8 @@ class DatabaseService:
         #     None)
         # self.add_booking(
         #     "@2",
-        #     datetime(day=29, month=1, year=2025, hour=10),
-        #     datetime(day=29, month=1, year=2025, hour=19),
+        #     datetime(day=24, month=2, year=2025, hour=10),
+        #     datetime(day=25, month=2, year=2025, hour=19),
         #     Tariff.HOURS_12,
         #     False,
         #     False,
@@ -94,6 +95,11 @@ class DatabaseService:
     def get_user_by_contact(self, contact: str) -> UserBase:
         with self.Session() as session:
             user = session.scalar(select(UserBase).where(UserBase.contact == contact))
+            return user
+        
+    def get_user_by_id(self, user_id: int) -> UserBase:
+        with self.Session() as session:
+            user = session.scalar(select(UserBase).where(UserBase.id == user_id))
             return user
         
     def add_gift(
@@ -358,6 +364,13 @@ class DatabaseService:
             ).first()
             return overlapping_bookings is not None
 
+    def get_booking_by_id(
+            self, 
+            booking_id: int) -> BookingBase:
+        with self.Session() as session:
+            booking = session.scalar(select(BookingBase)
+                .where(BookingBase.id == booking_id))
+            return booking
 
     def update_booking(
             self, 

@@ -4,8 +4,8 @@ import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db import database
 from telegram import Update
-from telegram.ext import Application
-from src.handlers import menu_handler
+from telegram.ext import Application, CallbackQueryHandler
+from src.handlers import menu_handler, admin_handler
 from src.config.config import TELEGRAM_TOKEN
 import logging
 
@@ -19,7 +19,8 @@ def main() -> None:
     database.create_db_and_tables()
     application = Application.builder().token(TELEGRAM_TOKEN).build()
     application.add_handler(menu_handler.get_handler())
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.add_handler(CallbackQueryHandler(admin_handler.admin_callback, pattern=r"^admin_\d+_chatid_(\d+)_booking_id_(\d+)$"))
+    application.run_polling(allowed_updates=Update.ALL_TYPES) 
 
 if __name__ == '__main__':
     main()

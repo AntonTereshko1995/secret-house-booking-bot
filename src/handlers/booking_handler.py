@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from matplotlib.dates import relativedelta
+from db.models.booking import BookingBase
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
@@ -10,10 +11,11 @@ from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from datetime import date, datetime, time, timedelta
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
+from src.handlers import admin_handler
 from src.models.enum.sale import Sale
 from src.models.enum.bedroom import Bedroom
 from src.models.enum.tariff import Tariff
@@ -42,7 +44,8 @@ from src.constants import (
     SET_FINISH_DATE,
     SET_FINISH_TIME,
     CONFIRM_PAY,
-    CONFIRM)
+    CONFIRM,
+    PHOTO_UPLOAD)
 
 MAX_PEOPLE = 6
 
@@ -66,6 +69,8 @@ rental_rate: RentalPrice
 price: int
 gift: GiftBase
 subscription: SubscriptionBase
+photo: PhotoSize
+booking: BookingBase
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -95,6 +100,7 @@ def get_handler() -> ConversationHandler:
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
+            PHOTO_UPLOAD: [MessageHandler(filters.PHOTO, handle_photo)],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -137,7 +143,7 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.callback_query.edit_message_text(
         text="Выберете тариф для бронирования.\n",
         reply_markup=reply_markup)
-    return SELECT_TARIFF   
+    return SELECT_TARIFF
 
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -368,25 +374,22 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await sale_message(update, context)
 
 async def select_sale(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if (update.callback_query.data == str(END)):
-        await update.callback_query.answer()
-        return await back_navigation(update, context)
-    
-    global sale
-
+    global sale, customer_sale_comment
     if update.message == None:
         await update.callback_query.answer()
         data = update.callback_query.data
         if (data == str(END)):
             return await back_navigation(update, context)
+
+        if (data == str(END)):
+            return await back_navigation(update, context)
         
         sale = sale_halper.get_by_str(data)
         return await enter_user_contact(update, context)
-
-    sale = Sale.OTHER
-    global customer_sale_comment
-    customer_sale_comment = update.message.text
-    return await enter_user_contact(update, context)
+    else:
+        sale = Sale.OTHER
+        customer_sale_comment = update.message.text
+        return await enter_user_contact(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -421,6 +424,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         text=message,
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return PAY
 
@@ -429,9 +433,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
-    keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
-        [InlineKeyboardButton("Отмена", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if gift or subscription:
@@ -444,8 +446,9 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "или\n"
             "наличкой при заселении.\n"
             "\n"
-            "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
-            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n")
+            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
+            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
+            "Спасибо за понимание.\n")
     else:
         sale_text = "Скидка применена." if sale != Sale.NONE else ""
         message = (f"Общая сумма оплаты {price} руб. {sale_text}\n"
@@ -458,14 +461,16 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "или\n"
             "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
             "\n"
-            "Остальную сумму нужно оплатить при заселении переводом или наличкой."
-            "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
-            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n")
+            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
+            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
+            "Спасибо за понимание.\n")
 
+    save_booking_information()
     await update.callback_query.edit_message_text(
         text=message,
+        parse_mode='HTML',
         reply_markup=reply_markup)
-    return CONFIRM
+    return PHOTO_UPLOAD
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
@@ -486,7 +491,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message,
             reply_markup=reply_markup)
         
-    save_booking_information()
     return MENU
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -773,7 +777,7 @@ def init_fields_for_gift():
 
 def reset_variables():
     global user_contact, tariff, is_sauna_included, is_secret_room_included, is_photoshoot_included, is_additional_bedroom_included, is_white_room_included, is_green_room_included
-    global booking_comment, sale, customer_sale_comment, number_of_guests, start_booking_date, finish_booking_date, rental_rate, price, gift, subscription
+    global booking_comment, sale, customer_sale_comment, number_of_guests, start_booking_date, finish_booking_date, rental_rate, price, gift, subscription, photo, booking
     user_contact = None
     tariff = None
     is_sauna_included = None
@@ -792,6 +796,8 @@ def reset_variables():
     price = None
     gift = None
     subscription = None
+    photo = None
+    booking = None
 
 async def initi_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # PXRCMNLQITKTAXF work 
@@ -839,6 +845,7 @@ async def initi_subscription_code(update: Update, context: ContextTypes.DEFAULT_
     return await navigate_next_step_for_subscription(update, context)
 
 def save_booking_information():
+    global booking
     booking = database_service.add_booking(
         user_contact,
         start_booking_date,
@@ -856,3 +863,11 @@ def save_booking_information():
         customer_sale_comment,
         gift.id if gift else None,
         subscription.id if subscription else None)
+    
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global photo
+    photo = update.message.photo[-1].file_id  # Берем лучшее качество фото
+    chat_id = update.message.chat.id
+
+    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo)
+    return await confirm_booking(update, context)
