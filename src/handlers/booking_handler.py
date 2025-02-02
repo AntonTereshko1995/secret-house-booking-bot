@@ -45,7 +45,8 @@ from src.constants import (
     SET_FINISH_TIME,
     CONFIRM_PAY,
     CONFIRM,
-    PHOTO_UPLOAD)
+    PHOTO_UPLOAD,
+    CANCEL)
 
 MAX_PEOPLE = 6
 
@@ -99,8 +100,11 @@ def get_handler() -> ConversationHandler:
             PAY: [CallbackQueryHandler(pay)],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
+            CANCEL: [CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
-            PHOTO_UPLOAD: [MessageHandler(filters.PHOTO, handle_photo)],
+            PHOTO_UPLOAD: [
+                MessageHandler(filters.PHOTO, handle_photo),
+                CallbackQueryHandler(cancel_booking, pattern=f"^{CANCEL}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -433,7 +437,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=CANCEL)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if gift or subscription:
@@ -471,6 +475,13 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML',
         reply_markup=reply_markup)
     return PHOTO_UPLOAD
+
+async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+
+    if booking:
+        database_service.update_booking(booking.id, is_canceled=True)
+    return await back_navigation(update, context)
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]

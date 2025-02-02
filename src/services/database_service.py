@@ -293,22 +293,36 @@ class DatabaseService:
                 and_(
                     BookingBase.user_id == user.id,
                     func.date(BookingBase.start_date) == start_date,
-                    BookingBase.is_canceled == False
+                    BookingBase.is_canceled == False,
+                    BookingBase.is_done == False,
+                    BookingBase.is_prepaymented == True
                 )
             ))
             return booking
             
-    def get_booking_by_period(self, from_date: date, to_date: date):
+    def get_booking_by_period(self, from_date: date, to_date: date, is_admin: bool = False):
         with self.Session() as session:
-            bookings = session.scalars(
-                select(BookingBase).where(
-                    and_(
-                        BookingBase.start_date >= from_date,
-                        BookingBase.start_date <= to_date,
-                        BookingBase.is_canceled == False
+            if not is_admin:
+                bookings = session.scalars(
+                    select(BookingBase).where(
+                        and_(
+                            BookingBase.start_date >= from_date,
+                            BookingBase.start_date <= to_date,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True
+                        )
                     )
-                )
-            ).all()
+                ).all()
+            else:
+               bookings = session.scalars(
+                    select(BookingBase).where(
+                        and_(
+                            BookingBase.start_date >= from_date,
+                            BookingBase.start_date <= to_date,
+                        )
+                    )
+                ).all() 
             return bookings
 
     def get_booking_by_day(self, target_date: date, except_booking_id: int = None):
@@ -319,6 +333,8 @@ class DatabaseService:
                 select(BookingBase).where(
                     and_(
                         BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True,
                         BookingBase.id != except_booking_id,
                         or_(
                             and_(
@@ -345,6 +361,8 @@ class DatabaseService:
                 select(BookingBase).where(
                     and_(
                         BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True,
                         or_(
                             and_(
                                 BookingBase.start_date <= end,

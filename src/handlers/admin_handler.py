@@ -1,16 +1,27 @@
+from datetime import date
 import sys
 import os
+from matplotlib.dates import relativedelta
+from src.constants import END
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.user import UserBase
 from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
-from src.config.config import ADMIN_CHAT_ID
+from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes)
+from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler)
 from src.helpers import string_helper, string_helper, tariff_helper
 import re
 
 database_service = DatabaseService()
+
+async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if str(chat_id) != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+    else:
+        message = get_future_booking_message()
+        await update.message.reply_text(message)
 
 async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo):
     user = database_service.get_user_by_id(booking.user_id)
@@ -53,21 +64,28 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int):
     booking = database_service.update_booking(booking_id, is_prepaymented=True)
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await context.bot.send_message(
         chat_id=chat_id, 
         text="Восхитительно!\n"
             "Ваше бронирование подтверждено администратором.\n"
-            "За 1 день до Вашего бронирования Вам приедет сообщение с деталями бронирования и инструкцией по заселению.\n")
+            "За 1 день до Вашего бронирования Вам приедет сообщение с деталями бронирования и инструкцией по заселению.\n",
+        reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Подтверждено")
     await inform_message(update, context, booking)
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int):
     booking = database_service.update_booking(booking_id, is_canceled=True)
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="Внимание!\n"
             "Ваше бронирование было отменено.\n"
-            "С Вами свяжется администратор, чтобы обсудить детали бронирования.\n")
+            "С Вами свяжется администратор, чтобы обсудить детали бронирования.\n",
+        reply_markup=reply_markup)
     user = database_service.get_user_by_id(booking.user_id)
     message = generate_info_message(booking, user)
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {message}")
@@ -76,12 +94,15 @@ async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, c
     booking = database_service.get_booking_by_id(booking_id)
     new_price = calculate_discounted_price(booking.price, sale_percentage)
     booking = database_service.update_booking(booking_id, price=new_price, is_prepaymented=True)
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="Восхитительно!\n"
             "Ваше бронирование подтверждено администратором.\n"
             f"Новая цена {new_price}.\n"
-            "За 1 день до Вашего бронирования Вам приедет сообщение с деталями бронирования и инструкцией по заселению.\n")
+            "За 1 день до Вашего бронирования Вам приедет сообщение с деталями бронирования и инструкцией по заселению.\n",
+            reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Подтверждено \nНовая цена:{new_price}")
     await inform_message(update, context, booking)
 
@@ -122,3 +143,20 @@ def parse_callback_data(callback_data: str):
         return {"user_chat_id": user_chat_id, "booking_id": booking_id, "menu_index": menu_index}
     else:
         return None
+
+def get_future_booking_message():
+    today = date.today()
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
+    booking_list = database_service.get_booking_by_period(today, max_date_booking, True)
+    message = ""
+    for booking in booking_list:
+      user = database_service.get_user_by_id(booking.user_id)
+      message += (
+            f"Пользователь: {user.contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+            f"Стоимость: {booking.price} руб.\n"
+            f"Is prepaymented: {booking.is_prepaymented}\n"
+            f"Is canceled: {booking.is_canceled}\n\n") 
+    return message
