@@ -1,4 +1,5 @@
 from datetime import datetime, time, date, timedelta
+from src.config.config import CLEANING_HOURS
 
 def get_month_name(month: int):
     match month:
@@ -42,3 +43,43 @@ def parse_date(date_string: str, date_format="%d.%m.%Y") -> datetime:
     except (ValueError, AttributeError) as e:
         print(e)
         return None
+    
+def get_free_time_slots(
+        bookings, 
+        date: date, 
+        start_time: time = time(0, 0), 
+        cleaning_time=timedelta(hours=CLEANING_HOURS), 
+        minus_time_from_start: bool = False,
+        add_time_to_end: bool = False):
+    day_start = datetime.combine(date, start_time)
+    day_end = datetime.combine(date, time(23, 59))
+    free_slots = []
+
+    if len(bookings) == 0:
+        free_slots.append((day_start.time(), day_end.time()))
+        return free_slots
+
+    previous_end = day_start
+    sorted_bookings = sorted(bookings, key=lambda x: x.start_date)
+    for booking in sorted_bookings:
+        booking_start = datetime.combine(date, booking.start_date.time())
+        booking_end = datetime.combine(date, booking.end_date.time())
+
+        if minus_time_from_start:
+            booking_start = booking_start - cleaning_time
+        if add_time_to_end:
+            booking_end = booking_end + cleaning_time
+
+        if booking_start > previous_end:
+            free_slots.append((previous_end.time(), booking_start.time()))
+
+        if booking_end > previous_end:
+            previous_end = booking_end
+
+    if previous_end < day_end:
+        free_slots.append((previous_end.time(), day_end.time()))
+
+    return free_slots
+
+def seconds_to_hours(seconds: int) -> float:
+    return seconds / 3600

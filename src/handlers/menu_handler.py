@@ -1,8 +1,6 @@
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler)
 from src.constants import AVAILABLE_DATES, BOOKING, CANCEL_BOOKING, CHANGE_BOOKING_DATE, GIFT_CERTIFICATE, MENU, PRICE, QUESTIONS, SUBSCRIPTION
@@ -37,9 +35,9 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         [InlineKeyboardButton("Задать нам вопрос", callback_data=str(QUESTIONS))],
         [InlineKeyboardButton("Связаться с администратором", url='https://t.me/the_secret_house')]]
 
-    text = "Добро пожаловать в <b>The Secret House!</b>\n"
-    "Вы находитесь в основное меню.\n"
-    "Выберете для Вас интересующий пункт."
+    text = ("Добро пожаловать в <b>The Secret House!</b>\n"
+        "Вы находитесь в основное меню.\n"
+        "Выберете для Вас интересующий пункт.")
 
     if update.message:
         await update.message.reply_text(

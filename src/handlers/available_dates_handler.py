@@ -46,8 +46,10 @@ async def select_month(update: Update, context: CallbackContext):
 
 async def get_available_dates(update: Update, context: CallbackContext):
     await update.callback_query.answer()
-    month, year = parse_callback_data(update)
+    if (update.callback_query.data == str(END)):
+            return await back_navigation(update, context)
 
+    month, year = parse_callback_data(update)
     keyboard = [
         [InlineKeyboardButton("Выбрать другой месяц", callback_data=BACK)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]

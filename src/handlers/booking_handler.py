@@ -2,18 +2,20 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from matplotlib.dates import relativedelta
+from db.models.booking import BookingBase
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
-from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT
+from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
-from datetime import date, datetime, timedelta
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
+from datetime import date, datetime, time, timedelta
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
-from src.helpers import string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
+from src.helpers import date_time_helper, string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
+from src.handlers import admin_handler
 from src.models.enum.sale import Sale
 from src.models.enum.bedroom import Bedroom
 from src.models.enum.tariff import Tariff
@@ -42,7 +44,9 @@ from src.constants import (
     SET_FINISH_DATE,
     SET_FINISH_TIME,
     CONFIRM_PAY,
-    CONFIRM)
+    CONFIRM,
+    PHOTO_UPLOAD,
+    CANCEL)
 
 MAX_PEOPLE = 6
 
@@ -66,6 +70,8 @@ rental_rate: RentalPrice
 price: int
 gift: GiftBase
 subscription: SubscriptionBase
+photo: PhotoSize
+booking: BookingBase
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -94,7 +100,11 @@ def get_handler() -> ConversationHandler:
             PAY: [CallbackQueryHandler(pay)],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
+            CANCEL: [CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
+            PHOTO_UPLOAD: [
+                MessageHandler(filters.PHOTO, handle_photo),
+                CallbackQueryHandler(cancel_booking, pattern=f"^{CANCEL}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -137,7 +147,7 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.callback_query.edit_message_text(
         text="Выберете тариф для бронирования.\n",
         reply_markup=reply_markup)
-    return SELECT_TARIFF   
+    return SELECT_TARIFF
 
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -319,7 +329,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected, time, is_action = await hours_picker.process_hours_selection(update, context)
     if selected:
         global start_booking_date
-        start_booking_date = start_booking_date.replace(hour=time.hour)
+        start_booking_date = start_booking_date.replace(hour=time.hour, minute=time.minute)
         return await finish_date_message(update, context)
     elif is_action:
         return await back_navigation(update, context)
@@ -344,6 +354,10 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global finish_booking_date
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
+        if is_any_booking:
+            return await start_date_message(update, context, is_error=True)
+
         return await comment_message(update, context)
     elif is_action:
         return await back_navigation(update, context)
@@ -364,25 +378,22 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await sale_message(update, context)
 
 async def select_sale(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if (update.callback_query.data == str(END)):
-        await update.callback_query.answer()
-        return await back_navigation(update, context)
-    
-    global sale
-
+    global sale, customer_sale_comment
     if update.message == None:
         await update.callback_query.answer()
         data = update.callback_query.data
         if (data == str(END)):
             return await back_navigation(update, context)
+
+        if (data == str(END)):
+            return await back_navigation(update, context)
         
         sale = sale_halper.get_by_str(data)
         return await enter_user_contact(update, context)
-
-    sale = Sale.OTHER
-    global customer_sale_comment
-    customer_sale_comment = update.message.text
-    return await enter_user_contact(update, context)
+    else:
+        sale = Sale.OTHER
+        customer_sale_comment = update.message.text
+        return await enter_user_contact(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -391,8 +402,11 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     global price, sale
-    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, sale)
-    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests)
+    selected_duration = finish_booking_date - start_booking_date
+    duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
+    extra_hours = duration_booking_hours - rental_rate.duration_hours
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours, sale)
+    categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours)
     photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
 
     if gift or subscription:
@@ -414,6 +428,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         text=message,
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return PAY
 
@@ -422,9 +437,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
-    keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
-        [InlineKeyboardButton("Отмена", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=CANCEL)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if gift or subscription:
@@ -437,8 +450,9 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "или\n"
             "наличкой при заселении.\n"
             "\n"
-            "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
-            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n")
+            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
+            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
+            "Спасибо за понимание.\n")
     else:
         sale_text = "Скидка применена." if sale != Sale.NONE else ""
         message = (f"Общая сумма оплаты {price} руб. {sale_text}\n"
@@ -451,14 +465,23 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "или\n"
             "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
             "\n"
-            "Остальную сумму нужно оплатить при заселении переводом или наличкой."
-            "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
-            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n")
+            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
+            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
+            "Спасибо за понимание.\n")
 
+    save_booking_information()
     await update.callback_query.edit_message_text(
         text=message,
+        parse_mode='HTML',
         reply_markup=reply_markup)
-    return CONFIRM
+    return PHOTO_UPLOAD
+
+async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+
+    if booking:
+        database_service.update_booking(booking.id, is_canceled=True)
+    return await back_navigation(update, context)
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
@@ -479,7 +502,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message,
             reply_markup=reply_markup)
         
-    save_booking_information()
     return MENU
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -570,34 +592,48 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=reply_markup) 
     return NUMBER_OF_PEOPLE
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False):
+    if is_error:
+        message = ("Ощибка! Время и дата выбране не правильно.\n"
+                   "Дата начала и конца бронирования пересекается с другим бронированием.\n"
+                   f"После каждого клиента нам нужно убрать дом. Для этого нам нужно {CLEANING_HOURS} часа.\n"
+                   "Повторите попытку заново.\n\n"
+                   "Выберете дату начала бронирования.")
+    else:
+        message = "Выберете дату бронирования.\n"
+
     today = date.today()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = date.today() - timedelta(days=1)
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = today - timedelta(days=1)
     await update.callback_query.edit_message_text(
-        text="Выберете дату бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        text=message, 
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    booking = database_service.get_booking_by_day(start_booking_date.date())
+    available_slots = date_time_helper.get_free_time_slots(booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
         text="Выберете время начала бронирования.\n", 
-        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню"))
+        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=start_booking_date.date()))
     return SET_START_TIME
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
         text="Выберете дату завершения бронирования.\n", 
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    booking = database_service.get_booking_by_day(finish_booking_date.date())
+    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
+    available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
         text="Выберете время завершения бронирования.\n", 
-        reply_markup=hours_picker.create_hours_picker())
+        reply_markup=hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=finish_booking_date.date()))
     return SET_FINISH_TIME
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -752,7 +788,7 @@ def init_fields_for_gift():
 
 def reset_variables():
     global user_contact, tariff, is_sauna_included, is_secret_room_included, is_photoshoot_included, is_additional_bedroom_included, is_white_room_included, is_green_room_included
-    global booking_comment, sale, customer_sale_comment, number_of_guests, start_booking_date, finish_booking_date, rental_rate, price, gift, subscription
+    global booking_comment, sale, customer_sale_comment, number_of_guests, start_booking_date, finish_booking_date, rental_rate, price, gift, subscription, photo, booking
     user_contact = None
     tariff = None
     is_sauna_included = None
@@ -771,6 +807,8 @@ def reset_variables():
     price = None
     gift = None
     subscription = None
+    photo = None
+    booking = None
 
 async def initi_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # PXRCMNLQITKTAXF work 
@@ -818,6 +856,7 @@ async def initi_subscription_code(update: Update, context: ContextTypes.DEFAULT_
     return await navigate_next_step_for_subscription(update, context)
 
 def save_booking_information():
+    global booking
     booking = database_service.add_booking(
         user_contact,
         start_booking_date,
@@ -835,3 +874,11 @@ def save_booking_information():
         customer_sale_comment,
         gift.id if gift else None,
         subscription.id if subscription else None)
+    
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global photo
+    photo = update.message.photo[-1].file_id  # Берем лучшее качество фото
+    chat_id = update.message.chat.id
+
+    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo)
+    return await confirm_booking(update, context)

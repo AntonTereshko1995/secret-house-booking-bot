@@ -97,11 +97,11 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
 
 async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = date.today() - timedelta(days=1)
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = today - timedelta(days=1)
     await update.message.reply_text(
         text="Введите дату заезда Вашего бронирования.\n",
-        reply_markup=calendar_picker.create_calendar(today.year, today.month, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_BOOKING_DATE
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):

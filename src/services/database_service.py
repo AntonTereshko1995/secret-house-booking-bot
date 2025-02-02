@@ -16,7 +16,7 @@ from typing import List
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Date, and_, cast, func, select
+from sqlalchemy import Date, and_, cast, func, or_, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
 
 @singleton
@@ -25,12 +25,13 @@ class DatabaseService:
         self.engine = engine
         self.Session = sessionmaker(bind=self.engine)
         database.create_db_and_tables()
+        
         # Base.metadata.drop_all(engine)  # Удаляет все таблицы
         # Base.metadata.create_all(engine)  # Создаёт таблицы заново
         # self.add_booking(
         #     "@1",
-        #     datetime(day=28, month=1, year=2025, hour=11),
-        #     datetime(day=28, month=1, year=2025, hour=20),
+        #     datetime(day=1, month=2, year=2025, hour=1),
+        #     datetime(day=3, month=2, year=2025, hour=7),
         #     Tariff.HOURS_12,
         #     False,
         #     False,
@@ -46,8 +47,8 @@ class DatabaseService:
         #     None)
         # self.add_booking(
         #     "@2",
-        #     datetime(day=29, month=1, year=2025, hour=0),
-        #     datetime(day=29, month=1, year=2025, hour=12),
+        #     datetime(day=24, month=2, year=2025, hour=10),
+        #     datetime(day=25, month=2, year=2025, hour=19),
         #     Tariff.HOURS_12,
         #     False,
         #     False,
@@ -94,6 +95,11 @@ class DatabaseService:
     def get_user_by_contact(self, contact: str) -> UserBase:
         with self.Session() as session:
             user = session.scalar(select(UserBase).where(UserBase.contact == contact))
+            return user
+        
+    def get_user_by_id(self, user_id: int) -> UserBase:
+        with self.Session() as session:
+            user = session.scalar(select(UserBase).where(UserBase.id == user_id))
             return user
         
     def add_gift(
@@ -287,23 +293,102 @@ class DatabaseService:
                 and_(
                     BookingBase.user_id == user.id,
                     func.date(BookingBase.start_date) == start_date,
-                    BookingBase.is_canceled == False
+                    BookingBase.is_canceled == False,
+                    BookingBase.is_done == False,
+                    BookingBase.is_prepaymented == True
                 )
             ))
             return booking
             
-    def get_booking_by_period(self, from_date: date, to_date: date):
+    def get_booking_by_period(self, from_date: date, to_date: date, is_admin: bool = False):
         with self.Session() as session:
+            if not is_admin:
+                bookings = session.scalars(
+                    select(BookingBase).where(
+                        and_(
+                            BookingBase.start_date >= from_date,
+                            BookingBase.start_date <= to_date,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True
+                        )
+                    )
+                ).all()
+            else:
+               bookings = session.scalars(
+                    select(BookingBase).where(
+                        and_(
+                            BookingBase.start_date >= from_date,
+                            BookingBase.start_date <= to_date,
+                        )
+                    )
+                ).all() 
+            return bookings
+
+    def get_booking_by_day(self, target_date: date, except_booking_id: int = None):
+        with self.Session() as session:
+            start_of_day = datetime.combine(target_date, datetime.min.time())
+            end_of_day = datetime.combine(target_date, datetime.max.time())
             bookings = session.scalars(
                 select(BookingBase).where(
                     and_(
-                        BookingBase.start_date >= from_date,
-                        BookingBase.start_date <= to_date,
-                        BookingBase.is_canceled == False
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True,
+                        BookingBase.id != except_booking_id,
+                        or_(
+                            and_(
+                                BookingBase.start_date >= start_of_day,
+                                BookingBase.start_date <= end_of_day
+                            ),
+                            and_(
+                                BookingBase.end_date >= start_of_day,
+                                BookingBase.end_date <= end_of_day
+                            ),
+                            and_(
+                                BookingBase.start_date <= start_of_day,
+                                BookingBase.end_date >= end_of_day
+                            )
+                        )
                     )
                 )
             ).all()
             return bookings
+
+    def is_booking_between_dates(self, start: datetime, end: datetime) -> bool:
+        with self.Session() as session:
+            overlapping_bookings = session.scalars(
+                select(BookingBase).where(
+                    and_(
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True,
+                        or_(
+                            and_(
+                                BookingBase.start_date <= end,
+                                BookingBase.start_date >= start
+                            ),
+                            and_(
+                                BookingBase.end_date >= start,
+                                BookingBase.end_date <= end
+                            ),
+                            and_(
+                                BookingBase.start_date <= start,
+                                BookingBase.end_date >= end
+                            )
+                        )
+                    )
+                )
+            ).first()
+            return overlapping_bookings is not None
+
+    def get_booking_by_id(
+            self, 
+            booking_id: int) -> BookingBase:
+        with self.Session() as session:
+            booking = session.scalar(select(BookingBase)
+                .where(BookingBase.id == booking_id))
+            return booking
 
     def update_booking(
             self, 
