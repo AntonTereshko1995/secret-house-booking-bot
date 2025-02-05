@@ -1,9 +1,7 @@
-
 import os
 import json
 from telegram import InputMediaPhoto
 from typing import List
-from dataclasses import dataclass
 from singleton_decorator import singleton
 from src.models.rental_price import RentalPrice
 
