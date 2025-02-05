@@ -1,9 +1,10 @@
 import datetime
 import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from matplotlib.dates import relativedelta
 from src.config.config import PERIOD_IN_MONTHS
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.calendar_service import CalendarService
 from datetime import datetime, date, timedelta
 from src.date_time_picker import calendar_picker
 from src.services.database_service import DatabaseService
@@ -16,6 +17,7 @@ from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_US
 user_contact = ''
 booking_date = date.today()
 database_service = DatabaseService()
+calendar_service = CalendarService()
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -78,7 +80,7 @@ async def enter_booking_date(update: Update, context: CallbackContext):
         booking_date = selected_date
         is_loaded = load_booking()
         if is_loaded:
-            return await confirm_cancel_booking(update, context)
+            return await confirm_message(update, context)
         else:
             return await warning_message(update, context)
     elif is_action:
@@ -87,6 +89,7 @@ async def enter_booking_date(update: Update, context: CallbackContext):
 
 async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     updated_booking = database_service.update_booking(booking.id, is_canceled=True)
+    calendar_service.cancel_event(updated_booking.calendar_event_id)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()

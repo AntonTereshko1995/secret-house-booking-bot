@@ -32,6 +32,7 @@ class BookingBase(Base):
     comment: Mapped[str] = mapped_column(String, nullable=True)
     sale: Mapped[Sale] = mapped_column(IntEnumType(Sale), nullable=True)
     sale_comment: Mapped[str] = mapped_column(String, nullable=True)
+    calendar_event_id: Mapped[str] = mapped_column(String, nullable=True)
     gift_id: Mapped[int] = mapped_column(ForeignKey("gift.id"), nullable=True)
     subscription_id: Mapped[int] = mapped_column(ForeignKey("subscription.id"), nullable=True)
     user = relationship("UserBase")

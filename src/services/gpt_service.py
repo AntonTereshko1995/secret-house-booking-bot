@@ -1,11 +1,7 @@
-import calendar
-from datetime import date, datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
-import json
-from src.helpers import date_time_helper, string_helper
 from openai import OpenAI
 from singleton_decorator import singleton
 from src.config.config import TELEGRAM_KEY, TELEGRAM_PROMPT

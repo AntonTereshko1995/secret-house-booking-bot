@@ -1,6 +1,9 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from db.models.booking import BookingBase
+from db.models.user import UserBase
+from src.helpers import tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
@@ -77,3 +80,22 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
         message += f"📍 <b>{date}</b>\n{', '.join(time_ranges)}\n\n"
 
     return message
+
+def generate_info_message(booking: BookingBase, user: UserBase) -> str:
+    return (f"Новое бронирование!\n"
+            f"Пользователь: {user.contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+            f"Стоимость: {booking.price} руб.\n"
+            f"Фотосессия: {bool_to_str(booking.has_photoshoot)}\n"
+            f"Сауна: {bool_to_str(booking.has_sauna)}\n"
+            f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
+            f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
+            f"Секретная комната спальня: {bool_to_str(booking.has_secret_room)}\n"
+            f"Колличество гостей: {booking.number_of_guests}\n"
+            f"Комментарий: {booking.comment}\n"
+            f"Подарочный сертификат: {booking.gift_id}\n"
+            f"Абонемент: {booking.subscription_id}\n"
+            f"Скидка: {booking.sale}\n"
+            f"Скидка коммент: {booking.sale_comment}\n")

@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.calendar_service import CalendarService
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from db.models.booking import BookingBase
@@ -35,6 +36,7 @@ max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
 min_date_booking = date.today() - relativedelta(day=1)
 database_service = DatabaseService()
 calculation_rate_service = CalculationRateService()
+calendar_service = CalendarService()
 booking: BookingBase = None
 rental_price: RentalPrice = None
 
@@ -174,6 +176,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     updated_booking = database_service.update_booking(booking.id, start_date=start_booking_date, end_date=finish_booking_date)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    calendar_service.move_event(updated_booking.calendar_event_id, start_booking_date, finish_booking_date)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text=f"Бронирование успешно перенесено:\n"
