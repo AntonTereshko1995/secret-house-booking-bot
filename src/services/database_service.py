@@ -398,7 +398,8 @@ class DatabaseService:
             is_canceled: bool = None,
             is_data_changed: bool = None,
             price: float = None,
-            is_prepaymented: bool = None) -> BookingBase:
+            is_prepaymented: bool = None,
+            calendar_event_id: str = None) -> BookingBase:
         with self.Session() as session:
             try:
                 booking = session.scalar(select(BookingBase).where(BookingBase.id == booking_id))
@@ -418,6 +419,8 @@ class DatabaseService:
                     booking.is_prepaymented = is_prepaymented
                 if price:
                     booking.price = price
+                if calendar_event_id:
+                    booking.calendar_event_id = calendar_event_id
 
                 session.commit()
                 print(f"Booking updated: {booking}")

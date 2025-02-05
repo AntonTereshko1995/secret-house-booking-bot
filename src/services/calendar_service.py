@@ -1,9 +1,9 @@
 from datetime import datetime
 import sys
 import os
+from time import strptime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.helpers import tariff_helper
-import database
+from src.helpers import string_helper, tariff_helper
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from db.models.user import UserBase
@@ -22,28 +22,54 @@ class CalendarService:
             scopes=SCOPES)
         self.service = build("calendar", "v3", credentials=credentials)
 
-    def add_event(self, booking: BookingBase, user: UserBase):
+    def add_event(self, booking: BookingBase, user: UserBase) -> str:
         event = {
             "summary": tariff_helper.get_name(booking.tariff),
-            "description": CALENDAR_ID,
+            "description": string_helper.generate_info_message(booking, user),
             "start": {"dateTime": booking.start_date.isoformat(), "timeZone": "Europe/Minsk"},
             "end": {"dateTime": booking.end_date.isoformat(), "timeZone": "Europe/Minsk"},
         }
         event = self.service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        print(f"Событие добавлено {event.get("id")}: {event.get('htmlLink')}")
+        print(f"Событие добавлено: {event.get('htmlLink')}")
+        return event["id"]
     
-    def get_events(self):
-        now = datetime.datetime.utcnow().isoformat() + "Z"
-        events_result = self.service.events().list(
-            calendarId=CALENDAR_ID, timeMin=now, maxResults=5, singleEvents=True, orderBy="startTime"
-        ).execute()
-        events = events_result.get("items", [])
+    def get_event_by_id(self, id: str):
+        event = self.service.events().get(calendarId=CALENDAR_ID, eventId=id).execute()
+        if not event:
+            print("❌ Нет событий в указанное время.")
+            return
         
-        if not events:
-            return "Нет предстоящих событий."
-
-        event_list = []
-        for event in events:
-            start = event["start"].get("dateTime", event["start"].get("date"))
-            event_list.append(f"{start} - {event['summary']}")
-        return "\n".join(event_list)
+        return event
+    
+    def move_event(self, event_id: str, start_datetime: datetime, finish_datetime: datetime):
+        try:
+            event = self.get_event_by_id(event_id)
+            if not event:
+                # TODO: log
+                return;
+        
+            event["start"]["dateTime"] = start_datetime.isoformat()
+            event["end"]["dateTime"] = finish_datetime.isoformat()
+            updated_event = self.service.events().update(calendarId=CALENDAR_ID, eventId=event["id"], body=event).execute()
+            
+            print(f"✅ Событие перенесено: {updated_event.get('htmlLink')}")
+        except Exception as e:
+            print(f"Error to move event: {e}")
+        
+    def cancel_event(self, event_id: str):
+        try:
+            event = self.get_event_by_id(event_id)
+            if not event:
+                # TODO: log
+                return;
+        
+            event = self.service.events().get(calendarId=CALENDAR_ID, eventId=event_id).execute()
+            event["colorId"] = 8
+            event["summary"] = f"Отмена {event['summary']}"
+            updated_event = self.service.events().update(
+                calendarId=CALENDAR_ID, 
+                eventId=event_id, 
+                body=event).execute()
+            print(f"✅ Событие {event['id']} успешно удалено.")
+        except Exception as e:
+            print(f"Error to remove event: {e}")
