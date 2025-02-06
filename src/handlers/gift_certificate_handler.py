@@ -7,7 +7,7 @@ from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
-from src.handlers import menu_handler
+from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper, tariff_helper
 from src.models.enum.tariff import Tariff
 from src.constants import (
@@ -24,7 +24,8 @@ from src.constants import (
     INCLUDE_SAUNA, 
     PAY,
     CONFIRM_PAY,
-    CONFIRM)
+    CONFIRM,
+    PHOTO_UPLOAD)
 
 user_contact: str
 tariff: Tariff
@@ -50,6 +51,9 @@ def get_handler() -> ConversationHandler:
             PAY: [CallbackQueryHandler(pay)],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
+            PHOTO_UPLOAD: [
+                MessageHandler(filters.PHOTO, handle_photo),
+                CallbackQueryHandler(handle_photo)],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -172,23 +176,23 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
-    save_gift_information()
-    keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
-        [InlineKeyboardButton("Отмена", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
-    text=f"Общая сумма оплаты {price} руб.\n"
-        "\n"
-        "Информация для оплаты (Альфа-Банк):\n"
-        "по номеру телефона +375257908378\n"
-        "или\n"
-        "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
-        "\n"
-        "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
-        "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.\n",
-    reply_markup=reply_markup)
-    return CONFIRM
+        text=f"Общая сумма оплаты {price} руб.\n"
+            "\n"
+            "Информация для оплаты (Альфа-Банк):\n"
+            "по номеру телефона +375257908378\n"
+            "или\n"
+            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
+            "\n"
+            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
+            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
+            "Спасибо за понимание.\n\n"
+            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.",
+        parse_mode='HTML',
+        reply_markup=reply_markup)
+    return PHOTO_UPLOAD
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -263,6 +267,7 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
 def save_gift_information():
     code = string_helper.get_generated_code()
     gift = database_service.add_gift(user_contact, tariff, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, price, code)
+    return gift
 
 def reset_variables():
     global user_contact, tariff, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, rental_rate, price
@@ -273,3 +278,11 @@ def reset_variables():
     is_additional_bedroom_included = None
     rental_rate = None
     price = None
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global photo
+    photo = update.message.photo[-1].file_id
+    chat_id = update.message.chat.id
+    gift = save_gift_information()
+    await admin_handler.accept_gift_payment(update, context, gift, chat_id, photo)
+    return await confirm_booking(update, context)

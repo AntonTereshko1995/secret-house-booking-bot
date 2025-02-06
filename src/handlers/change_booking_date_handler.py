@@ -9,7 +9,7 @@ from src.services.database_service import DatabaseService
 from datetime import datetime, date, time, timedelta
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
-from src.handlers import menu_handler
+from src.handlers import admin_handler, menu_handler
 from src.helpers import date_time_helper, string_helper
 from src.date_time_picker import calendar_picker, hours_picker
 from src.config.config import PERIOD_IN_MONTHS, CLEANING_HOURS
@@ -176,6 +176,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     updated_booking = database_service.update_booking(booking.id, start_date=start_booking_date, end_date=finish_booking_date)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    admin_handler.inform_changing_booking_date(update, context, updated_booking, old_booking_date)
     calendar_service.move_event(updated_booking.calendar_event_id, start_booking_date, finish_booking_date)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(

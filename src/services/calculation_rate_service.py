@@ -94,3 +94,6 @@ class CalculationRateService:
         file_service = FileService()
         self._rates = file_service.get_tariff_rates()
         return self._rates
+    
+    def calculate_discounted_price(self, original_price, discount_percent):
+        return original_price * (1 - discount_percent / 100)
