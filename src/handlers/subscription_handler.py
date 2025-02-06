@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
-from src.handlers import menu_handler
+from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper, subscription_helper
 from src.models.enum.subscription_type import SubscriptionType
 from src.models.rental_price import RentalPrice
@@ -20,7 +20,8 @@ from src.constants import (
     SUBSCRIPTION_TYPE,
     PAY,
     CONFIRM_PAY,
-    CONFIRM)
+    CONFIRM,
+    PHOTO_UPLOAD)
 
 user_contact: str
 subscription_type: SubscriptionType
@@ -40,6 +41,9 @@ def get_handler() -> ConversationHandler:
             PAY: [CallbackQueryHandler(pay)],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
+            PHOTO_UPLOAD: [
+                MessageHandler(filters.PHOTO, handle_photo),
+                CallbackQueryHandler(handle_photo)],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -138,33 +142,32 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
-    save_subscription_information()
-    keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату.", callback_data=CONFIRM)],
-        [InlineKeyboardButton("Отмена", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = rental_rate.price
 
     await update.callback_query.edit_message_text(
-    text=f"Общая сумма оплаты {price} руб.\n"
-        "\n"
-        "Информация для оплаты (Альфа-Банк):\n"
-        "по номеру телефона +375257908378\n"
-        "или\n"
-        "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
-        "\n"
-        "После оплаты нажмите на кнопку 'Подтвердить оплату'.\n"
-        "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный код.\n"
-        "Код мы можете вводить в пункте меню 'Забронировать' и автоматически будут списываться брони.\n"
-        "Держите код в тайне!\n",
+        text=f"Общая сумма оплаты {price} руб.\n"
+            "\n"
+            "Информация для оплаты (Альфа-Банк):\n"
+            "по номеру телефона +375257908378\n"
+            "или\n"
+            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
+            "\n"
+            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
+            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
+            "Спасибо за понимание.\n\n"
+            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный код.\n"
+            "Код мы можете вводить в пункте меню 'Забронировать' и автоматически будут списываться брони.\n"
+            "Держите код в тайне!\n",
+        parse_mode='HTML',
         reply_markup=reply_markup)
-    return CONFIRM
+    return PHOTO_UPLOAD
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await update.message.reply_text(
         text="Спасибо Вам за доверие к The Secret House.\n"
             "Скоро мы свяжемся с Вами.\n",
         reply_markup=reply_markup)
@@ -173,6 +176,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def save_subscription_information():
     code = string_helper.get_generated_code()
     subscription = database_service.add_subscription(user_contact, subscription_type, price, code)
+    return subscription
 
 def reset_variables():
     global user_contact, subscription_type, rental_rate, price
@@ -180,3 +184,11 @@ def reset_variables():
     subscription_type = None
     rental_rate = None
     price = None
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global photo
+    photo = update.message.photo[-1].file_id
+    chat_id = update.message.chat.id
+    subscription = save_subscription_information()
+    await admin_handler.accept_subscription_payment(update, context, subscription, chat_id, photo)
+    return await confirm_booking(update, context)

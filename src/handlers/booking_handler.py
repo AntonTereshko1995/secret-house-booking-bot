@@ -104,7 +104,7 @@ def get_handler() -> ConversationHandler:
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(cancel_booking, pattern=f"^{CANCEL}$")],
+                CallbackQueryHandler(handle_photo)],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -469,7 +469,6 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
             "Спасибо за понимание.\n")
 
-    save_booking_information()
     await update.callback_query.edit_message_text(
         text=message,
         parse_mode='HTML',
@@ -877,8 +876,8 @@ def save_booking_information():
     
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global photo
-    photo = update.message.photo[-1].file_id  # Берем лучшее качество фото
+    photo = update.message.photo[-1].file_id
     chat_id = update.message.chat.id
-
+    save_booking_information()
     await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo)
     return await confirm_booking(update, context)

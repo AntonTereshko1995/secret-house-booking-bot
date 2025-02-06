@@ -25,7 +25,7 @@ class CalendarService:
     def add_event(self, booking: BookingBase, user: UserBase) -> str:
         event = {
             "summary": tariff_helper.get_name(booking.tariff),
-            "description": string_helper.generate_info_message(booking, user),
+            "description": string_helper.generate_booking_info_message(booking, user),
             "start": {"dateTime": booking.start_date.isoformat(), "timeZone": "Europe/Minsk"},
             "end": {"dateTime": booking.end_date.isoformat(), "timeZone": "Europe/Minsk"},
         }

@@ -1,9 +1,12 @@
+import re
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from db.models.gift import GiftBase
+from db.models.subscription import SubscriptionBase
 from db.models.booking import BookingBase
 from db.models.user import UserBase
-from src.helpers import tariff_helper
+from src.helpers import subscription_helper, tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
@@ -28,7 +31,7 @@ def get_generated_code() -> str:
     return ''.join(choice(ascii_uppercase) for i in range(15))
 
 def bool_to_str(value: bool) -> str:
-    return "Да" if bool else "Нет"
+    return "Да" if value else "Нет"
 
 def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time=timedelta(hours=CLEANING_HOURS), time_step=timedelta(hours=1)):
     if (len(bookings) == 0):
@@ -81,9 +84,8 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
 
     return message
 
-def generate_info_message(booking: BookingBase, user: UserBase) -> str:
-    return (f"Новое бронирование!\n"
-            f"Пользователь: {user.contact}\n"
+def generate_booking_info_message(booking: BookingBase, user: UserBase) -> str:
+    return (f"Пользователь: {user.contact}\n"
             f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
@@ -99,3 +101,57 @@ def generate_info_message(booking: BookingBase, user: UserBase) -> str:
             f"Абонемент: {booking.subscription_id}\n"
             f"Скидка: {booking.sale}\n"
             f"Скидка коммент: {booking.sale_comment}\n")
+
+def generate_gift_info_message(gift: GiftBase) -> str:
+    return (
+        f"Подарочный сертификат!\n"
+        f"Покупатель: {gift.buyer_contact}\n"
+        f"Дата окончания: {gift.date_expired.strftime('%d.%m.%Y %H:%M')}\n"
+        f"Тариф: {tariff_helper.get_name(gift.tariff)}\n"
+        f"Стоимость: {gift.price} руб.\n"
+        f"Сауна: {bool_to_str(gift.has_sauna)}\n"
+        f"Дополнительная спальня: {bool_to_str(gift.has_additional_bedroom)}\n"
+        f"Секретная комната спальня: {bool_to_str(gift.has_secret_room)}\n"
+        f"Код: {gift.code}\n")
+
+def generate_subscription_info_message(subscription: SubscriptionBase, user: UserBase) -> str:
+    return (
+        f"Абонемент!\n"
+        f"Владелец абонемента: {user.contact}\n"
+        f"Дата окончания: {subscription.date_expired.strftime('%d.%m.%Y %H:%M')}\n"
+        f"Тариф: {subscription_helper.get_name(subscription.subscription_type)}\n"
+        f"Стоимость: {subscription.price} руб.\n"
+        f"Код: {subscription.code}\n")
+
+def parse_booking_callback_data(callback_data: str):
+    pattern = r"booking_(\d+)_chatid_(\d+)_bookingid_(\d+)"
+    match = re.match(pattern, callback_data)
+    if match:
+        menu_index = match.group(1)
+        user_chat_id = match.group(2)
+        booking_id = match.group(3)
+        return {"user_chat_id": user_chat_id, "booking_id": booking_id, "menu_index": menu_index}
+    else:
+        return None
+    
+def parse_gift_callback_data(callback_data: str):
+    pattern = r"gift_(\d+)_chatid_(\d+)_giftid_(\d+)"
+    match = re.match(pattern, callback_data)
+    if match:
+        menu_index = match.group(1)
+        user_chat_id = match.group(2)
+        gift_id = match.group(3)
+        return {"user_chat_id": user_chat_id, "gift_id": gift_id, "menu_index": menu_index}
+    else:
+        return None
+    
+def parse_subscription_callback_data(callback_data: str):
+    pattern = r"subscription_(\d+)_chatid_(\d+)_subscriptionid_(\d+)"
+    match = re.match(pattern, callback_data)
+    if match:
+        menu_index = match.group(1)
+        user_chat_id = match.group(2)
+        subscription_id = match.group(3)
+        return {"user_chat_id": user_chat_id, "subscription_id": subscription_id, "menu_index": menu_index}
+    else:
+        return None

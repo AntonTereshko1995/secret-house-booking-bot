@@ -19,9 +19,12 @@ def main() -> None:
     database.create_db_and_tables()
     application = Application.builder().token(TELEGRAM_TOKEN).build()
     application.add_handler(menu_handler.get_handler())
+
     # Admin
     application.add_handler(CommandHandler("booking_list", admin_handler.get_booking_list))
-    application.add_handler(CallbackQueryHandler(admin_handler.admin_callback, pattern=r"^admin_\d+_chatid_(\d+)_booking_id_(\d+)$"))
+    application.add_handler(CallbackQueryHandler(admin_handler.booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)$"))
+    application.add_handler(CallbackQueryHandler(admin_handler.gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"))
+    application.add_handler(CallbackQueryHandler(admin_handler.subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$"))
     
     application.run_polling(allowed_updates=Update.ALL_TYPES) 
 

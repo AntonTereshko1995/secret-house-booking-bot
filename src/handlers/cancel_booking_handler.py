@@ -10,8 +10,8 @@ from src.date_time_picker import calendar_picker
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters)
-from src.handlers import menu_handler
-from src.helpers import string_helper, date_time_helper
+from src.handlers import admin_handler, menu_handler
+from src.helpers import string_helper
 from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, SET_BOOKING_DATE, CONFIRM
 
 user_contact = ''
@@ -90,6 +90,7 @@ async def enter_booking_date(update: Update, context: CallbackContext):
 async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     updated_booking = database_service.update_booking(booking.id, is_canceled=True)
     calendar_service.cancel_event(updated_booking.calendar_event_id)
+    admin_handler.inform_cancel_booking(update, context, updated_booking)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()

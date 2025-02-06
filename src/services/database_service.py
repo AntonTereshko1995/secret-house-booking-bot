@@ -164,9 +164,13 @@ class DatabaseService:
     def get_gift_by_code(self, code: str) -> GiftBase:
         with self.Session() as session:
             gift = session.scalar(select(GiftBase)
-                .where((GiftBase.code == code) & (GiftBase.is_done == False)))
-                # Main logic
-                # .where((GiftBase.code == code) & (GiftBase.is_paymented == True) & (GiftBase.is_done == False)))
+                .where((GiftBase.code == code) & (GiftBase.is_paymented == True) & (GiftBase.is_done == False)))
+            return gift
+        
+    def get_gift_by_id(self, id: int) -> GiftBase:
+        with self.Session() as session:
+            gift = session.scalar(select(GiftBase)
+                .where(GiftBase.id == id))
             return gift
 
     def add_subscription(
@@ -225,11 +229,16 @@ class DatabaseService:
     
     def get_subscription_by_code(self, code: str) -> SubscriptionBase:
         with self.Session() as session:
-            gift = session.scalar(select(SubscriptionBase)
-                .where((SubscriptionBase.code == code) & (SubscriptionBase.is_done == False)))
-                # .where((SubscriptionBase.code == code) & (SubscriptionBase.is_paymented == True) & (SubscriptionBase.is_done == False)))
-            return gift
-        
+            subscription = session.scalar(select(SubscriptionBase)
+                .where((SubscriptionBase.code == code) & (SubscriptionBase.is_paymented == True) & (SubscriptionBase.is_done == False)))
+            return subscription
+
+    def get_subscription_by_id(self, id: int) -> SubscriptionBase: 
+        with self.Session() as session:
+            subscription = session.scalar(select(SubscriptionBase)
+                .where(SubscriptionBase.id == id))
+            return subscription
+
     def add_booking(
             self, 
             user_contact: str, 
