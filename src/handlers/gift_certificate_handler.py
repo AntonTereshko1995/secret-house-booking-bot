@@ -243,8 +243,7 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await update.message.reply_text(
         text="Спасибо Вам за доверие к The Secret House.\n"
             "Скоро мы свяжемся с Вами.\n",
         reply_markup=reply_markup)

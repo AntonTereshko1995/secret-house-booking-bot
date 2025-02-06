@@ -13,9 +13,8 @@ from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS, INFORM_CHAT_ID
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler)
-from src.helpers import string_helper, string_helper, subscription_helper, tariff_helper
-import re
+from telegram.ext import (ContextTypes)
+from src.helpers import string_helper, string_helper, tariff_helper
 
 database_service = DatabaseService()
 calendar_service = CalendarService()
@@ -33,13 +32,13 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
     user = database_service.get_user_by_id(booking.user_id)
     message = string_helper.generate_booking_info_message(booking, user)
     keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"booking_1_chatid_{user_chat_id}_booking_id_{booking.id}")],
-        [InlineKeyboardButton("Отмена бронирования", callback_data=f"booking_2_chatid_{user_chat_id}_booking_id_{booking.id}")],
-        [InlineKeyboardButton("Скидка 5%", callback_data=f"booking_3_chatid_{user_chat_id}_booking_id_{booking.id}")],
-        [InlineKeyboardButton("Скидка 10%", callback_data=f"booking_4_chatid_{user_chat_id}_booking_id_{booking.id}")],
-        [InlineKeyboardButton("Скидка 15%", callback_data=f"booking_5_chatid_{user_chat_id}_booking_id_{booking.id}")],
-        [InlineKeyboardButton("Скидка 20%", callback_data=f"booking_6_chatid_{user_chat_id}_booking_id_{booking.id}")],
-        [InlineKeyboardButton("Скидка 30%", callback_data=f"booking_7_chatid_{user_chat_id}_booking_id_{booking.id}")],
+        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"booking_1_chatid_{user_chat_id}_bookingid_{booking.id}")],
+        [InlineKeyboardButton("Отмена бронирования", callback_data=f"booking_2_chatid_{user_chat_id}_bookingid_{booking.id}")],
+        [InlineKeyboardButton("Скидка 5%", callback_data=f"booking_3_chatid_{user_chat_id}_bookingid_{booking.id}")],
+        [InlineKeyboardButton("Скидка 10%", callback_data=f"booking_4_chatid_{user_chat_id}_bookingid_{booking.id}")],
+        [InlineKeyboardButton("Скидка 15%", callback_data=f"booking_5_chatid_{user_chat_id}_bookingid_{booking.id}")],
+        [InlineKeyboardButton("Скидка 20%", callback_data=f"booking_6_chatid_{user_chat_id}_bookingid_{booking.id}")],
+        [InlineKeyboardButton("Скидка 30%", callback_data=f"booking_7_chatid_{user_chat_id}_bookingid_{booking.id}")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
@@ -47,8 +46,8 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
 async def accept_gift_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, gift: GiftBase, user_chat_id: int, photo):
     message = string_helper.generate_gift_info_message(gift)
     keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"gift_1_chatid_{user_chat_id}_booking_id_{gift.id}")],
-        [InlineKeyboardButton("Отмена подарочного сертификата", callback_data=f"gift_2_chatid_{user_chat_id}_booking_id_{gift.id}")]]
+        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"gift_1_chatid_{user_chat_id}_giftid_{gift.id}")],
+        [InlineKeyboardButton("Отмена", callback_data=f"gift_2_chatid_{user_chat_id}_giftid_{gift.id}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
 
@@ -56,8 +55,8 @@ async def accept_subscription_payment(update: Update, context: ContextTypes.DEFA
     user = database_service.get_user_by_id(subscription.user_id)
     message = string_helper.generate_subscription_info_message(subscription, user)
     keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"subscription_1_chatid_{user_chat_id}_booking_id_{subscription.id}")],
-        [InlineKeyboardButton("Отмена абонемента", callback_data=f"subscription_2_chatid_{user_chat_id}_booking_id_{subscription.id}")],
+        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"subscription_1_chatid_{user_chat_id}_subscriptionid_{subscription.id}")],
+        [InlineKeyboardButton("Отмена", callback_data=f"subscription_2_chatid_{user_chat_id}_subscriptionid_{subscription.id}")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
@@ -163,8 +162,7 @@ async def approve_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     await context.bot.send_message(
         chat_id=chat_id, 
-        text=f"{gift.code}",
-        reply_markup=reply_markup)
+        text=f"{gift.code}")
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
@@ -193,8 +191,7 @@ async def approve_subscription(update: Update, context: ContextTypes.DEFAULT_TYP
     user = database_service.get_user_by_id(subscription.user_id)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text=f"{subscription.code}",
-        reply_markup=reply_markup)
+        text=f"{subscription.code}")
 
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)

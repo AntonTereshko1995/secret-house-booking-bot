@@ -124,7 +124,7 @@ def generate_subscription_info_message(subscription: SubscriptionBase, user: Use
         f"Код: {subscription.code}\n")
 
 def parse_booking_callback_data(callback_data: str):
-    pattern = r"booking_(\d+)_chatid_(\d+)_booking_id_(\d+)"
+    pattern = r"booking_(\d+)_chatid_(\d+)_bookingid_(\d+)"
     match = re.match(pattern, callback_data)
     if match:
         menu_index = match.group(1)
@@ -135,7 +135,7 @@ def parse_booking_callback_data(callback_data: str):
         return None
     
 def parse_gift_callback_data(callback_data: str):
-    pattern = r"gift_(\d+)_chatid_(\d+)_gift_id_(\d+)"
+    pattern = r"gift_(\d+)_chatid_(\d+)_giftid_(\d+)"
     match = re.match(pattern, callback_data)
     if match:
         menu_index = match.group(1)
@@ -146,7 +146,7 @@ def parse_gift_callback_data(callback_data: str):
         return None
     
 def parse_subscription_callback_data(callback_data: str):
-    pattern = r"subscription_(\d+)_chatid_(\d+)_subscription_id_(\d+)"
+    pattern = r"subscription_(\d+)_chatid_(\d+)_subscriptionid_(\d+)"
     match = re.match(pattern, callback_data)
     if match:
         menu_index = match.group(1)
