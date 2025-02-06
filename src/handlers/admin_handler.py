@@ -2,6 +2,7 @@ from datetime import date
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
@@ -19,6 +20,7 @@ from src.helpers import string_helper, string_helper, tariff_helper
 database_service = DatabaseService()
 calendar_service = CalendarService()
 calculation_rate_service = CalculationRateService()
+file_service = FileService()
 
 async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -28,7 +30,7 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = get_future_booking_message()
         await update.message.reply_text(message)
 
-async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo):
+async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo, is_additional_payment_by_cash = False):
     user = database_service.get_user_by_id(booking.user_id)
     message = string_helper.generate_booking_info_message(booking, user)
     keyboard = [
@@ -41,6 +43,10 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
         [InlineKeyboardButton("Скидка 30%", callback_data=f"booking_7_chatid_{user_chat_id}_bookingid_{booking.id}")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if not photo:
+        photo = file_service.get_image("logo.png")
+
     await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
 
 async def accept_gift_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, gift: GiftBase, user_chat_id: int, photo):

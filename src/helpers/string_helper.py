@@ -84,7 +84,7 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
 
     return message
 
-def generate_booking_info_message(booking: BookingBase, user: UserBase) -> str:
+def generate_booking_info_message(booking: BookingBase, user: UserBase, is_additional_payment_by_cash = False) -> str:
     return (f"Пользователь: {user.contact}\n"
             f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"

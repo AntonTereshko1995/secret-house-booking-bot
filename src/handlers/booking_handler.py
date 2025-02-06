@@ -46,7 +46,8 @@ from src.constants import (
     CONFIRM_PAY,
     CONFIRM,
     PHOTO_UPLOAD,
-    CANCEL)
+    CANCEL,
+    CASH_PAY)
 
 MAX_PEOPLE = 6
 
@@ -104,7 +105,8 @@ def get_handler() -> ConversationHandler:
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$")],
+                CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$"),
+                CallbackQueryHandler(cash_pay_booking, pattern=f"^{str(CASH_PAY)}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -204,7 +206,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if is_any_additional_payment():
                     return await confirm_pay(update, context)
                 else:
-                    return await confirm_booking(update, context)
+                    return await send_approving_to_admin(update, context, is_cash=True)
             else:
                 return await confirm_pay(update, context)
         else:
@@ -438,9 +440,8 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
     
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=CANCEL)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     if gift or subscription:
+        keyboard.append([InlineKeyboardButton("Оплата наличкой", callback_data=CASH_PAY)])
         message = (f"Общая сумма доплаты {price} руб.\n"
             "\n"
             "Информация для оплаты (Альфа-Банк):\n"
@@ -468,7 +469,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
             "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
             "Спасибо за понимание.\n")
-
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
         text=message,
         parse_mode='HTML',
@@ -877,7 +878,18 @@ def save_booking_information():
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global photo
     photo = update.message.photo[-1].file_id
-    chat_id = update.message.chat.id
+    return await send_approving_to_admin(update, context, photo)
+
+async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await send_approving_to_admin(update, context)
+
+async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, photo = None, is_cash = False):
+    if update.message:
+        chat_id = update.message.chat.id
+    else:
+        chat_id = update.callback_query.message.chat.id
     save_booking_information()
-    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo)
+    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, is_cash)
     return await confirm_booking(update, context)
+
+
