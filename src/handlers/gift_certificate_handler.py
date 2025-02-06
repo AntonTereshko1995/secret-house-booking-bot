@@ -53,7 +53,7 @@ def get_handler() -> ConversationHandler:
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(handle_photo)],
+                CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -176,7 +176,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=BACK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
         text=f"Общая сумма оплаты {price} руб.\n"

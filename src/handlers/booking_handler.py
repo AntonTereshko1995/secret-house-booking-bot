@@ -104,7 +104,7 @@ def get_handler() -> ConversationHandler:
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(handle_photo)],
+                CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
