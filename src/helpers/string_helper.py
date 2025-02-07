@@ -6,11 +6,11 @@ from db.models.gift import GiftBase
 from db.models.subscription import SubscriptionBase
 from db.models.booking import BookingBase
 from db.models.user import UserBase
-from src.helpers import subscription_helper, tariff_helper
+from src.helpers import sale_halper, subscription_helper, tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
-from src.config.config import CLEANING_HOURS
+from src.config.config import CLEANING_HOURS, PREPAYMENT
 
 def is_valid_user_contact(text: str) -> bool:
     return (text.startswith("+375") and len(text) == 13) or (text.startswith("@") and len(text) > 1)
@@ -85,22 +85,33 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
     return message
 
 def generate_booking_info_message(booking: BookingBase, user: UserBase, is_additional_payment_by_cash = False) -> str:
-    return (f"Пользователь: {user.contact}\n"
-            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
-            f"Стоимость: {booking.price} руб.\n"
-            f"Фотосессия: {bool_to_str(booking.has_photoshoot)}\n"
-            f"Сауна: {bool_to_str(booking.has_sauna)}\n"
-            f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
-            f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
-            f"Секретная комната спальня: {bool_to_str(booking.has_secret_room)}\n"
-            f"Колличество гостей: {booking.number_of_guests}\n"
-            f"Комментарий: {booking.comment}\n"
+    message = (
+        f"Пользователь: {user.contact}\n"
+        f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+        f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+        f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+        f"Стоимость: {booking.price} руб.\n"
+        f"Фотосессия: {bool_to_str(booking.has_photoshoot)}\n"
+        f"Сауна: {bool_to_str(booking.has_sauna)}\n"
+        f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
+        f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
+        f"Секретная комната спальня: {bool_to_str(booking.has_secret_room)}\n"
+        f"Колличество гостей: {booking.number_of_guests}\n"
+        f"Комментарий: {booking.comment if booking.comment else ''}\n"
+        f"Скидка: {sale_halper.get_name(booking.sale)}\n"
+        f"Скидка коммент: {booking.sale_comment if booking.sale_comment else ''}\n")
+    
+    if booking.gift_id:
+        message += (
             f"Подарочный сертификат: {booking.gift_id}\n"
+            f"Доплата наличкой: {bool_to_str(is_additional_payment_by_cash)}\n")
+    elif booking.subscription_id:
+        message += (
             f"Абонемент: {booking.subscription_id}\n"
-            f"Скидка: {booking.sale}\n"
-            f"Скидка коммент: {booking.sale_comment}\n")
+            f"Доплата наличкой: {bool_to_str(is_additional_payment_by_cash)}\n")
+    else:
+        message += f"Предоплата: {PREPAYMENT}\n" 
+    return message
 
 def generate_gift_info_message(gift: GiftBase) -> str:
     return (
@@ -111,7 +122,7 @@ def generate_gift_info_message(gift: GiftBase) -> str:
         f"Стоимость: {gift.price} руб.\n"
         f"Сауна: {bool_to_str(gift.has_sauna)}\n"
         f"Дополнительная спальня: {bool_to_str(gift.has_additional_bedroom)}\n"
-        f"Секретная комната спальня: {bool_to_str(gift.has_secret_room)}\n"
+        f"Секретная комната: {bool_to_str(gift.has_secret_room)}\n"
         f"Код: {gift.code}\n")
 
 def generate_subscription_info_message(subscription: SubscriptionBase, user: UserBase) -> str:
@@ -124,13 +135,14 @@ def generate_subscription_info_message(subscription: SubscriptionBase, user: Use
         f"Код: {subscription.code}\n")
 
 def parse_booking_callback_data(callback_data: str):
-    pattern = r"booking_(\d+)_chatid_(\d+)_bookingid_(\d+)"
+    pattern = r"booking_(\d+)_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)"
     match = re.match(pattern, callback_data)
     if match:
         menu_index = match.group(1)
         user_chat_id = match.group(2)
         booking_id = match.group(3)
-        return {"user_chat_id": user_chat_id, "booking_id": booking_id, "menu_index": menu_index}
+        is_payment_by_cash = match.group(4)
+        return {"user_chat_id": user_chat_id, "booking_id": booking_id, "menu_index": menu_index, "is_payment_by_cash": is_payment_by_cash}
     else:
         return None
     

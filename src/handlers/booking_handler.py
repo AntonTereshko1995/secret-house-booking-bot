@@ -881,7 +881,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await send_approving_to_admin(update, context, photo)
 
 async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    return await send_approving_to_admin(update, context)
+    return await send_approving_to_admin(update, context, is_cash=True)
 
 async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, photo = None, is_cash = False):
     if update.message:
