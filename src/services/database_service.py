@@ -25,43 +25,9 @@ class DatabaseService:
         self.engine = engine
         self.Session = sessionmaker(bind=self.engine)
         database.create_db_and_tables()
-        
+        # Clear database
         # Base.metadata.drop_all(engine)  # Удаляет все таблицы
         # Base.metadata.create_all(engine)  # Создаёт таблицы заново
-        # self.add_booking(
-        #     "@1",
-        #     datetime(day=1, month=2, year=2025, hour=1),
-        #     datetime(day=3, month=2, year=2025, hour=7),
-        #     Tariff.HOURS_12,
-        #     False,
-        #     False,
-        #     True,
-        #     False,
-        #     False,
-        #     2,
-        #     1,
-        #     None,
-        #     None,
-        #     None,
-        #     None,
-        #     None)
-        # self.add_booking(
-        #     "@2",
-        #     datetime(day=24, month=2, year=2025, hour=10),
-        #     datetime(day=25, month=2, year=2025, hour=19),
-        #     Tariff.HOURS_12,
-        #     False,
-        #     False,
-        #     True,
-        #     False,
-        #     False,
-        #     2,
-        #     100,
-        #     None,
-        #     None,
-        #     None,
-        #     None,
-        #     None)
 
     def add_user(self, contact: str) -> UserBase:
         with self.Session() as session:

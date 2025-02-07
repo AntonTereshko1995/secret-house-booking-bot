@@ -1,3 +1,4 @@
+from io import BytesIO
 import os
 import json
 from telegram import InputMediaPhoto
@@ -37,3 +38,13 @@ class FileService:
             tariff_list = [RentalPrice(**item) for item in data["rental_prices"]]
 
         return tariff_list
+    
+    def get_image(self, image_name: str):
+        image_path = os.path.join(self._IMAGE_FOLDER, image_name)
+        if not os.path.exists(image_path):
+            return None  # Файл не найден
+
+        with open(image_path, "rb") as image_file:
+            image_bytes = BytesIO(image_file.read())  # Читаем файл в память
+            image_bytes.seek(0)  # Перемещаем указатель в начало
+            return image_bytes

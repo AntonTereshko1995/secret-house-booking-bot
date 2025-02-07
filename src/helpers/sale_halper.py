@@ -7,6 +7,8 @@ def get_name(sale: Sale) -> str:
         return "По рекомендации от друга."
     elif (sale == Sale.OTHER):
         return "Другое"
+    elif (sale == Sale.NONE):
+        return ""
 
 def get_by_value(value: int) -> Sale:
     if (value == Sale.NONE.value):

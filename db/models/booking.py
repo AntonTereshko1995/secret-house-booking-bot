@@ -15,8 +15,8 @@ class BookingBase(Base):
     __tablename__ = 'booking'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
-    start_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
-    end_date: Mapped[datetime] = mapped_column(DateTime, unique=True, nullable=False)
+    start_date: Mapped[datetime] = mapped_column(DateTime, unique=False, nullable=False)
+    end_date: Mapped[datetime] = mapped_column(DateTime, unique=False, nullable=False)
     tariff: Mapped[Tariff] = mapped_column(IntEnumType(Tariff), nullable=False)
     has_photoshoot: Mapped[bool] = mapped_column(Boolean, default=False)
     has_sauna: Mapped[bool] = mapped_column(Boolean, default=False)
