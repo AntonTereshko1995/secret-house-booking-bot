@@ -12,7 +12,7 @@ from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
-from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS, INFORM_CHAT_ID, PREPAYMENT
+from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS, INFORM_CHAT_ID, PREPAYMENT, BANK_CARD_NUMBER, BANK_PHONE_NUMBER, ADMINISTRATION_CONTACT, HOUSE_PASSWORD
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes)
 from src.helpers import string_helper, string_helper, tariff_helper
@@ -141,6 +141,9 @@ async def subscription_callback(update: Update, context: ContextTypes.DEFAULT_TY
     
 async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int, is_payment_by_cash: bool):
     (booking, user) = await prepare_approve_process(update, context, booking_id, is_payment_by_cash=is_payment_by_cash)
+    if booking.start_date.date() == date.today():
+        await send_booking_details(context, booking)
+
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
@@ -149,6 +152,7 @@ async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, ch
             "Ваше бронирование подтверждено администратором.\n"
             "За 1 день до Вашего бронирования Вам приедет сообщение с деталями бронирования и инструкцией по заселению.\n",
         reply_markup=reply_markup)
+    
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_booking_info_message(booking, user)}")
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int):
@@ -225,6 +229,9 @@ async def cancel_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int, sale_percentage: int, is_payment_by_cash: bool):
     (booking, user) = await prepare_approve_process(update, context, booking_id, sale_percentage, is_payment_by_cash=is_payment_by_cash)
+    if booking.start_date.date() == date.today():
+        await send_booking_details(context, booking)
+        
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
@@ -317,5 +324,62 @@ async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, boo
         f"Комментарий: {booking.comment if booking.comment else ''}\n")
 
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
-    
 
+async def send_booking_details(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
+    await context.bot.send_message(
+        chat_id=booking.chat_id, 
+        text="Мы отобразили путь по которому лучше всего доехать до The Secret House.\n"
+            "Через 500 метров после ж/д переезда по левую сторону будет оранжевый магазин. После магазина нужно повернуть налево. Это Вам ориентир нужного поворота, далее навигатор Вас привезет правильно.\n"
+            "Когда будете ехать вдоль леса, то Вам нужно будет повернуть на садовое товарищество 'Юбилейное-68' (будет вывеска).\n" 
+            "ст. Юбилейное-68, ул. Сосновая, д. 2\n\n"
+            "Yandex map:\n"
+            "https://yandex.com.ge/maps/157/minsk/?l=stv%2Csta&ll=27.297381%2C53.932145&mode=routes&rtext=53.939763%2C27.333107~53.938194%2C27.324665~53.932431%2C27.315410~53.930789%2C27.299320~53.934190%2C27.300387&rtt=auto&ruri=~~~~ymapsbm1%3A%2F%2Fgeo%3Fdata%3DCgo0Mzk0MjMwMTgwErMB0JHQtdC70LDRgNGD0YHRjCwg0JzRltC90YHQutGWINGA0LDRkdC9LCDQltC00LDQvdC-0LLRltGG0LrRliDRgdC10LvRjNGB0LDQstC10YIsINGB0LDQtNCw0LLQvtC00YfQsNC1INGC0LDQstCw0YDRi9GB0YLQstCwINCu0LHRltC70LXQudC90LDQtS02OCwg0KHQsNGB0L3QvtCy0LDRjyDQstGD0LvRltGG0LAsIDIiCg0sZ9pBFZ28V0I%2C&z=16.06 \n\n"
+            "Google map:\n"
+            "https://maps.app.goo.gl/Hsf9Xw69N8tqHyqt5")
+    await context.bot.send_message(
+        chat_id=booking.chat_id, 
+        text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
+            f"{ADMINISTRATION_CONTACT}")
+    photo = file_service.get_image("key.jpg")
+    await context.bot.send_photo(
+        chat_id=booking.chat_id, 
+        caption="Мы предоставляем самостоятельное заселение.\n"
+            f"1. Слева отображена ключница, которая располагается за территорией дома. В которой лежат ключи от ворот и дома. Пароль: {HOUSE_PASSWORD}\n"
+            "2. Справа отображен ящик, который располагается на территории дома. В ящик нужно положить подписанный договор и оплату за проживание, если вы платите наличкой.\n\n"
+            "Попрошу это сделать в первые 30 мин. Вашего пребывания в The Secret House. Администратор заберет договор и деньги."
+            "Договор и ручка будут лежать в дома на острове на кухне. Вложите деньги и договор с розовый конверт.\n\n"
+            "Информация для оплаты (Альфа-Банк):\n"
+            f"по номеру телефона {BANK_PHONE_NUMBER}\n"
+            "или\n"
+            f"по номеру карты {BANK_CARD_NUMBER}",
+        photo=photo)
+    
+    if booking.has_sauna:
+        await context.bot.send_message(
+            chat_id=booking.chat_id, 
+            text="Инструкция по включению сауны:\n"
+                "1. Подойдите к входной двери.\n"
+                "2. По правую руку находился электрический счетчик.\n"
+                "3. Все рубильники подписаны. Переключите рубильник с надписей «Сауна».\n"
+                "4. Через 1 час сауна нагреется."
+                "5. После использования выключите рубильник.\n")
+        
+    # keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    # reply_markup = InlineKeyboardMarkup(keyboard)    
+    # await context.bot.send_message(
+    #         chat_id=user.chat_id, 
+    #         text="Инструкция по включению сауны:\n"
+    #             "1. Подойдите к входной двери.\n"
+    #             "2. По правую руку находился электрический счетчик.\n"
+    #             "3. Все рубильники подписаны. Переключите рубильник с надписей «Сауна».\n"
+    #             "4. Через 1 час сауна нагреется."
+    #             "5. После использования выключите рубильник.\n")
+
+async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
+    await context.bot.send_message(
+        chat_id=booking.chat_id, 
+        text="The Secret House благодарит Вас за то, что выбрали наш дом для аренды! \n"
+            "Мы хотели бы узнать, как Вам понравилось наше обслуживание. Будем благодарны, если вы оставите анономный отзыв по ссылке ниже.\n"
+            "Ссылка:\n"
+            "https://docs.google.com/forms/d/1FIDlSsLZLWfKOnhAZ8pPKiPEzLcwl5COI7rEIVGgFEM/edit?ts=66719dd9 \n\n"
+            "После получения фидбека мы дарим Вам 10% скидки для следующей поездки.")

@@ -15,6 +15,7 @@ class BookingBase(Base):
     __tablename__ = 'booking'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    chat_id: Mapped[int] = mapped_column(Integer, unique=False, nullable=False)
     start_date: Mapped[datetime] = mapped_column(DateTime, unique=False, nullable=False)
     end_date: Mapped[datetime] = mapped_column(DateTime, unique=False, nullable=False)
     tariff: Mapped[Tariff] = mapped_column(IntEnumType(Tariff), nullable=False)

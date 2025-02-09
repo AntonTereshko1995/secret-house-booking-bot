@@ -120,7 +120,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def load_booking() -> bool:
     global booking
-    booking = database_service.get_booking_by_start_date(user_contact, booking_date.date())
+    booking = database_service.get_booking_by_start_date_user(user_contact, booking_date.date())
     return True if booking else False
 
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):

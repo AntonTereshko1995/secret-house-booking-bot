@@ -7,7 +7,7 @@ from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
-from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS
+from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS, BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from datetime import date, datetime, time, timedelta
@@ -445,9 +445,9 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = (f"Общая сумма доплаты {price} руб.\n"
             "\n"
             "Информация для оплаты (Альфа-Банк):\n"
-            "по номеру телефона +375257908378\n"
+            f"по номеру телефона {BANK_PHONE_NUMBER}\n"
             "или\n"
-            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
+            f"по номеру карты {BANK_CARD_NUMBER}\n"
             "или\n"
             "наличкой при заселении.\n"
             "\n"
@@ -462,9 +462,9 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Предоплата не возвращается при отмене бронирования. Вы можете перенести бронь на другую дату.\n"   
             "\n"
             "Информация для оплаты (Альфа-Банк):\n"
-            "по номеру телефона +375257908378\n"
+            f"по номеру телефона {BANK_PHONE_NUMBER}\n"
             "или\n"
-            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
+            f"по номеру карты {BANK_CARD_NUMBER}\n"
             "\n"
             "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
             "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
@@ -613,8 +613,12 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking = database_service.get_booking_by_day(start_booking_date.date())
     available_slots = date_time_helper.get_free_time_slots(booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
+    message = "Выберете время начала бронирования.\n"
+    if tariff == Tariff.WORKER:
+      message += ("\nДля тарифа 'Рабочий' выберете доступно время в промежутке:\n"
+                  "с 11:00 до 20:00 и с 22:00 до 09:00")
     await update.callback_query.edit_message_text(
-        text="Выберете время начала бронирования.\n", 
+        text=message, 
         reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=start_booking_date.date()))
     return SET_START_TIME
 
@@ -811,16 +815,6 @@ def reset_variables():
     booking = None
 
 async def initi_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # PXRCMNLQITKTAXF work 
-    # PJKJESOHSJEVEWK work + suna
-    # LNGJZHMMQPHTILU work + secret
-    # ZXJVSZUIPRGVSWK work + bedroom
-    # TVINZAGCILPYCSD work + suna + secret
-    # DYGFCMLEVPLPYTJ work + suna + bedroom
-    # EWYZTLAVASSOBMK work + secret + bedroom
-    # VZNESLNAERVVQIJ work + secret + bedroom + sauna
-    # JVYGYDRKKNIACFW day
-    # OZNOJTTIQSUSHAK inkognito 12
     global tariff, rental_rate, gift
     gift = database_service.get_gift_by_code(update.message.text)
     if not gift:
@@ -855,7 +849,7 @@ async def initi_subscription_code(update: Update, context: ContextTypes.DEFAULT_
     is_green_room_included = True
     return await navigate_next_step_for_subscription(update, context)
 
-def save_booking_information():
+def save_booking_information(chat_id: int):
     global booking
     booking = database_service.add_booking(
         user_contact,
@@ -872,6 +866,7 @@ def save_booking_information():
         booking_comment,
         sale,
         customer_sale_comment,
+        chat_id,
         gift.id if gift else None,
         subscription.id if subscription else None)
     
@@ -888,7 +883,7 @@ async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_
         chat_id = update.message.chat.id
     else:
         chat_id = update.callback_query.message.chat.id
-    save_booking_information()
+    save_booking_information(chat_id)
     await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, is_cash)
     return await confirm_booking(update, context)
 

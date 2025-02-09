@@ -1,10 +1,13 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services import job_service
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler)
 from src.constants import AVAILABLE_DATES, BOOKING, CANCEL_BOOKING, CHANGE_BOOKING_DATE, GIFT_CERTIFICATE, MENU, PRICE, QUESTIONS, SUBSCRIPTION
 from src.handlers import booking_handler, change_booking_date_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler, subscription_handler 
+
+job = job_service.JobService()
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -24,6 +27,8 @@ def get_handler() -> ConversationHandler:
     return handler
 
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await job.init_job(update, context)
+    
     buttons = [
         [InlineKeyboardButton("Забронировать дом", callback_data=str(BOOKING))],
         [InlineKeyboardButton("Приобрести подарочный сертификат", callback_data=str(GIFT_CERTIFICATE))],

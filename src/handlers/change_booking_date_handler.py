@@ -279,5 +279,5 @@ def reset_variables():
 
 def load_booking() -> bool:
     global booking
-    booking = database_service.get_booking_by_start_date(user_contact, old_booking_date.date())
+    booking = database_service.get_booking_by_start_date_user(user_contact, old_booking_date.date())
     return True if booking else False
