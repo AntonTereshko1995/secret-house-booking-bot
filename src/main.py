@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import os
 import logging
@@ -7,6 +8,7 @@ from telegram import Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from src.handlers import menu_handler, admin_handler
 from src.config.config import TELEGRAM_TOKEN
+from src.services import job_service
 import logging
 
 # Enable logging
@@ -25,8 +27,10 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(admin_handler.booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"))
     application.add_handler(CallbackQueryHandler(admin_handler.gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"))
     application.add_handler(CallbackQueryHandler(admin_handler.subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$"))
-    
-    application.run_polling(allowed_updates=Update.ALL_TYPES) 
+
+    job = job_service.JobService()
+    job.set_application(application)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()

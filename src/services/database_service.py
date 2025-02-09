@@ -12,11 +12,10 @@ from db.models.booking import BookingBase
 from matplotlib.dates import relativedelta
 from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
-from typing import List
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Date, and_, cast, func, or_, select
+from sqlalchemy import and_, func, or_, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
 
 @singleton
@@ -221,6 +220,7 @@ class DatabaseService:
             comment: str,
             sale: Sale,
             sale_comment: str,
+            chat_id: int,
             gift_id: int = None, 
             subscription_id: int = None) -> BookingBase:
         user = self.get_or_create_user(user_contact)
@@ -240,6 +240,7 @@ class DatabaseService:
                     comment = comment,
                     sale = sale,
                     sale_comment = sale_comment,
+                    chat_id=chat_id,
                     price = price)
                 
                 if gift_id:
@@ -255,7 +256,7 @@ class DatabaseService:
                 print(f"Error adding booking: {e}")
                 session.rollback()
 
-    def get_booking_by_start_date(
+    def get_booking_by_start_date_user(
             self, 
             user_contact: str, 
             start_date: date) -> BookingBase:
@@ -274,6 +275,34 @@ class DatabaseService:
                 )
             ))
             return booking
+    
+    def get_booking_by_start_date(
+            self, 
+            start_date: date) -> BookingBase:
+        with self.Session() as session:
+            bookings = session.scalars(select(BookingBase).where(
+                and_(
+                    func.date(BookingBase.start_date) == start_date,
+                    BookingBase.is_canceled == False,
+                    BookingBase.is_done == False,
+                    BookingBase.is_prepaymented == True
+                )
+            )).all() 
+            return bookings
+        
+    def get_booking_by_finish_date(
+            self, 
+            end_date: date) -> BookingBase:
+        with self.Session() as session:
+            bookings = session.scalars(select(BookingBase).where(
+                and_(
+                    func.date(BookingBase.end_date) == end_date,
+                    BookingBase.is_canceled == False,
+                    BookingBase.is_done == False,
+                    BookingBase.is_prepaymented == True
+                )
+            )).all()  
+            return bookings
             
     def get_booking_by_period(self, from_date: date, to_date: date, is_admin: bool = False):
         with self.Session() as session:
