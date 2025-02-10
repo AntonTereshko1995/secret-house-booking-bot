@@ -72,9 +72,10 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Напишите Ваш <b>Telegram</b>.\n"
-            "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-            "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
@@ -88,11 +89,15 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await old_start_date_message(update, context)
         else:
-            await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
-                                            "Повторите ввод еще раз.")
+            await update.message.reply_text(
+                "❌ <b>Ошибка!</b>\n"
+                "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
+                "🔄 Пожалуйста, попробуйте еще раз.")
     else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+        await update.message.reply_text(
+            "❌ <b>Ошибка:</b> Пустая строка.\n\n"
+            "🔄 Пожалуйста, введите данные еще раз."
+        )
 
     return VALIDATE_USER
 
@@ -180,37 +185,41 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     calendar_service.move_event(updated_booking.calendar_event_id, start_booking_date, finish_booking_date)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text=f"Бронирование успешно перенесено:\n"
-            f"c {start_booking_date.strftime('%d.%m.%Y %H:%M')} \n"
-            f"до {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
+        text=f"✅ <b>Бронирование успешно перенесено!</b>\n\n"
+            f"📅 <b>С:</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"📅 <b>До:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return MENU
 
 async def old_start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
     await update.message.reply_text(
-        text="Введите дату заезда Вашего бронирования.\n",
+        text="📅 <b>Укажите дату начала вашего бронирования.</b>\n",
+        parse_mode='HTML',
         reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_OLD_START_DATE
 
 async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False, incorrect_duration: bool = False):
     today = date.today()
     if is_error:
-        message = ("Ощибка! Время и дата выбране не правильно.\n"
-                   "Дата начала и конца бронирования пересекается с другим бронированием.\n"
-                   f"После каждого клиента нам нужно убрать дом. Для этого нам нужно {CLEANING_HOURS} часа.\n"
-                   "Повторите попытку заново.\n\n"
-                   "Выберете дату начала бронирования.")
+        message = ("❌ <b>Ошибка!</b>\n\n"
+            "⏳ <b>Выбранные дата и время недоступны.</b>\n"
+            "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
+            f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
+            "🔄 Пожалуйста, выберите новую дату начала бронирования.")
     elif incorrect_duration:
-        message = ("Ощибка! Максимальное продолжительсность тарифа превышена.\n"
-                   f"Длительность '{rental_price.name}': {rental_price.duration_hours} ч.\n"
-                   "Повторите попытку заново.\n\n"
-                   "Выберете дату начала бронирования.")
+        message = ("❌ <b>Ошибка!</b>\n\n"
+            "⏳ <b>Максимальная продолжительность тарифа превышена.</b>\n"
+            f"🕒 Длительность <b>{rental_price.name}</b>: {rental_price.duration_hours} ч.\n\n"
+            "🔄 Пожалуйста, повторите попытку и выберите доступный вариант.\n\n"
+            "📅 Выберите новую дату начала бронирования.")
     else:
-        message = ("Нашли Ваше бронирование.\n"
-            "Введите дату на которую Вы хотите перенести бронирование.\n")
+        message = ("✅ <b>Ваше бронирование найдено!</b>\n\n"
+            "📅 <b>Введите новую дату, на которую хотите перенести бронирование.</b>")
     await update.callback_query.edit_message_text(
         text=message, 
+        parse_mode='HTML',
         reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_START_DATE
 
@@ -218,14 +227,15 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     feature_booking = database_service.get_booking_by_day(start_booking_date.date(), booking.id)
     available_slots = date_time_helper.get_free_time_slots(feature_booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
-        text="Выберете время начала бронирования.\n", 
+        text="⏰ <b>Выберите время начала бронирования.</b>", 
+        parse_mode='HTML',
         reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=start_booking_date.date()))
     return SET_START_TIME
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
-        text="Выберете дату завершения бронирования.\n", 
+        text="⏰ <b>Выберите дату завершения бронирования.</b>", 
         reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
 
@@ -234,7 +244,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
     available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
-        text="Выберете время завершения бронирования.\n", 
+        text="⏰ <b>Выберите время завершения бронирования.</b>", 
         reply_markup=hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=finish_booking_date.date()))
     return SET_FINISH_TIME
 
@@ -254,14 +264,13 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
-        text="Ошибка!\n"
-            "Не удалось найти брониование.\n"
-            "Повторите попытку еще раз.\n"
-            "\n"
-            "Введите имя пользователя повторно. \n"
-            "Напишите Ваш <b>Telegram</b>.\n"
-            "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-            "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        text="❌ <b>Ошибка!</b>\n"
+            "🔍 Не удалось найти бронирование.\n"
+            "🔄 Пожалуйста, попробуйте еще раз.\n\n"
+            "📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER

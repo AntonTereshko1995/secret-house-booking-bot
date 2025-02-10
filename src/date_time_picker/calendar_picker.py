@@ -56,6 +56,7 @@ async def process_calendar_selection(update, context, min_date: date = None, max
     # Selected, Time, Is_action
     return_data = (False, None, False)
     query = update.callback_query
+    # TODO падает когда наживашь назад
     (_, action, year, month, day) = string_helper.separate_callback_data(query.data)
     curr = datetime(int(year), int(month), 1)
     if action == str(IGNORE):

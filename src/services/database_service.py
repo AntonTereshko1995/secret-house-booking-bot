@@ -25,8 +25,8 @@ class DatabaseService:
         self.Session = sessionmaker(bind=self.engine)
         database.create_db_and_tables()
         # Clear database
-        # Base.metadata.drop_all(engine)  # Удаляет все таблицы
-        # Base.metadata.create_all(engine)  # Создаёт таблицы заново
+        Base.metadata.drop_all(engine)  # Удаляет все таблицы
+        Base.metadata.create_all(engine)  # Создаёт таблицы заново
 
     def add_user(self, contact: str) -> UserBase:
         with self.Session() as session:

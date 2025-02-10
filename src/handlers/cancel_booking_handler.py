@@ -46,9 +46,10 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Напишите Ваш <b>Telegram</b>.\n"
-        "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-        "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
@@ -62,11 +63,18 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await start_date_message(update, context)
         else:
-            await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
-                                            "Повторите ввод еще раз.")
+            await update.message.reply_text(
+                "❌ <b>Ошибка!</b>\n"
+                "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
+                "🔄 Пожалуйста, попробуйте еще раз.",
+                parse_mode='HTML'
+            )
     else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+        await update.message.reply_text(
+            "❌ <b>Ошибка:</b> Пустая строка.\n\n"
+            "🔄 Пожалуйста, введите данные еще раз.",
+            parse_mode='HTML'
+        )
 
     return VALIDATE_USER
 
@@ -95,7 +103,9 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text=f"Бронирование успешно отменено на {booking_date.strftime('%d.%m.%Y')}.",
+        text=f"❌ <b>Бронирование отменено</b> на <b>{booking_date.strftime('%d.%m.%Y')}</b>.\n\n"
+            "📌 Если у вас возникли вопросы, свяжитесь с администратором.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return MENU
 
@@ -104,7 +114,8 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = today - timedelta(days=1)
     await update.message.reply_text(
-        text="Введите дату заезда Вашего бронирования.\n",
+        text="📅 <b>Введите дату заезда вашего бронирования.</b>",
+        parse_mode='HTML',
         reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_BOOKING_DATE
 
@@ -114,7 +125,9 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        text=f"Подтвердите отмену бронирования на {booking_date.strftime('%d.%m.%Y')}.", 
+        text=f"❌ <b>Подтвердите отмену бронирования</b> на <b>{booking_date.strftime('%d.%m.%Y')}</b>.\n\n"
+            "🔄 Для продолжения выберите соответствующую опцию.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return CONFIRM
 
@@ -127,14 +140,14 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
-        text="Ошибка!\n"
-            "Не удалось найти брониование.\n"
-            "Повторите попытку еще раз.\n"
-            "\n"
-            "Введите имя пользователя повторно. \n"
-            "Напишите Ваш <b>Telegram</b>.\n"
-            "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-            "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        text="❌ <b>Ошибка!</b>\n"
+            "🔍 Не удалось найти бронирование.\n\n"
+            "🔄 Пожалуйста, попробуйте еще раз.\n\n"
+            "📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
 

@@ -40,7 +40,8 @@ async def select_month(update: Update, context: CallbackContext):
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Выберете доступный месяц для бронирования.",
+        text="📅 <b>Выберите доступный месяц для бронирования.</b>",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return GET_AVAILABLE_DATES
 
