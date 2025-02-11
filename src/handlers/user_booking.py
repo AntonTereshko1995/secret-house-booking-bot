@@ -79,7 +79,13 @@ async def display_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking_list = database_service.get_booking_by_user_contact(user_contact)
     message = ""
     if not booking_list or len(booking_list) == 0:
-        message = "К сожалению, у вас нет активных бронирований."
+        message = ("❌ <b>Ошибка!</b>\n"
+            "🔍 Не удалось найти бронирование.\n\n"
+            "🔄 Пожалуйста, попробуйте еще раз.\n\n"
+            "📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.")
     else:
         for booking in booking_list:
             message += (

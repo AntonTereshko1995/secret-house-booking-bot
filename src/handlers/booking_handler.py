@@ -658,8 +658,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         message += (
             "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
             "🕚 11:00 – 20:00\n"
-            "🌙 22:00 – 09:00"
-        )
+            "🌙 22:00 – 09:00")
     await update.callback_query.edit_message_text(
         text=message, 
         parse_mode='HTML',

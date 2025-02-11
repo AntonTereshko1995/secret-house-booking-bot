@@ -12,19 +12,19 @@ from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters)
 from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper
-from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, SET_BOOKING_DATE, CONFIRM
+from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, CHOOSE_BOOKING, CONFIRM
 
 user_contact = ''
-booking_date = date.today()
 database_service = DatabaseService()
 calendar_service = CalendarService()
+selected_bookings = []
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(CANCEL_BOOKING)}$")],
         states={ 
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            SET_BOOKING_DATE: [CallbackQueryHandler(enter_booking_date)], 
+            CHOOSE_BOOKING: [CallbackQueryHandler(choose_booking)], 
             CONFIRM: [CallbackQueryHandler(confirm_cancel_booking, pattern=f"^{CONFIRM}$")], 
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")], 
             },
@@ -61,7 +61,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-            return await start_date_message(update, context)
+            return await choose_booking_message(update, context)
         else:
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
@@ -78,22 +78,14 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     return VALIDATE_USER
 
-async def enter_booking_date(update: Update, context: CallbackContext):
+async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = date.today() - timedelta(days=1)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
-    if selected:
-        global booking_date
-        booking_date = selected_date
-        is_loaded = load_booking()
-        if is_loaded:
-            return await confirm_message(update, context)
-        else:
-            return await warning_message(update, context)
-    elif is_action:
+    if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
-    return SET_BOOKING_DATE
+
+    global booking
+    booking = next((b for b in selected_bookings if str(b.id) == update.callback_query.data), None)
+    return await confirm_message(update, context)
 
 async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     updated_booking = database_service.update_booking(booking.id, is_canceled=True)
@@ -109,37 +101,41 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=reply_markup)
     return MENU
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    today = date.today()
-    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = today - timedelta(days=1)
+async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global selected_bookings
+    selected_bookings = database_service.get_booking_by_user_contact(user_contact)
+    if not selected_bookings or len(selected_bookings) == 0:
+        return await warning_message(update, context)
+    
+    keyboard = []
+    for booking in selected_bookings:
+        keyboard.append([InlineKeyboardButton(f"{booking.start_date.strftime('%d.%m.%Y %H:%M')} - {booking.end_date.strftime('%d.%m.%Y %H:%M')}", callback_data=str(booking.id))])
+
+    keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        text="📅 <b>Введите дату заезда вашего бронирования.</b>",
+        text="📅 <b>Выберите бронирование, которое хотите отменить.</b>\n",
         parse_mode='HTML',
-        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
-    return SET_BOOKING_DATE
+        reply_markup=reply_markup)
+    return CHOOSE_BOOKING
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Подтвердить", callback_data=CONFIRM)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        text=f"❌ <b>Подтвердите отмену бронирования</b> на <b>{booking_date.strftime('%d.%m.%Y')}</b>.\n\n"
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text=f"❌ <b>Подтвердите отмену бронирования</b>.\n\n"
             "🔄 Для продолжения выберите соответствующую опцию.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return CONFIRM
 
-def load_booking() -> bool:
-    global booking
-    booking = database_service.get_booking_by_start_date_user(user_contact, booking_date.date())
-    return True if booking else False
-
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text(
+    await update.message.reply_text(
         text="❌ <b>Ошибка!</b>\n"
             "🔍 Не удалось найти бронирование.\n\n"
             "🔄 Пожалуйста, попробуйте еще раз.\n\n"
@@ -152,6 +148,7 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return VALIDATE_USER
 
 def reset_variables():
-    global user_contact, booking_date
+    global user_contact, booking_date, selected_bookings
     user_contact = ''
     booking_date = date.today()
+    selected_bookings = []

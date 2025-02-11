@@ -31,16 +31,16 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await job.init_job(update, context)
     
     buttons = [
-        [InlineKeyboardButton("🔹 Забронировать дом 🏠", callback_data=str(BOOKING))],
-        [InlineKeyboardButton("🔹 Купить подарочный сертификат 🎁", callback_data=str(GIFT_CERTIFICATE))],
-        [InlineKeyboardButton("🔹 Оформить абонемент 🔄", callback_data=str(SUBSCRIPTION))],
-        [InlineKeyboardButton("🔹 Мои бронирования 👁️‍🗨️", callback_data=str(USER_BOOKING))],
-        [InlineKeyboardButton("🔹 Отменить бронирование ❌", callback_data=str(CANCEL_BOOKING))],
-        [InlineKeyboardButton("🔹 Перенести бронирование 🔄", callback_data=str(CHANGE_BOOKING_DATE))],
-        [InlineKeyboardButton("🔹 Проверить свободные даты 📅", callback_data=str(AVAILABLE_DATES))],
-        [InlineKeyboardButton("🔹 Узнать стоимость аренды 💰", callback_data=str(PRICE))],
-        [InlineKeyboardButton("🔹 Задать вопрос ❓", callback_data=str(QUESTIONS))],
-        [InlineKeyboardButton("🔹 Связаться с администратором 📞", url='https://t.me/the_secret_house')]]
+        [InlineKeyboardButton("Забронировать дом 🏠", callback_data=str(BOOKING))],
+        [InlineKeyboardButton("Купить подарочный сертификат 🎁", callback_data=str(GIFT_CERTIFICATE))],
+        [InlineKeyboardButton("Оформить абонемент 🔄", callback_data=str(SUBSCRIPTION))],
+        [InlineKeyboardButton("Мои бронирования 👁️‍🗨️", callback_data=str(USER_BOOKING))],
+        [InlineKeyboardButton("Отменить бронирование ❌", callback_data=str(CANCEL_BOOKING))],
+        [InlineKeyboardButton("Перенести бронирование 🔄", callback_data=str(CHANGE_BOOKING_DATE))],
+        [InlineKeyboardButton("Проверить свободные даты 📅", callback_data=str(AVAILABLE_DATES))],
+        [InlineKeyboardButton("Узнать стоимость аренды 💰", callback_data=str(PRICE))],
+        [InlineKeyboardButton("Задать вопрос ❓", callback_data=str(QUESTIONS))],
+        [InlineKeyboardButton("Связаться с администратором 📞", url='https://t.me/the_secret_house')]]
 
     text = ("<b>Добро пожаловать в The Secret House!</b>\n"
         "🏡 <b>Уют, искусство и тайны — всё для вашего идеального отдыха.</b>\n\n"
