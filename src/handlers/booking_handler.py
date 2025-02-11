@@ -636,7 +636,8 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
             f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
             "🔄 Пожалуйста, выберите новую дату начала бронирования.")
     else:
-        message = "📅 <b>Выберите дату начала бронирования.</b>\n"
+        message = ("📅 <b>Выберите дату начала бронирования.</b>\n"
+                   "Укажите день, когда хотите заселиться в дом.")
 
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
@@ -650,10 +651,12 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking = database_service.get_booking_by_day(start_booking_date.date())
     available_slots = date_time_helper.get_free_time_slots(booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
-    message = "⏳ <b>Выберите время начала бронирования.</b>\n"
+    message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
+                f"Вы выбрали дату заезда: {start_booking_date.strftime('%d.%m.%Y')}.\n"
+                "Теперь укажите удобное время заезда.\n")
     if tariff == Tariff.WORKER:
         message += (
-            "\n📌 <b>Для тарифа 'Рабочий' доступны следующие временные интервалы:</b>\n"
+            "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
             "🕚 11:00 – 20:00\n"
             "🌙 22:00 – 09:00"
         )
@@ -668,7 +671,10 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
-        text="📅 <b>Выберите дату завершения бронирования.</b>\n", 
+        text="📅 <b>Выберите дату завершения бронирования.</b>\n"
+            f"Вы выбрали дату и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
+            "Теперь укажите день, когда планируете выехать.\n"
+            "📌 Выезд должен быть позже времени заезда.", 
         parse_mode='HTML',
         reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
@@ -678,7 +684,13 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
     available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
-        text="⏳ <b>Выберите времня завершения бронирования.</b>",
+        text="⏳ <b>Выберите времня завершения бронирования.</b>\n"
+            f"Вы выбрали заезд: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
+            f"Вы выбрали дату выезда: {finish_booking_date.strftime('%d.%m.%Y')}.\n"
+            "Теперь укажите время, когда хотите освободить дом.\n\n"
+            "📌 Обратите внимание:\n"
+            "🔹 Выезд должен быть позже времени заезда.\n"
+            f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n",
         parse_mode='HTML',
         reply_markup=hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=finish_booking_date.date()))
     return SET_FINISH_TIME
