@@ -58,7 +58,7 @@ async def process_calendar_selection(update, context, min_date: date = None, max
     query = update.callback_query
     # TODO падает когда наживашь назад
     (_, action, year, month, day) = string_helper.separate_callback_data(query.data)
-    curr = datetime(int(year), int(month), 1)
+    selected_date = datetime(int(year), int(month), 1)
     if action == str(IGNORE):
         await context.bot.answer_callback_query(callback_query_id=query.id)
     if action == str(ACTION):
@@ -70,14 +70,14 @@ async def process_calendar_selection(update, context, min_date: date = None, max
             message_id=query.message.message_id)
         return_data = (True, datetime(int(year), int(month), int(day)), False)
     elif action == "PREV-MONTH":
-        prev_month = curr - timedelta(days = 1)
+        prev_month = selected_date - timedelta(days = 1)
         await context.bot.edit_message_text(
             text=query.message.text,
             chat_id=query.message.chat_id,
             message_id=query.message.message_id,
             reply_markup = create_calendar(prev_month.date(), min_date, max_date, action_text))
     elif action == "NEXT-MONTH":
-        next_month = curr + timedelta(days = 31)
+        next_month = selected_date + timedelta(days = 31)
         await context.bot.edit_message_text(
             text=query.message.text,
             chat_id=query.message.chat_id,

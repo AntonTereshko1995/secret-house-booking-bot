@@ -106,7 +106,7 @@ def get_handler() -> ConversationHandler:
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
                 CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$"),
-                CallbackQueryHandler(cash_pay_booking, pattern=f"^{str(CASH_PAY)}$")],
+                CallbackQueryHandler(cash_pay_booking, pattern=f"^{CASH_PAY}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -424,7 +424,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📌 <b>Что включено:</b> {categories}{photoshoot_text}\n"
             f"📅 <b>Заезд:</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"📅 <b>Выезд:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"💬 <b>Комментарий:</b> {booking_comment}\n\n"
+            f"💬 <b>Комментарий:</b> {booking_comment if booking_comment else ''}\n\n"
             "✅ <b>Подтвердите бронирование дома</b>")
     else:
         message = (
@@ -432,7 +432,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📌 <b>Включено:</b> {categories}{photoshoot_text}.\n"
             f"📅 <b>Заезд:</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"📅 <b>Выезд:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"💬 <b>Комментарий:</b> {booking_comment}\n\n"
+            f"💬 <b>Комментарий:</b> {booking_comment if booking_comment else ''}\n\n"
             "✅ <b>Подтвердить бронирование?</b>")
 
     if update.message:

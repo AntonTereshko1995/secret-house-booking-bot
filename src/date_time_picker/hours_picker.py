@@ -44,7 +44,7 @@ def create_hours_picker(date=None, free_slots=None, action_text=""):
         callback_data = create_callback_data(str(HOURS), time_slots[i])
         row.append(InlineKeyboardButton(time_str, callback_data=callback_data))
 
-        if len(row) == 2:
+        if len(row) == 4:
             keyboard.append(row)
             row = []
 

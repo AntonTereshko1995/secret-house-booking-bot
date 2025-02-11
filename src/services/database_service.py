@@ -25,8 +25,8 @@ class DatabaseService:
         self.Session = sessionmaker(bind=self.engine)
         database.create_db_and_tables()
         # Clear database
-        Base.metadata.drop_all(engine)  # Удаляет все таблицы
-        Base.metadata.create_all(engine)  # Создаёт таблицы заново
+        # Base.metadata.drop_all(engine)  # Удаляет все таблицы
+        # Base.metadata.create_all(engine)  # Создаёт таблицы заново
 
     def add_user(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -393,6 +393,22 @@ class DatabaseService:
             booking = session.scalar(select(BookingBase)
                 .where(BookingBase.id == booking_id))
             return booking
+
+    def get_booking_by_user_contact(
+            self, 
+            user_contact: str) -> BookingBase:
+        user = self.get_user_by_contact(user_contact)
+        if not user:
+            return None
+        
+        with self.Session() as session:
+            bookings = session.scalars(
+                select(BookingBase).where(and_(
+                    BookingBase.user_id == user.id,
+                    BookingBase.is_canceled == False,
+                    BookingBase.is_done == False,
+                    BookingBase.is_prepaymented == True))).all()
+            return bookings  
 
     def update_booking(
             self, 
