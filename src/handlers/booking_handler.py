@@ -35,7 +35,7 @@ from src.constants import (
     ADDITIONAL_BEDROOM,
     NUMBER_OF_PEOPLE,
     COMMENT,
-    SALE,
+    # SALE,
     PAY,
     SKIP,
     WRITE_CODE,
@@ -95,9 +95,9 @@ def get_handler() -> ConversationHandler:
             COMMENT: [
                 CallbackQueryHandler(write_comment),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, write_comment)],
-            SALE: [
-                CallbackQueryHandler(select_sale),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, select_sale)],
+            # SALE: [
+            #     CallbackQueryHandler(select_sale),
+            #     MessageHandler(filters.TEXT & ~filters.COMMAND, select_sale)],
             PAY: [CallbackQueryHandler(pay)],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
@@ -208,11 +208,11 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
             if gift or subscription:
                 if is_any_additional_payment():
-                    return await confirm_pay(update, context)
+                    return await pay(update, context)
                 else:
                     return await send_approving_to_admin(update, context, is_cash=True)
             else:
-                return await confirm_pay(update, context)
+                return await pay(update, context)
         else:
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
@@ -382,32 +382,29 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         global booking_comment
         booking_comment = update.message.text
 
-    if gift or subscription:
-        return await enter_user_contact(update, context)
-    else:
-        return await sale_message(update, context)
+    return await confirm_pay(update, context)
 
-async def select_sale(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global sale, customer_sale_comment
-    if update.message == None:
-        await update.callback_query.answer()
-        data = update.callback_query.data
-        if (data == str(END)):
-            return await back_navigation(update, context)
+# async def select_sale(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     global sale, customer_sale_comment
+#     if update.message == None:
+#         await update.callback_query.answer()
+#         data = update.callback_query.data
+#         if (data == str(END)):
+#             return await back_navigation(update, context)
 
-        if (data == str(END)):
-            return await back_navigation(update, context)
+#         if (data == str(END)):
+#             return await back_navigation(update, context)
         
-        sale = sale_halper.get_by_str(data)
-        return await enter_user_contact(update, context)
-    else:
-        sale = Sale.OTHER
-        customer_sale_comment = update.message.text
-        return await enter_user_contact(update, context)
+#         sale = sale_halper.get_by_str(data)
+#         return await enter_user_contact(update, context)
+#     else:
+#         sale = Sale.OTHER
+#         customer_sale_comment = update.message.text
+#         return await enter_user_contact(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
+        [InlineKeyboardButton("Перейти к оплате.", callback_data=SET_USER)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -422,28 +419,39 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if gift or subscription:
         payed_price = gift.price if gift else rental_rate.price
         price = price - payed_price
-        message = (f"💰 <b>Доплата: {price} руб.</b>\n\n"
+        message = (
+            f"💰 <b>Доплата: {price} руб.</b>\n\n"
             f"📌 <b>Что включено:</b> {categories}{photoshoot_text}\n"
             f"📅 <b>Заезд:</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"📅 <b>Выезд:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n\n"
+            f"📅 <b>Выезд:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"💬 <b>Комментарий:</b> {booking_comment}\n\n"
             "✅ <b>Подтвердите бронирование дома</b>")
     else:
-        message = (f"💰 <b>Итоговая сумма:</b> {price} руб.\n\n"
+        message = (
+            f"💰 <b>Итоговая сумма:</b> {price} руб.\n\n"
             f"📌 <b>Включено:</b> {categories}{photoshoot_text}.\n"
             f"📅 <b>Заезд:</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"📅 <b>Выезд:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n\n"
+            f"📅 <b>Выезд:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"💬 <b>Комментарий:</b> {booking_comment}\n\n"
             "✅ <b>Подтвердить бронирование?</b>")
 
-    await update.message.reply_text(
-        text=message,
-        parse_mode='HTML',
-        reply_markup=reply_markup)
-    return PAY
+    if update.message:
+        await update.message.reply_text(
+            text=message,
+            parse_mode='HTML',
+            reply_markup=reply_markup)
+    else:
+        await update.callback_query.edit_message_text(
+            text=message,
+            parse_mode='HTML',
+            reply_markup=reply_markup)
+    return SET_USER
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
-        return await back_navigation(update, context)
+    if update.callback_query and update.callback_query.data:
+        await update.callback_query.answer()
+        if (update.callback_query.data == str(END)):
+            return await back_navigation(update, context)
     
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=CANCEL)]]
     if gift or subscription:
@@ -453,7 +461,8 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n"
             "💵 Наличными при заселении.\n\n"
-            "❗️ <b>Важно!</b> После оплаты отправьте скриншот с чеком.\n"
+            "❗️ <b>Важно!</b>\n"
+            "После оплаты отправьте скриншот с чеком.\n"
             "📩 Только так мы сможем подтвердить получение предоплаты.\n\n"
             "🙏 Спасибо за понимание!")
     else:
@@ -471,10 +480,16 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📩 Это необходимо для подтверждения вашей предоплаты.\n\n"
             "🙏 Спасибо за понимание!")
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text(
-        text=message,
-        parse_mode='HTML',
-        reply_markup=reply_markup)
+    if update.message:
+        await update.message.reply_text(
+            text=message,
+            parse_mode='HTML',
+            reply_markup=reply_markup)
+    else:
+        await update.callback_query.edit_message_text(
+            text=message,
+            parse_mode='HTML',
+            reply_markup=reply_markup)
     return PHOTO_UPLOAD
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -516,7 +531,9 @@ async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = (f"📸 <b>Хотите заказать фотосессию?</b>\n"
-        "✨ Она уже включена в стоимость выбранного тарифа!")
+        "✨ Она уже включена в стоимость выбранного тарифа!\n"
+        "Фотосессия длится 2 часа.\n"
+        "Instagram фотографа: https://www.instagram.com/eugenechulitskyphoto/")
     if update.message == None:
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(
@@ -595,7 +612,7 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
         if rental_rate.max_people != MAX_PEOPLE else "")
     message = (
         "👥 <b>Сколько гостей будет присутствовать?</b>\n\n"
-        f"📌 <b>Максимальное количество гостей для тарифа '{rental_rate.name}':</b> {rental_rate.max_people} чел.\n"
+        f"📌 <b>Максимальное количество гостей для '{rental_rate.name}':</b> {rental_rate.max_people} чел.\n"
         f"{additional_people_text}")
 
     if update.message == None:
@@ -651,7 +668,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.edit_message_text(
-        text="Выберете дату завершения бронирования.\n", 
+        text="📅 <b>Выберите дату завершения бронирования.</b>\n", 
         parse_mode='HTML',
         reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
     return SET_FINISH_DATE
@@ -661,7 +678,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
     available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.edit_message_text(
-        text="📅 <b>Выберите дату завершения бронирования.</b>\n"
+        text="⏳ <b>Выберите времня завершения бронирования.</b>",
         parse_mode='HTML',
         reply_markup=hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=finish_booking_date.date()))
     return SET_FINISH_TIME
@@ -703,25 +720,25 @@ async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup)
     return COMMENT
 
-async def sale_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton(sale_halper.get_name(Sale.RECOMMENDATION_FROM_FRIEND), callback_data=Sale.RECOMMENDATION_FROM_FRIEND.value)],
-        [InlineKeyboardButton(sale_halper.get_name(Sale.FROM_FEEDBACK), callback_data=Sale.FROM_FEEDBACK.value)],
-        [InlineKeyboardButton("Пропустить", callback_data=Sale.NONE.value)],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+# async def sale_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     keyboard = [
+#         [InlineKeyboardButton(sale_halper.get_name(Sale.RECOMMENDATION_FROM_FRIEND), callback_data=Sale.RECOMMENDATION_FROM_FRIEND.value)],
+#         [InlineKeyboardButton(sale_halper.get_name(Sale.FROM_FEEDBACK), callback_data=Sale.FROM_FEEDBACK.value)],
+#         [InlineKeyboardButton("Пропустить", callback_data=Sale.NONE.value)],
+#         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+#     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    message = "🎁 <b>Выберите скидку или введите вручную:</b>"
-    if (update.message == None):
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
-            text=message, 
-            reply_markup=reply_markup)
-    else:
-        await update.message.reply_text(
-            text=message, 
-            reply_markup=reply_markup)
-    return SALE
+#     message = "🎁 <b>Выберите скидку или введите вручную:</b>"
+#     if (update.message == None):
+#         await update.callback_query.answer()
+#         await update.callback_query.edit_message_text(
+#             text=message, 
+#             reply_markup=reply_markup)
+#     else:
+#         await update.message.reply_text(
+#             text=message, 
+#             reply_markup=reply_markup)
+#     return SALE
 
 async def bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -874,8 +891,9 @@ async def initi_subscription_code(update: Update, context: ContextTypes.DEFAULT_
 
     rental_rate  = rate_service.get_subscription(subscription.subscription_type)
     await update.message.reply_text(
-        f"Отлично! Мы нашли Ваш '{rental_rate.name}'!\n"
-        f"У Вас осталось {subscription.subscription_type.value - subscription.number_of_visits} из {subscription.subscription_type.value} посещений.")
+        f"✅ <b>Отличные новости!</b> Мы нашли ваш тариф '<b>{rental_rate.name}</b>'!\n\n"
+        f"📅 <b>Осталось посещений:</b> {subscription.subscription_type.value - subscription.number_of_visits} из {subscription.subscription_type.value}.",
+        parse_mode='HTML')
     
     is_secret_room_included = True
     is_additional_bedroom_included = True
