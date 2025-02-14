@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
@@ -55,9 +57,11 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
+    LoggerService.info("subscription_handler: Back to menu", update)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info("subscription_handler: Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -72,6 +76,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return VALIDATE_USER
 
 async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info("subscription_handler: Generate subscription menu", update)
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
@@ -105,16 +110,12 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await confirm_pay(update, context)
         else:
+            LoggerService.warning("subscription_handler: User name is invalid", update)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.",
                 parse_mode='HTML',)
-    else:
-        await update.message.reply_text(
-            "❌ <b>Ошибка:</b> Пустая строка.\n\n"
-            "🔄 Пожалуйста, введите данные еще раз.",
-            parse_mode='HTML',)
 
     return VALIDATE_USER
 
@@ -126,11 +127,13 @@ async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT
 
     global subscription_type, rental_rate
     subscription_type = subscription_helper.get_by_str(data)
+    LoggerService.info(f"subscription_handler: select {subscription_type}", update)
     rental_rate = rate_service.get_subscription(subscription_type)
 
     return await enter_user_contact(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(f"subscription_handler: confirm pay", update)
     keyboard = [
         [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
@@ -156,6 +159,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=BACK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = rental_rate.price
+    LoggerService.info(f"subscription_handler: pay {price}", update)
 
     await update.callback_query.edit_message_text(
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
@@ -173,6 +177,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return PHOTO_UPLOAD
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(f"subscription_handler: confirm booking", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
@@ -201,5 +206,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1].file_id
     chat_id = update.message.chat.id
     subscription = save_subscription_information()
+    LoggerService.info(f"subscription_handler: handle photo", update)
     await admin_handler.accept_subscription_payment(update, context, subscription, chat_id, photo)
     return await confirm_booking(update, context)

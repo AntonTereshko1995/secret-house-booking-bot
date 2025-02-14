@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.gpt_service import GptService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
@@ -26,9 +28,11 @@ def get_handler() -> ConversationHandler:
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     await menu_handler.show_menu(update, context)
+    LoggerService.info(f"question_handler: back to menu", update)
     return END
 
 async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(f"question_handler: start conversation", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
@@ -39,6 +43,7 @@ async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
+    LoggerService.info(f"question_handler: message: {message}", update)
     responce = await gpt_service.generate_response(message)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)

@@ -1,12 +1,13 @@
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.config.config import PERIOD_IN_MONTHS
 from src.services.calendar_service import CalendarService
 from datetime import date
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters)
+from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, MessageHandler, filters)
 from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper
 from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, CHOOSE_BOOKING, CONFIRM
@@ -34,10 +35,12 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
+    LoggerService.info(f"cancel_booking_handler: Back to menu", update)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_variables()
+    LoggerService.info(f"cancel_booking_handler: Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -60,19 +63,13 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await choose_booking_message(update, context)
         else:
+            LoggerService.warning("cancel_booking_handler: User name is invalid", update)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.",
                 parse_mode='HTML'
             )
-    else:
-        await update.message.reply_text(
-            "❌ <b>Ошибка:</b> Пустая строка.\n\n"
-            "🔄 Пожалуйста, введите данные еще раз.",
-            parse_mode='HTML'
-        )
-
     return VALIDATE_USER
 
 async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -82,9 +79,11 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global booking
     booking = next((b for b in selected_bookings if str(b.id) == update.callback_query.data), None)
+    LoggerService.info(f"cancel_booking_handler: Choose booking [Id: {booking.id}]", update)
     return await confirm_message(update, context)
 
 async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(f"cancel_booking_handler: Confirm cancel booking", update)
     updated_booking = database_service.update_booking(booking.id, is_canceled=True)
     calendar_service.cancel_event(updated_booking.calendar_event_id)
     admin_handler.inform_cancel_booking(update, context, updated_booking)
@@ -130,6 +129,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRM
 
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.warning(f"cancel_booking_handler: Booking is empty", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(

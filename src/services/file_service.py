@@ -23,9 +23,8 @@ class FileService:
         for image_name in image_files:
             image_path = os.path.join(self._IMAGE_FOLDER, image_name)
             with open(image_path, "rb") as image_file:
-                media = InputMediaPhoto(image_file)  # Файл будет автоматически закрыт
+                media = InputMediaPhoto(image_file)
                 media_list.append(media)
-
         return media_list
 
     def get_tariff_rates(self) -> List[RentalPrice]:
@@ -36,15 +35,14 @@ class FileService:
         with open(self._TARIFF_JSON, "r") as file:
             data = json.load(file)
             tariff_list = [RentalPrice(**item) for item in data["rental_prices"]]
-
         return tariff_list
     
     def get_image(self, image_name: str):
         image_path = os.path.join(self._IMAGE_FOLDER, image_name)
         if not os.path.exists(image_path):
-            return None  # Файл не найден
+            return None
 
         with open(image_path, "rb") as image_file:
-            image_bytes = BytesIO(image_file.read())  # Читаем файл в память
-            image_bytes.seek(0)  # Перемещаем указатель в начало
+            image_bytes = BytesIO(image_file.read())
+            image_bytes.seek(0) 
             return image_bytes

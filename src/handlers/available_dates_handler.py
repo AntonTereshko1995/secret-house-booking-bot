@@ -2,6 +2,8 @@ import calendar
 from datetime import datetime, timedelta
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
@@ -28,9 +30,11 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
+    LoggerService.info(f"available_dates_handler: Back to menu", update)
     return END
 
 async def select_month(update: Update, context: CallbackContext):
+    LoggerService.info(f"available_dates_handler: Select month", update)
     months = date_time_helper.get_future_months(PERIOD_IN_MONTHS) 
     keyboard = [[InlineKeyboardButton(text=value, callback_data=f"month_{str(key)}")] for key, value in months.items()]
     keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
@@ -46,9 +50,10 @@ async def select_month(update: Update, context: CallbackContext):
 async def get_available_dates(update: Update, context: CallbackContext):
     await update.callback_query.answer()
     if (update.callback_query.data == str(END)):
-            return await back_navigation(update, context)
+        return await back_navigation(update, context)
 
     month, year = parse_callback_data(update)
+    LoggerService.info(f"available_dates_handler: Available dates", update)
     keyboard = [
         [InlineKeyboardButton("Выбрать другой месяц", callback_data=BACK)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]

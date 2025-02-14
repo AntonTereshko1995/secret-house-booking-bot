@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.enum.tariff import Tariff
 from src.services.calendar_service import CalendarService
@@ -64,11 +66,12 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
+    LoggerService.info(f"change_booking_date_handler: Back to menu", update)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_variables()
-
+    LoggerService.info(f"change_booking_date_handler: Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -91,15 +94,11 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await choose_booking_message(update, context)
         else:
+            LoggerService.warning("change_booking_date_handler: User name is invalid", update)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.")
-    else:
-        await update.message.reply_text(
-            "❌ <b>Ошибка:</b> Пустая строка.\n\n"
-            "🔄 Пожалуйста, введите данные еще раз."
-        )
 
     return VALIDATE_USER
 
@@ -110,6 +109,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global booking, old_booking_date
     booking = next((b for b in selected_bookings if str(b.id) == update.callback_query.data), None)
+    LoggerService.info("change_booking_date_handler: Choose booking", update)
     old_booking_date = booking.start_date
     return await start_date_message(update, context)
 
@@ -119,8 +119,10 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global start_booking_date
         start_booking_date = selected_date
+        LoggerService.info(f"change_booking_date_handler: Start date {start_booking_date.date()}", update)
         return await start_time_message(update, context)
     elif is_action:
+        LoggerService.info(f"change_booking_date_handler: Start date [Cancel]]", update)
         return await back_navigation(update, context)
     return SET_START_DATE
 
@@ -130,8 +132,10 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global start_booking_date
         start_booking_date = start_booking_date.replace(hour=time.hour, minute=time.minute)
+        LoggerService.info(f"change_booking_date_handler: Start time {start_booking_date.time()}", update)
         return await finish_date_message(update, context)
     elif is_action:
+        LoggerService.info(f"change_booking_date_handler: Start time [Cancel]]", update)
         return await back_navigation(update, context)
     return SET_START_TIME
 
@@ -143,8 +147,10 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global finish_booking_date
         finish_booking_date = selected_date
+        LoggerService.info(f"change_booking_date_handler: Finish date {finish_booking_date.date()}", update)
         return await finish_time_message(update, context)
     elif is_action:
+        LoggerService.info(f"change_booking_date_handler: Finish date [Cancel]", update)
         return await back_navigation(update, context)
     return SET_FINISH_DATE
 
@@ -154,8 +160,10 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global finish_booking_date
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        LoggerService.info(f"change_booking_date_handler: Finish time {finish_booking_date.time()}", update)
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
+            LoggerService.info(f"change_booking_date_handler: Finish time [Another booking]", update)
             return await start_date_message(update, context, is_error=True)
         
         selected_duration = finish_booking_date - start_booking_date
@@ -167,10 +175,12 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return await confirm_message(update, context)
     elif is_action:
+        LoggerService.info(f"change_booking_date_handler: Finish date [Cancel]", update)
         return await back_navigation(update, context)
     return SET_FINISH_TIME
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(f"change_booking_date_handler: Confirm booking", update)
     updated_booking = database_service.update_booking(booking.id, start_date=start_booking_date, end_date=finish_booking_date)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -284,6 +294,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRM
 
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(f"change_booking_date_handler: Booking in empty", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(

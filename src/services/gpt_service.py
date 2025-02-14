@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from openai import OpenAI
@@ -32,8 +34,7 @@ class GptService:
                 ])
 
             return response.choices[0].message.content
-
         except Exception as e:
-            # logging.error(f"Ошибка: {e}")
             print(f"Chat GPT Error: {e}")
+            LoggerService.error(f"GptService: generate_response", e)
             return "Произошла ошибка. Попробуйте позже."

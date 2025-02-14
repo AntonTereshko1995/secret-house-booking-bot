@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import os
 import logging
@@ -7,6 +6,7 @@ from db import database
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from src.handlers import menu_handler, admin_handler
+from src.services.logger_service import LoggerService
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
 import logging
@@ -43,6 +43,7 @@ def main() -> None:
 
     job = job_service.JobService()
     job.set_application(application)
+    LoggerService.init_logger()
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

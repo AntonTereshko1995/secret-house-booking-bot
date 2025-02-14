@@ -2,6 +2,8 @@ from datetime import datetime
 import sys
 import os
 from time import strptime
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.helpers import string_helper, tariff_helper
 from google.oauth2 import service_account
@@ -23,23 +25,33 @@ class CalendarService:
         self.service = build("calendar", "v3", credentials=credentials)
 
     def add_event(self, booking: BookingBase, user: UserBase) -> str:
-        event = {
-            "summary": tariff_helper.get_name(booking.tariff),
-            "description": string_helper.generate_booking_info_message(booking, user),
-            "start": {"dateTime": booking.start_date.isoformat(), "timeZone": "Europe/Minsk"},
-            "end": {"dateTime": booking.end_date.isoformat(), "timeZone": "Europe/Minsk"},
-        }
-        event = self.service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        print(f"Событие добавлено: {event.get('htmlLink')}")
-        return event["id"]
+        try:
+            event = {
+                "summary": tariff_helper.get_name(booking.tariff),
+                "description": string_helper.generate_booking_info_message(booking, user),
+                "start": {"dateTime": booking.start_date.isoformat(), "timeZone": "Europe/Minsk"},
+                "end": {"dateTime": booking.end_date.isoformat(), "timeZone": "Europe/Minsk"},
+            }
+            event = self.service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+            print(f"Событие добавлено: {event.get('htmlLink')}")
+            LoggerService.info(f"CalendarService: add_event")
+            return event["id"]
+        except Exception as e:
+            print(f"Error to add event: {e}")
+            LoggerService.error(f"CalendarService: add_event", e)
     
     def get_event_by_id(self, id: str):
-        event = self.service.events().get(calendarId=CALENDAR_ID, eventId=id).execute()
-        if not event:
-            print("❌ Нет событий в указанное время.")
-            return
-        
-        return event
+        try:
+            event = self.service.events().get(calendarId=CALENDAR_ID, eventId=id).execute()
+            if not event:
+                print("❌ Нет событий в указанное время.")
+                return
+            
+            LoggerService.info(f"CalendarService: get_event_by_id")
+            return event
+        except Exception as e:
+            print(f"Error to get event by id: {e}")
+            LoggerService.error(f"CalendarService: get_event_by_id", e)
     
     def move_event(self, event_id: str, start_datetime: datetime, finish_datetime: datetime):
         try:
@@ -53,8 +65,10 @@ class CalendarService:
             updated_event = self.service.events().update(calendarId=CALENDAR_ID, eventId=event["id"], body=event).execute()
             
             print(f"✅ Событие перенесено: {updated_event.get('htmlLink')}")
+            LoggerService.info(f"CalendarService: move_event")
         except Exception as e:
             print(f"Error to move event: {e}")
+            LoggerService.error(f"CalendarService: move_event", e)
         
     def cancel_event(self, event_id: str):
         try:
@@ -71,5 +85,7 @@ class CalendarService:
                 eventId=event_id, 
                 body=event).execute()
             print(f"✅ Событие {event['id']} успешно удалено.")
+            LoggerService.info(f"CalendarService: cancel_event")
         except Exception as e:
             print(f"Error to remove event: {e}")
+            LoggerService.error(f"CalendarService: cancel_event", e)

@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 from src.services import job_service
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler)
@@ -28,6 +29,7 @@ def get_handler() -> ConversationHandler:
     return handler
 
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    LoggerService.info(f"menu_handler: show menu", update)
     await job.init_job(update, context)
     
     buttons = [

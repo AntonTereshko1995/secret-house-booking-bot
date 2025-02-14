@@ -12,7 +12,6 @@ from singleton_decorator import singleton
 from src.services.database_service import DatabaseService
 
 logging.basicConfig(level=logging.INFO)
-
 database_service = DatabaseService()
 
 @singleton

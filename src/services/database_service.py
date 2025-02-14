@@ -1,6 +1,8 @@
 from datetime import date, datetime
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import database
 from src.models.enum.sale import Sale
@@ -39,6 +41,7 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error adding user: {e}")
+                LoggerService.error(f"DatabaseService: add_user", e)
 
     def get_or_create_user(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -55,17 +58,26 @@ class DatabaseService:
                 return new_user
             except Exception as e:
                 print(f"Error in get_or_create_user: {e}")
+                LoggerService.error(f"DatabaseService: get_or_create_user", e)
                 session.rollback()
 
     def get_user_by_contact(self, contact: str) -> UserBase:
-        with self.Session() as session:
-            user = session.scalar(select(UserBase).where(UserBase.contact == contact))
-            return user
+        try:
+            with self.Session() as session:
+                user = session.scalar(select(UserBase).where(UserBase.contact == contact))
+                return user
+        except Exception as e:
+            print(f"Error in get_user_by_contact: {e}")
+            LoggerService.error(f"DatabaseService: get_user_by_contact", e)
         
     def get_user_by_id(self, user_id: int) -> UserBase:
-        with self.Session() as session:
-            user = session.scalar(select(UserBase).where(UserBase.id == user_id))
-            return user
+        try:
+            with self.Session() as session:
+                user = session.scalar(select(UserBase).where(UserBase.id == user_id))
+                return user
+        except Exception as e:
+            print(f"Error in get_user_by_id: {e}")
+            LoggerService.error(f"DatabaseService: get_user_by_id", e)
         
     def add_gift(
             self, 
@@ -95,6 +107,7 @@ class DatabaseService:
             except Exception as e:
                 print(f"Error adding gift: {e}")
                 session.rollback()
+                LoggerService.error(f"DatabaseService: add_gift", e)
 
     def update_gift(
             self, 
@@ -125,18 +138,27 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error updating Gift: {e}")
+                LoggerService.error(f"DatabaseService: update_gift", e)
 
     def get_gift_by_code(self, code: str) -> GiftBase:
-        with self.Session() as session:
-            gift = session.scalar(select(GiftBase)
-                .where((GiftBase.code == code) & (GiftBase.is_paymented == True) & (GiftBase.is_done == False)))
-            return gift
+        try:
+            with self.Session() as session:
+                gift = session.scalar(select(GiftBase)
+                    .where((GiftBase.code == code) & (GiftBase.is_paymented == True) & (GiftBase.is_done == False)))
+                return gift
+        except Exception as e:
+            print(f"Error in get_gift_by_code: {e}")
+            LoggerService.error(f"DatabaseService: get_gift_by_code", e)
         
     def get_gift_by_id(self, id: int) -> GiftBase:
-        with self.Session() as session:
-            gift = session.scalar(select(GiftBase)
-                .where(GiftBase.id == id))
-            return gift
+        try:
+            with self.Session() as session:
+                gift = session.scalar(select(GiftBase)
+                    .where(GiftBase.id == id))
+                return gift
+        except Exception as e:
+            print(f"Error in get_gift_by_id: {e}")
+            LoggerService.error(f"DatabaseService: get_gift_by_id", e)
 
     def add_subscription(
             self, 
@@ -161,6 +183,7 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error adding Subscription: {e}")
+                LoggerService.error(f"DatabaseService: add_subscription", e)
 
     def update_subscription(
             self, 
@@ -191,18 +214,27 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error updating Subscription: {e}")
+                LoggerService.error(f"DatabaseService: update_subscription", e)
     
     def get_subscription_by_code(self, code: str) -> SubscriptionBase:
-        with self.Session() as session:
-            subscription = session.scalar(select(SubscriptionBase)
-                .where((SubscriptionBase.code == code) & (SubscriptionBase.is_paymented == True) & (SubscriptionBase.is_done == False)))
-            return subscription
+        try:
+            with self.Session() as session:
+                subscription = session.scalar(select(SubscriptionBase)
+                    .where((SubscriptionBase.code == code) & (SubscriptionBase.is_paymented == True) & (SubscriptionBase.is_done == False)))
+                return subscription
+        except Exception as e:
+            print(f"Error in get_subscription_by_code: {e}")
+            LoggerService.error(f"DatabaseService: get_subscription_by_code", e)
 
     def get_subscription_by_id(self, id: int) -> SubscriptionBase: 
-        with self.Session() as session:
-            subscription = session.scalar(select(SubscriptionBase)
-                .where(SubscriptionBase.id == id))
-            return subscription
+        try:
+            with self.Session() as session:
+                subscription = session.scalar(select(SubscriptionBase)
+                    .where(SubscriptionBase.id == id))
+                return subscription
+        except Exception as e:
+            print(f"Error in get_subscription_by_id: {e}")
+            LoggerService.error(f"DatabaseService: get_subscription_by_id", e)
 
     def add_booking(
             self, 
@@ -255,6 +287,8 @@ class DatabaseService:
             except Exception as e:
                 print(f"Error adding booking: {e}")
                 session.rollback()
+                LoggerService.error(f"DatabaseService: add_booking", e)
+                
 
     def get_booking_by_start_date_user(
             self, 
@@ -263,136 +297,164 @@ class DatabaseService:
         user = self.get_user_by_contact(user_contact)
         if not user:
             return None
-        
-        with self.Session() as session:
-            booking = session.scalar(select(BookingBase).where(
-                and_(
-                    BookingBase.user_id == user.id,
-                    func.date(BookingBase.start_date) == start_date,
-                    BookingBase.is_canceled == False,
-                    BookingBase.is_done == False,
-                    BookingBase.is_prepaymented == True
-                )
-            ))
-            return booking
+        try:
+            with self.Session() as session:
+                booking = session.scalar(select(BookingBase).where(
+                    and_(
+                        BookingBase.user_id == user.id,
+                        func.date(BookingBase.start_date) == start_date,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True
+                    )
+                ))
+                return booking
+        except Exception as e:
+            print(f"Error in get_booking_by_start_date_user: {e}")
+            LoggerService.error(f"DatabaseService: get_booking_by_start_date_user", e)
     
     def get_booking_by_start_date(
             self, 
             start_date: date) -> BookingBase:
-        with self.Session() as session:
-            bookings = session.scalars(select(BookingBase).where(
-                and_(
-                    func.date(BookingBase.start_date) == start_date,
-                    BookingBase.is_canceled == False,
-                    BookingBase.is_done == False,
-                    BookingBase.is_prepaymented == True
-                )
-            )).all() 
-            return bookings
+        try:
+            with self.Session() as session:
+                booking = session.scalar(select(BookingBase).where(
+                    and_(
+                        func.date(BookingBase.start_date) == start_date,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True
+                    )
+                ))
+                return booking
+        except Exception as e:
+            print(f"Error in get_booking_by_start_date: {e}")
+            LoggerService.error(f"DatabaseService: get_booking_by_start_date", e)
         
     def get_booking_by_finish_date(
             self, 
             end_date: date) -> BookingBase:
-        with self.Session() as session:
-            bookings = session.scalars(select(BookingBase).where(
-                and_(
-                    func.date(BookingBase.end_date) == end_date,
-                    BookingBase.is_canceled == False,
-                    BookingBase.is_done == False,
-                    BookingBase.is_prepaymented == True
-                )
-            )).all()  
-            return bookings
+        try:
+            with self.Session() as session:
+                booking = session.scalar(select(BookingBase).where(
+                    and_(
+                        func.date(BookingBase.end_date) == end_date,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True
+                    )
+                ))
+                return booking
+        except Exception as e:
+            print(f"Error in get_booking_by_finish_date: {e}")
+            LoggerService.error(f"DatabaseService: get_booking_by_finish_date", e)
             
     def get_booking_by_period(self, from_date: date, to_date: date, is_admin: bool = False):
-        with self.Session() as session:
-            if not is_admin:
+        try:
+            with self.Session() as session:
+                if not is_admin:
+                    bookings = session.scalars(
+                        select(BookingBase).where(
+                            and_(
+                                BookingBase.start_date >= from_date,
+                                BookingBase.start_date <= to_date,
+                                BookingBase.is_canceled == False,
+                                BookingBase.is_done == False,
+                                BookingBase.is_prepaymented == True
+                            )
+                        )
+                    ).all()
+                else:
+                    bookings = session.scalars(
+                            select(BookingBase).where(
+                                and_(
+                                    BookingBase.start_date >= from_date,
+                                    BookingBase.start_date <= to_date,
+                                )
+                            )
+                        ).all() 
+                    
+                return bookings
+        except Exception as e:
+            print(f"Error in get_booking_by_period: {e}")
+            LoggerService.error(f"DatabaseService: get_booking_by_period", e)
+
+    def get_booking_by_day(self, target_date: date, except_booking_id: int = None):
+        try:
+            with self.Session() as session:
+                start_of_day = datetime.combine(target_date, datetime.min.time())
+                end_of_day = datetime.combine(target_date, datetime.max.time())
                 bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            BookingBase.start_date >= from_date,
-                            BookingBase.start_date <= to_date,
                             BookingBase.is_canceled == False,
                             BookingBase.is_done == False,
-                            BookingBase.is_prepaymented == True
+                            BookingBase.is_prepaymented == True,
+                            BookingBase.id != except_booking_id,
+                            or_(
+                                and_(
+                                    BookingBase.start_date >= start_of_day,
+                                    BookingBase.start_date <= end_of_day
+                                ),
+                                and_(
+                                    BookingBase.end_date >= start_of_day,
+                                    BookingBase.end_date <= end_of_day
+                                ),
+                                and_(
+                                    BookingBase.start_date <= start_of_day,
+                                    BookingBase.end_date >= end_of_day
+                                )
+                            )
                         )
                     )
                 ).all()
-            else:
-               bookings = session.scalars(
-                    select(BookingBase).where(
-                        and_(
-                            BookingBase.start_date >= from_date,
-                            BookingBase.start_date <= to_date,
-                        )
-                    )
-                ).all() 
-            return bookings
-
-    def get_booking_by_day(self, target_date: date, except_booking_id: int = None):
-        with self.Session() as session:
-            start_of_day = datetime.combine(target_date, datetime.min.time())
-            end_of_day = datetime.combine(target_date, datetime.max.time())
-            bookings = session.scalars(
-                select(BookingBase).where(
-                    and_(
-                        BookingBase.is_canceled == False,
-                        BookingBase.is_done == False,
-                        BookingBase.is_prepaymented == True,
-                        BookingBase.id != except_booking_id,
-                        or_(
-                            and_(
-                                BookingBase.start_date >= start_of_day,
-                                BookingBase.start_date <= end_of_day
-                            ),
-                            and_(
-                                BookingBase.end_date >= start_of_day,
-                                BookingBase.end_date <= end_of_day
-                            ),
-                            and_(
-                                BookingBase.start_date <= start_of_day,
-                                BookingBase.end_date >= end_of_day
-                            )
-                        )
-                    )
-                )
-            ).all()
-            return bookings
+                return bookings
+        except Exception as e:
+            print(f"Error in get_booking_by_day: {e}")
+            LoggerService.error(f"DatabaseService: get_booking_by_day", e)
 
     def is_booking_between_dates(self, start: datetime, end: datetime) -> bool:
-        with self.Session() as session:
-            overlapping_bookings = session.scalars(
-                select(BookingBase).where(
-                    and_(
-                        BookingBase.is_canceled == False,
-                        BookingBase.is_done == False,
-                        BookingBase.is_prepaymented == True,
-                        or_(
-                            and_(
-                                BookingBase.start_date <= end,
-                                BookingBase.start_date >= start
-                            ),
-                            and_(
-                                BookingBase.end_date >= start,
-                                BookingBase.end_date <= end
-                            ),
-                            and_(
-                                BookingBase.start_date <= start,
-                                BookingBase.end_date >= end
+        try:
+            with self.Session() as session:
+                overlapping_bookings = session.scalars(
+                    select(BookingBase).where(
+                        and_(
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
+                            or_(
+                                and_(
+                                    BookingBase.start_date <= end,
+                                    BookingBase.start_date >= start
+                                ),
+                                and_(
+                                    BookingBase.end_date >= start,
+                                    BookingBase.end_date <= end
+                                ),
+                                and_(
+                                    BookingBase.start_date <= start,
+                                    BookingBase.end_date >= end
+                                )
                             )
                         )
                     )
-                )
-            ).first()
-            return overlapping_bookings is not None
+                ).first()
+                return overlapping_bookings is not None
+        except Exception as e:
+            print(f"Error in is_booking_between_dates: {e}")
+            LoggerService.error(f"DatabaseService: is_booking_between_dates", e)
 
     def get_booking_by_id(
             self, 
             booking_id: int) -> BookingBase:
-        with self.Session() as session:
-            booking = session.scalar(select(BookingBase)
-                .where(BookingBase.id == booking_id))
-            return booking
+        try:
+            with self.Session() as session:
+                booking = session.scalar(select(BookingBase)
+                    .where(BookingBase.id == booking_id))
+                return booking
+        except Exception as e:
+            print(f"Error in get_booking_by_id: {e}")
+            LoggerService.error(f"DatabaseService: get_booking_by_id", e)
 
     def get_booking_by_user_contact(
             self, 
@@ -401,14 +463,18 @@ class DatabaseService:
         if not user:
             return None
         
-        with self.Session() as session:
-            bookings = session.scalars(
-                select(BookingBase).where(and_(
-                    BookingBase.user_id == user.id,
-                    BookingBase.is_canceled == False,
-                    BookingBase.is_done == False,
-                    BookingBase.is_prepaymented == True))).all()
-            return bookings  
+        try:
+            with self.Session() as session:
+                bookings = session.scalars(
+                    select(BookingBase).where(and_(
+                        BookingBase.user_id == user.id,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True))).all()
+                return bookings  
+        except Exception as e:
+            print(f"Error in get_booking_by_user_contact: {e}")
+            LoggerService.error(f"DatabaseService: get_booking_by_user_contact", e)
 
     def update_booking(
             self, 
