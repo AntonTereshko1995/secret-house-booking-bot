@@ -1,12 +1,9 @@
-import datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from matplotlib.dates import relativedelta
 from src.config.config import PERIOD_IN_MONTHS
 from src.services.calendar_service import CalendarService
-from datetime import datetime, date, timedelta
-from src.date_time_picker import calendar_picker
+from datetime import date
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters)

@@ -1,5 +1,5 @@
 import calendar
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -8,7 +8,6 @@ from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext)
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper
-from src.config.config import CLEANING_HOURS
 from src.constants import END, MENU, AVAILABLE_DATES, STOPPING, GET_AVAILABLE_DATES, BACK
 from src.config.config import PERIOD_IN_MONTHS
 
@@ -16,11 +15,10 @@ database_service = DatabaseService()
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(select_month, pattern=f"^{str(AVAILABLE_DATES)}$")],
+        entry_points=[CallbackQueryHandler(select_month, pattern=f"^{AVAILABLE_DATES}$")],
         states={ 
             GET_AVAILABLE_DATES: [CallbackQueryHandler(get_available_dates)], 
-            BACK: [CallbackQueryHandler(select_month, pattern=f"^{BACK}$")], 
-            },
+            BACK: [CallbackQueryHandler(select_month, pattern=f"^{BACK}$")]},
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             END: MENU,

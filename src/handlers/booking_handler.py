@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.handlers.base_handler import disable_last_button
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from matplotlib.dates import relativedelta
 from db.models.booking import BookingBase
@@ -78,35 +80,37 @@ def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(generate_tariff_menu, pattern=f"^{str(BOOKING)}$")],
         states={
-            SET_USER: [CallbackQueryHandler(enter_user_contact)],
+            SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^BOOKING-CONFIRM-PAY_({SET_USER}|{CANCEL}|{END})$")],
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            SELECT_TARIFF: [CallbackQueryHandler(select_tariff)],
-            INCLUDE_PHOTOSHOOT: [CallbackQueryHandler(include_photoshoot)],
-            INCLUDE_SECRET_ROOM: [CallbackQueryHandler(include_secret_room)],
-            INCLUDE_SAUNA: [CallbackQueryHandler(include_sauna)],
-            SELECT_BEDROOM: [CallbackQueryHandler(select_bedroom)],
-            ADDITIONAL_BEDROOM: [CallbackQueryHandler(select_additional_bedroom)],
-            NUMBER_OF_PEOPLE: [CallbackQueryHandler(select_number_of_people)],
-            SET_START_DATE: [CallbackQueryHandler(enter_start_date)], 
-            SET_START_TIME: [CallbackQueryHandler(enter_start_time)], 
-            SET_FINISH_DATE: [CallbackQueryHandler(enter_finish_date)], 
-            SET_FINISH_TIME: [CallbackQueryHandler(enter_finish_time)],
-            WRITE_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, write_secret_code)],
+            SELECT_TARIFF: [CallbackQueryHandler(select_tariff, pattern=f"^BOOKING-TARIFF_(\d+|{END})$")],
+            INCLUDE_PHOTOSHOOT: [CallbackQueryHandler(include_photoshoot, pattern=f"^BOOKING-PHOTO_(?i:true|false|{END})$")],
+            INCLUDE_SECRET_ROOM: [CallbackQueryHandler(include_secret_room, pattern=f"^BOOKING-SECRET_(?i:true|false|{END})$")],
+            INCLUDE_SAUNA: [CallbackQueryHandler(include_sauna, pattern=f"^BOOKING-SAUNA_(?i:true|false|{END})$")],
+            SELECT_BEDROOM: [CallbackQueryHandler(select_bedroom, pattern=f"^BOOKING-BEDROOM_(\d+|{END})$")],
+            ADDITIONAL_BEDROOM: [CallbackQueryHandler(select_additional_bedroom, pattern=f"^BOOKING-ADD-BEDROOM_(?i:true|false|{END})$")],
+            NUMBER_OF_PEOPLE: [CallbackQueryHandler(select_number_of_people, pattern=f"^BOOKING-PEOPLE_(\d+|{END})$")],
+            SET_START_DATE: [CallbackQueryHandler(enter_start_date, pattern=f"^CALENDAR-CALLBACK_(.+|{BACK})$")], 
+            SET_START_TIME: [CallbackQueryHandler(enter_start_time, pattern=f"^HOURS-CALLBACK_(.+|{BACK})$")], 
+            SET_FINISH_DATE: [CallbackQueryHandler(enter_finish_date, pattern=f"^CALENDAR-CALLBACK_(.+|{BACK})$")], 
+            SET_FINISH_TIME: [CallbackQueryHandler(enter_finish_time, pattern=f"^HOURS-CALLBACK_(.+|{BACK})$")],
+            WRITE_CODE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, write_secret_code),
+                CallbackQueryHandler(write_secret_code, pattern=f"^BOOKING-CODE_({END})$")],
             COMMENT: [
-                CallbackQueryHandler(write_comment),
+                CallbackQueryHandler(write_comment, pattern=f"^BOOKING-COMMENT_({END}|{SKIP})$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, write_comment)],
             # SALE: [
             #     CallbackQueryHandler(select_sale),
             #     MessageHandler(filters.TEXT & ~filters.COMMAND, select_sale)],
-            PAY: [CallbackQueryHandler(pay)],
-            CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
-            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
-            CANCEL: [CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$")],
-            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
+            PAY: [CallbackQueryHandler(pay, pattern=f"^BOOKING-PAY_({CASH_PAY}|{CANCEL})$")],
+            CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^BOOKING-CONFIRM-PAY_({END}|{SET_USER})$")],
+            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^BOOKING-CONFIRM_({CONFIRM}|{END})$")],
+            CANCEL: [CallbackQueryHandler(cancel_booking, pattern=f"^BOOKING-CANCEL_{CANCEL}$")],
+            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^BOOKING-BACK_{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(cancel_booking, pattern=f"^{str(CANCEL)}$"),
-                CallbackQueryHandler(cash_pay_booking, pattern=f"^{CASH_PAY}$")],
+                CallbackQueryHandler(cancel_booking, pattern=f"^BOOKING-PAY_{CANCEL}$"),
+                CallbackQueryHandler(cash_pay_booking, pattern=f"^BOOKING-PAY_{CASH_PAY}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
@@ -124,26 +128,26 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard = [
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.INCOGNITA_DAY)} — {rate_service.get_price(Tariff.INCOGNITA_DAY)} руб", 
-            callback_data=f"{Tariff.INCOGNITA_DAY.value}")],
+            callback_data=f"BOOKING-TARIFF_{Tariff.INCOGNITA_DAY.value}")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.INCOGNITA_HOURS)} — {rate_service.get_price(Tariff.INCOGNITA_HOURS)} руб",
-            callback_data=f"{Tariff.INCOGNITA_HOURS.value}")],
+            callback_data=f"BOOKING-TARIFF_{Tariff.INCOGNITA_HOURS.value}")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.DAY)} — {rate_service.get_price(Tariff.DAY)} руб",
-            callback_data=f"{Tariff.DAY.value}")],
+            callback_data=f"BOOKING-TARIFF_{Tariff.DAY.value}")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.HOURS_12)} — от {rate_service.get_price(Tariff.HOURS_12)} руб",
-            callback_data=f"{Tariff.HOURS_12.value}")],
+            callback_data=f"BOOKING-TARIFF_{Tariff.HOURS_12.value}")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.WORKER)} — от {rate_service.get_price(Tariff.WORKER)} руб",
-            callback_data=f"{Tariff.WORKER.value}")],
+            callback_data=f"BOOKING-TARIFF_{Tariff.WORKER.value}")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.SUBSCRIPTION)} 🎟", 
-            callback_data=f"{Tariff.SUBSCRIPTION.value} 🎁")],
+            callback_data=f"BOOKING-TARIFF_{Tariff.SUBSCRIPTION.value} 🎁")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.GIFT)}", 
-            callback_data=f"{Tariff.GIFT.value}")],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+            callback_data=f"BOOKING-TARIFF_{Tariff.GIFT.value}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-TARIFF_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
@@ -154,7 +158,7 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    data = update.callback_query.data
+    data = string_helper.get_callback_data(update.callback_query.data)
     if (data == str(END)):
         return await back_navigation(update, context)
 
@@ -228,24 +232,22 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
         return await back_navigation(update, context)
 
     global is_photoshoot_included
-    is_photoshoot_included = eval(update.callback_query.data)
+    is_photoshoot_included = eval(data)
     return await count_of_people_message(update, context)
 
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
-        return await back_navigation(update, context)
-
-    data = update.callback_query.data
+    data = string_helper.get_callback_data(update.callback_query.data)
     if (data == str(END)):
         return await back_navigation(update, context)
 
     global is_sauna_included
-    is_sauna_included = eval(update.callback_query.data)
+    is_sauna_included = eval(data)
 
     if gift:
         return await navigate_next_step_for_gift(update, context)
@@ -257,7 +259,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    data = update.callback_query.data
+    data = string_helper.get_callback_data(update.callback_query.data)
     if (data == str(END)):
         return await back_navigation(update, context)
 
@@ -271,10 +273,11 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
         return await back_navigation(update, context)
 
-    bedroom = bedroom_halper.get_by_str(update.callback_query.data)
+    bedroom = bedroom_halper.get_by_str(data)
     if (bedroom == Bedroom.GREEN):
         global is_green_room_included
         is_green_room_included = True
@@ -289,10 +292,11 @@ async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
         return await back_navigation(update, context)
 
-    is_added = eval(update.callback_query.data)
+    is_added = eval(data)
     if is_added:
         global is_green_room_included, is_white_room_included, is_additional_bedroom_included
         is_additional_bedroom_included = True
@@ -308,14 +312,21 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
 
 async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
         return await back_navigation(update, context)
 
     global number_of_guests
-    number_of_guests = int(update.callback_query.data)
+    number_of_guests = int(data)
     return await start_date_message(update, context)
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message == None:
+        await update.callback_query.answer()
+        data = string_helper.get_callback_data(update.callback_query.data)
+        if (data == str(END)):
+            return await back_navigation(update, context)
+
     if (tariff == Tariff.GIFT):
         return await initi_gift_code(update, context)
     else:
@@ -376,7 +387,8 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message == None:
         await update.callback_query.answer()
-        if (update.callback_query.data == str(END)):
+        data = string_helper.get_callback_data(update.callback_query.data)
+        if (data == str(END)):
             return await back_navigation(update, context)
     else:
         global booking_comment
@@ -404,8 +416,8 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Перейти к оплате.", callback_data=SET_USER)],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Перейти к оплате.", callback_data=f"BOOKING-CONFIRM-PAY_{SET_USER}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CONFIRM-PAY_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     global price, sale
@@ -453,9 +465,9 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (update.callback_query.data == str(END)):
             return await back_navigation(update, context)
     
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=CANCEL)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"BOOKING-PAY_{CANCEL}")]]
     if gift or subscription:
-        keyboard.append([InlineKeyboardButton("Оплата наличкой", callback_data=CASH_PAY)])
+        keyboard.append([InlineKeyboardButton("Оплата наличкой", callback_data=f"BOOKING-PAY_{CASH_PAY}")])
         message = (f"💰 <b>Сумма доплаты:</b> {price} руб.\n\n"
             "📌 <b>Доступные способы оплаты (Альфа-Банк):</b>\n"
             f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
@@ -500,7 +512,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await back_navigation(update, context)
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CONFIRM_{END}")]]
     message = (
         "✨ <b>Спасибо за доверие к The Secret House!</b> ✨\n"
         "📩 Мы скоро отправим вам сообщение с подтверждением бронирования.\n\n"
@@ -525,9 +537,9 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Да", callback_data=str(True))],
-        [InlineKeyboardButton("Нет", callback_data=str(False))],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Да", callback_data=f"BOOKING-PHOTO_{str(True)}")],
+        [InlineKeyboardButton("Нет", callback_data=f"BOOKING-PHOTO_{str(False)}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-PHOTO_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = (f"📸 <b>Хотите заказать фотосессию?</b>\n"
@@ -549,9 +561,9 @@ async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Да", callback_data=str(True))],
-        [InlineKeyboardButton("Нет", callback_data=str(False))],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Да", callback_data=f"BOOKING-SECRET_{str(True)}")],
+        [InlineKeyboardButton("Нет", callback_data=f"BOOKING-SECRET_{str(False)}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-SECRET_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = (
@@ -573,7 +585,7 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     return INCLUDE_SECRET_ROOM
 
 async def write_code_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False):
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CODE_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if is_error:
@@ -598,12 +610,12 @@ async def write_code_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
 async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("1 гость", callback_data=str(1))],
-        [InlineKeyboardButton("2 гостя", callback_data=str(2))],
-        [InlineKeyboardButton("3 гостя", callback_data=str(3))],
-        [InlineKeyboardButton("4 гостя", callback_data=str(4))],
-        [InlineKeyboardButton("5 гостей", callback_data=str(5))],
-        [InlineKeyboardButton("6 гостей", callback_data=str(6))],
+        [InlineKeyboardButton("1 гость", callback_data="BOOKING-PEOPLE_1")],
+        [InlineKeyboardButton("2 гостя", callback_data="BOOKING-PEOPLE_2")],
+        [InlineKeyboardButton("3 гостя", callback_data="BOOKING-PEOPLE_3")],
+        [InlineKeyboardButton("4 гостя", callback_data="BOOKING-PEOPLE_4")],
+        [InlineKeyboardButton("5 гостей", callback_data="BOOKING-PEOPLE_5")],
+        [InlineKeyboardButton("6 гостей", callback_data="BOOKING-PEOPLE_6")],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -696,9 +708,9 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Да", callback_data=str(True))],
-        [InlineKeyboardButton("Нет", callback_data=str(False))],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Да", callback_data=f"BOOKING-SAUNA_{str(True)}")],
+        [InlineKeyboardButton("Нет", callback_data=f"BOOKING-SAUNA_{str(False)}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-SAUNA_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = (
@@ -721,8 +733,8 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Пропустить", callback_data=str(SKIP))],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Пропустить", callback_data=f"BOOKING-COMMENT_{SKIP}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-COMMENT_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
         text="💬 <b>Хотите оставить комментарий?</b>\n"
@@ -753,9 +765,9 @@ async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("🛏 Белая спальня", callback_data=Bedroom.WHITE.value)],
-        [InlineKeyboardButton("🌿 Зеленая спальня", callback_data=Bedroom.GREEN.value)],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("🛏 Белая спальня", callback_data=f"BOOKING-BEDROOM_{Bedroom.WHITE.value}")],
+        [InlineKeyboardButton("🌿 Зеленая спальня", callback_data=f"BOOKING-BEDROOM_{Bedroom.GREEN.value}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-BEDROOM_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     message = "🛏 <b>Выберите спальную комнату:</b>"
     if update.callback_query:
@@ -774,9 +786,9 @@ async def bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Да", callback_data=str(True))],
-        [InlineKeyboardButton("Нет", callback_data=str(False))],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Да", callback_data=f"BOOKING-ADD-BEDROOM_{str(True)}")],
+        [InlineKeyboardButton("Нет", callback_data=f"BOOKING-ADD-BEDROOM_{str(False)}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-ADD-BEDROOM_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
@@ -949,5 +961,3 @@ async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_
     save_booking_information(chat_id)
     await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, is_cash)
     return await confirm_booking(update, context)
-
-

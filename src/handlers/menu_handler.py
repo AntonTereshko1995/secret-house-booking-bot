@@ -52,7 +52,10 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup(buttons))
     elif update.callback_query:
-        await update.callback_query.answer()
+        try:
+            await update.callback_query.answer()
+        except:
+            pass
         await update.callback_query.edit_message_text(
             text,
             parse_mode='HTML',

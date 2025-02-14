@@ -4,11 +4,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
-from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.handlers import menu_handler
 from src.helpers import string_helper, tariff_helper
 from src.constants import (
-    BACK, 
     END,
     MENU, 
     STOPPING, 
@@ -22,7 +20,7 @@ database_service = DatabaseService()
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(USER_BOOKING)}$")],
+        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{USER_BOOKING}$")],
         states={
             SET_USER: [CallbackQueryHandler(enter_user_contact)],
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
