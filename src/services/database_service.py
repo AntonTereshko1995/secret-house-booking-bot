@@ -1,9 +1,8 @@
 from datetime import date, datetime
 import sys
 import os
-
-from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 import database
 from src.models.enum.sale import Sale
 from db.models.base import Base

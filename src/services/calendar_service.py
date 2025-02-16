@@ -1,10 +1,8 @@
 from datetime import datetime
 import sys
 import os
-from time import strptime
-
-from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 from src.helpers import string_helper, tariff_helper
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
