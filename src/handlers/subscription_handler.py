@@ -1,8 +1,7 @@
 import sys
 import os
-
-from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
@@ -13,7 +12,7 @@ from src.models.enum.subscription_type import SubscriptionType
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from src.constants import (
-    BACK, 
+    BACK,
     END,
     MENU, 
     STOPPING, 
@@ -37,17 +36,16 @@ def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(generate_subscription_menu, pattern=f"^{str(SUBSCRIPTION)}$")],
         states={
-            SET_USER: [CallbackQueryHandler(enter_user_contact)],
+            SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^SUBSCRIPTION-USER_({SET_USER}|{END})$")],
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            SUBSCRIPTION_TYPE: [CallbackQueryHandler(select_subscription_type)],
-            CONFIRM_PAY: [CallbackQueryHandler(confirm_pay)],
-            PAY: [CallbackQueryHandler(pay)],
-            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")],
+            SUBSCRIPTION_TYPE: [CallbackQueryHandler(select_subscription_type, pattern=f"^SUBSCRIPTION-TYPE_(\d+|{END})$")],
+            CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^SUBSCRIPTION-CONFIRM-PAY_({END}|{SET_USER})$")],
+            PAY: [CallbackQueryHandler(pay, pattern=f"^SUBSCRIPTION-PAY_({END})$")],
+            CONFIRM: [CallbackQueryHandler(confirm_subscription, pattern=f"^SUBSCRIPTION-CONFIRM_({CONFIRM}|{END})$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
-        },
+                CallbackQueryHandler(back_navigation, pattern=f"^SUBSCRIPTION-PAY_{END}$")]},
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             END: MENU,
@@ -61,11 +59,15 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
+        return await back_navigation(update, context)
+
     LoggerService.info(__name__, "Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
@@ -81,14 +83,14 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
     keyboard = [
         [InlineKeyboardButton(
             f"{subscription_helper.get_name(SubscriptionType.VISITS_3)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_3)} руб", 
-            callback_data=f"{SubscriptionType.VISITS_3.value}")],
+            callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_3.value}")],
         [InlineKeyboardButton(
             f"{subscription_helper.get_name(SubscriptionType.VISITS_5)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_5)} руб", 
-            callback_data=f"{SubscriptionType.VISITS_5.value}")],
+            callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_5.value}")],
         [InlineKeyboardButton(
             f"{subscription_helper.get_name(SubscriptionType.VISITS_8)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_8)} руб", 
-            callback_data=f"{SubscriptionType.VISITS_8.value}")],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+            callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_8.value}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"SUBSCRIPTION-TYPE_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
@@ -108,7 +110,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-            return await confirm_pay(update, context)
+            return await pay(update, context)
         else:
             LoggerService.warning(__name__, "User name is invalid", update)
             await update.message.reply_text(
@@ -116,12 +118,11 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.",
                 parse_mode='HTML',)
-
     return VALIDATE_USER
 
 async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    data = update.callback_query.data
+    data = string_helper.get_callback_data(update.callback_query.data)
     if (data == str(END)):
         return await back_navigation(update, context)
 
@@ -130,38 +131,46 @@ async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT
     LoggerService.info(__name__, f"select subscription type", update, kwargs={'subscription_type': subscription_type})
     rental_rate = rate_service.get_subscription(subscription_type)
 
-    return await enter_user_contact(update, context)
+    return await confirm_pay(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    if update.callback_query:
+        data = string_helper.get_callback_data(update.callback_query.data)
+        if (data == str(END)):
+            return await back_navigation(update, context)
+
     LoggerService.info(__name__, f"confirm pay", update)
     keyboard = [
-        [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Перейти к оплате.", callback_data=f"SUBSCRIPTION-USER_{SET_USER}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"SUBSCRIPTION-USER_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     global price
     price = rate_service.calculate_price(rental_rate, False, True, True)
     categories = rate_service.get_price_categories(rental_rate, False, True, True)
 
-    await update.message.reply_text(
+    await update.callback_query.edit_message_text(
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
             f"📌 <b>В стоимость входит:</b> {categories}.\n\n"
             "✅ <b>Подтверждаете покупку абонемента?</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return PAY
+    return SET_USER
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
-        return await back_navigation(update, context)
+    if update.callback_query:
+        await update.callback_query.answer()
+        data = string_helper.get_callback_data(update.callback_query.data)
+        if (data == str(END)):
+            return await back_navigation(update, context)
     
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=BACK)]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"SUBSCRIPTION-PAY_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = rental_rate.price
-    LoggerService.info(__name__, f"pay", update, kwargs={'price': price})
+    LoggerService.info(__name__, f"Pay", update, kwargs={'price': price})
 
-    await update.callback_query.edit_message_text(
+    await update.message.reply_text(
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
             "📌 <b>Информация для оплаты (Альфа-Банк):</b>\n"
             f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
@@ -176,8 +185,8 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup)
     return PHOTO_UPLOAD
 
-async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(__name__, f"confirm booking", update)
+async def confirm_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, f"Confirm subscription", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
@@ -187,7 +196,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏳ Пожалуйста, ожидайте подтверждения.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return MENU
 
 def save_subscription_information():
     code = string_helper.get_generated_code()
@@ -208,4 +216,4 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     subscription = save_subscription_information()
     LoggerService.info(__name__, f"handle photo", update)
     await admin_handler.accept_subscription_payment(update, context, subscription, chat_id, photo)
-    return await confirm_booking(update, context)
+    return await confirm_subscription(update, context)

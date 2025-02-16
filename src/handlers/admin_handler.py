@@ -7,7 +7,7 @@ from src.services.calculation_rate_service import CalculationRateService
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
-from src.constants import END
+from src.constants import END, MENU
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
@@ -148,12 +148,14 @@ async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, ch
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text="Восхитительно!\n"
-            "Ваше бронирование подтверждено администратором.\n"
-            "За 1 день до Вашего бронирования Вам приедет сообщение с деталями бронирования и инструкцией по заселению.\n",
+        text="🎉 <b>Отличные новости!</b> 🎉\n"
+            "✅ <b>Ваше бронирование подтверждено администратором.</b>\n"
+            "📩 За 1 день до заезда вы получите сообщение с деталями бронирования и инструкцией по заселению.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_booking_info_message(booking, user)}")
+    return END
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int):
     booking = database_service.update_booking(booking_id, is_canceled=True)
@@ -161,12 +163,14 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, cha
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text="Внимание!\n"
-            "Ваше бронирование было отменено.\n"
-            "С Вами свяжется администратор, чтобы обсудить детали бронирования.\n",
+        text="⚠️ <b>Внимание!</b> ⚠️\n"
+            "❌ <b>Ваше бронирование отменено.</b>\n"
+            "📞 Администратор свяжется с вами для уточнения деталей.",
+        parse_mode='HTML',  
         reply_markup=reply_markup)
     user = database_service.get_user_by_id(booking.user_id)
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_booking_info_message(booking, user)}")
+    return END
 
 async def approve_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int):
     gift = database_service.update_gift(gift_id, is_paymented=True)
@@ -178,12 +182,14 @@ async def approve_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text="Восхитительно!\n"
-            "Покупка подарочного сертификата подтверждена администратором.\n"
-            "В течении нескольких часов мы вышлим электроннай подарочный сертификат.\n"
-            "Мы отправили Вам код подарочного сертификата. При бронировании введите его.",
+        text="🎉 <b>Отличные новости!</b> 🎉\n"
+            "✅ <b>Ваш подарочный сертификат подтвержден администратором.</b>\n"
+            "📩 <b>В течение нескольких часов мы отправим вам электронный сертификат.</b>\n"
+            "🔑 <b>Мы также отправили код сертификата — укажите его при бронировании.</b>",
+        parse_mode='HTML',  
         reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_gift_info_message(gift)}")
+    return END
 
 async def cancel_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int):
     gift = database_service.get_gift_by_id(gift_id)
@@ -191,11 +197,13 @@ async def cancel_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_i
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text="Внимание!\n"
-            "Ваше покупка подарочного сертификата была отменена.\n"
-            "С Вами свяжется администратор, чтобы обсудить детали.\n",
+        text="⚠️ <b>Внимание!</b> ⚠️\n"
+            "❌ <b>Ваша покупка подарочного сертификата была отменена.</b>\n"
+            "📞 Администратор свяжется с вами для уточнения деталей.\n",
+        parse_mode='HTML',  
         reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_gift_info_message(gift)}")
+    return END
 
 async def approve_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, subscription_id: int):
     subscription = database_service.update_subscription(subscription_id, is_paymented=True)
@@ -208,11 +216,13 @@ async def approve_subscription(update: Update, context: ContextTypes.DEFAULT_TYP
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text="Восхитительно!\n"
-            "Покупка абонемента подтверждена администратором.\n"
-            "Мы отправили Вам код абонемента. При бронировании введите его.",
+        text="🎉 <b>Отличные новости!</b> 🎉\n"
+            "✅ <b>Покупка абонемента подтверждена администратором.</b>\n"
+            "📩 Мы отправили вам код абонемента — укажите его при бронировании.\n",
+        parse_mode='HTML',  
         reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_subscription_info_message(subscription, user)}")
+    return END
 
 async def cancel_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, subscription_id: int):
     subscription = database_service.get_subscription_by_id(subscription_id)
@@ -221,11 +231,13 @@ async def cancel_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text="Внимание!\n"
-            "Ваше покупка абонемента была отменена.\n"
-            "С Вами свяжется администратор, чтобы обсудить детали.\n",
+        text="⚠️ <b>Внимание!</b> ⚠️\n"
+            "❌ <b>Ваша покупка абонемента была отменена.</b>\n"
+            "📞 Администратор свяжется с вами для уточнения деталей.\n",
+        parse_mode='HTML',  
         reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_subscription_info_message(subscription, user)}")
+    return END
 
 async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int, sale_percentage: int, is_payment_by_cash: bool):
     (booking, user) = await prepare_approve_process(update, context, booking_id, sale_percentage, is_payment_by_cash=is_payment_by_cash)
@@ -236,11 +248,12 @@ async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, c
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
-        text="Восхитительно!\n"
-            "Ваше бронирование подтверждено администратором.\n"
-            f"Новая цена {booking.price}.\n"
-            "За 1 день до Вашего бронирования Вам приедет сообщение с деталями бронирования и инструкцией по заселению.\n",
-            reply_markup=reply_markup)
+        text="🎉 <b>Отличные новости!</b> 🎉\n"
+            "✅ <b>Ваше бронирование подтверждено администратором.</b>\n"
+            f"💰 <b>Новая цена:</b> {booking.price}\n"
+            "📩 За 1 день до заезда вы получите сообщение с деталями бронирования и инструкцией по заселению.",
+        parse_mode='HTML',  
+        reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n Скидка: {sale_percentage}% \n\n{string_helper.generate_booking_info_message(booking, user)}")
 
 def get_future_booking_message():
@@ -378,7 +391,7 @@ async def send_booking_details(context: ContextTypes.DEFAULT_TYPE, booking: Book
 async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
     await context.bot.send_message(
         chat_id=booking.chat_id, 
-        text="The Secret House благодарит Вас за то, что выбрали наш дом для аренды! \n"
+        text="🏡 The Secret House благодарит вас за выбор нашего дома для аренды! 💫 \n"
             "Мы хотели бы узнать, как Вам понравилось наше обслуживание. Будем благодарны, если вы оставите анономный отзыв по ссылке ниже.\n"
             "Ссылка:\n"
             "https://docs.google.com/forms/d/1FIDlSsLZLWfKOnhAZ8pPKiPEzLcwl5COI7rEIVGgFEM/edit?ts=66719dd9 \n\n"

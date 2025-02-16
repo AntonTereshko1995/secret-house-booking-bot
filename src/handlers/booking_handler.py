@@ -47,7 +47,6 @@ from src.constants import (
     CONFIRM_PAY,
     CONFIRM,
     PHOTO_UPLOAD,
-    CANCEL,
     CASH_PAY)
 
 MAX_PEOPLE = 6
@@ -79,7 +78,7 @@ def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(generate_tariff_menu, pattern=f"^{str(BOOKING)}$")],
         states={
-            SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^BOOKING-CONFIRM-PAY_({SET_USER}|{CANCEL}|{END})$")],
+            SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^BOOKING-CONFIRM-PAY_({SET_USER}|{END})$")],
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
             SELECT_TARIFF: [CallbackQueryHandler(select_tariff, pattern=f"^BOOKING-TARIFF_(\d+|{END})$")],
             INCLUDE_PHOTOSHOOT: [CallbackQueryHandler(include_photoshoot, pattern=f"^BOOKING-PHOTO_(?i:true|false|{END})$")],
@@ -101,14 +100,13 @@ def get_handler() -> ConversationHandler:
             # SALE: [
             #     CallbackQueryHandler(select_sale),
             #     MessageHandler(filters.TEXT & ~filters.COMMAND, select_sale)],
-            PAY: [CallbackQueryHandler(pay, pattern=f"^BOOKING-PAY_({CASH_PAY}|{CANCEL})$")],
+            PAY: [CallbackQueryHandler(pay, pattern=f"^BOOKING-PAY_({CASH_PAY}|{END})$")],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^BOOKING-CONFIRM-PAY_({END}|{SET_USER})$")],
             CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^BOOKING-CONFIRM_({CONFIRM}|{END})$")],
-            CANCEL: [CallbackQueryHandler(cancel_booking, pattern=f"^BOOKING-CANCEL_{CANCEL}$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^BOOKING-BACK_{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(cancel_booking, pattern=f"^BOOKING-PAY_{CANCEL}$"),
+                CallbackQueryHandler(cancel_booking, pattern=f"^BOOKING-PAY_{END}$"),
                 CallbackQueryHandler(cash_pay_booking, pattern=f"^BOOKING-PAY_{CASH_PAY}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
@@ -481,7 +479,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await back_navigation(update, context)
     
     LoggerService.info(__name__, f"Pay", update)
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"BOOKING-PAY_{CANCEL}")]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"BOOKING-PAY_{END}")]]
     if gift or subscription:
         keyboard.append([InlineKeyboardButton("Оплата наличкой", callback_data=f"BOOKING-PAY_{CASH_PAY}")])
         message = (f"💰 <b>Сумма доплаты:</b> {price} руб.\n\n"
@@ -530,7 +528,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Confirm booking", update)
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CONFIRM_{END}")]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     message = (
         "✨ <b>Спасибо за доверие к The Secret House!</b> ✨\n"
         "📩 Мы скоро отправим вам сообщение с подтверждением бронирования.\n\n"
@@ -550,8 +548,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message,
             parse_mode='HTML',
             reply_markup=reply_markup)
-        
-    return MENU
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
