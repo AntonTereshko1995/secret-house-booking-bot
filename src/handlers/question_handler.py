@@ -1,13 +1,11 @@
 import sys
 import os
-
-from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 from src.services.gpt_service import GptService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, MessageHandler, filters)
 from src.handlers import menu_handler
-from src.services.file_service import FileService
 from src.constants import END, MENU, MESSAGE, STOPPING, QUESTIONS
 
 gpt_service = GptService()

@@ -1,19 +1,18 @@
 import sys
 import os
-
 from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from openai import OpenAI
 from singleton_decorator import singleton
-from src.config.config import TELEGRAM_KEY, TELEGRAM_PROMPT
+from src.config.config import GPT_KEY, GPT_PROMPT
 
 GPT_MODEL = "gpt-4o-mini"
 
 @singleton
 class GptService:
     def __init__(self):
-        self.client = OpenAI(api_key=TELEGRAM_KEY)
+        self.client = OpenAI(api_key=GPT_KEY)
         self.database_service = DatabaseService()
 
     async def generate_response(self, message: str) -> str:
@@ -25,7 +24,7 @@ class GptService:
                 messages=[
                     {
                         "role": "system",
-                        "content": TELEGRAM_PROMPT,
+                        "content": GPT_PROMPT,
                     },
                     {
                         "role": "user",
