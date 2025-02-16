@@ -9,7 +9,7 @@ from src.constants import END, MENU, PRICE, STOPPING
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(send_prices, pattern=f"^{str(PRICE)}$")],
+        entry_points=[CallbackQueryHandler(send_prices, pattern=f"^{PRICE}$")],
         states={ },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={

@@ -13,7 +13,6 @@ from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from src.constants import (
     BACK,
-    CANCEL, 
     END,
     MENU, 
     STOPPING, 
@@ -41,12 +40,12 @@ def get_handler() -> ConversationHandler:
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
             SUBSCRIPTION_TYPE: [CallbackQueryHandler(select_subscription_type, pattern=f"^SUBSCRIPTION-TYPE_(\d+|{END})$")],
             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^SUBSCRIPTION-CONFIRM-PAY_({END}|{SET_USER})$")],
-            PAY: [CallbackQueryHandler(pay, pattern=f"^SUBSCRIPTION-PAY_({CANCEL})$")],
+            PAY: [CallbackQueryHandler(pay, pattern=f"^SUBSCRIPTION-PAY_({END})$")],
             CONFIRM: [CallbackQueryHandler(confirm_subscription, pattern=f"^SUBSCRIPTION-CONFIRM_({CONFIRM}|{END})$")],
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
             PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(back_navigation, pattern=f"^SUBSCRIPTION-PAY_{CANCEL}$")]},
+                CallbackQueryHandler(back_navigation, pattern=f"^SUBSCRIPTION-PAY_{END}$")]},
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             END: MENU,
@@ -166,7 +165,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (data == str(END)):
             return await back_navigation(update, context)
     
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"SUBSCRIPTION-PAY_{CANCEL}")]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"SUBSCRIPTION-PAY_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = rental_rate.price
     LoggerService.info(__name__, f"Pay", update, kwargs={'price': price})
