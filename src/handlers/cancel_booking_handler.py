@@ -92,7 +92,7 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
     LoggerService.info(__name__, f"Confirm cancel booking", update)
     updated_booking = database_service.update_booking(booking.id, is_canceled=True)
     calendar_service.cancel_event(updated_booking.calendar_event_id)
-    admin_handler.inform_cancel_booking(update, context, updated_booking)
+    await admin_handler.inform_cancel_booking(update, context, updated_booking)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()

@@ -48,14 +48,12 @@ def get_handler() -> ConversationHandler:
         entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(CHANGE_BOOKING_DATE)}$")],
         states={ 
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            CHOOSE_BOOKING: [CallbackQueryHandler(choose_booking)], 
-            SET_START_DATE: [CallbackQueryHandler(enter_start_date)], 
-            SET_START_TIME: [CallbackQueryHandler(enter_start_time)], 
-            SET_FINISH_DATE: [CallbackQueryHandler(enter_finish_date)], 
-            SET_FINISH_TIME: [CallbackQueryHandler(enter_finish_time)], 
-            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^{CONFIRM}$")], 
-            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
-            },
+            CHOOSE_BOOKING: [CallbackQueryHandler(choose_booking, pattern=f"^CHANGE-BOOKING_(\d+|{END})$")], 
+            SET_START_DATE: [CallbackQueryHandler(enter_start_date, pattern=f"^CALENDAR-CALLBACK_(.+|{END})$")], 
+            SET_START_TIME: [CallbackQueryHandler(enter_start_time, pattern=f"^HOURS-CALLBACK_(.+|{END})$")], 
+            SET_FINISH_DATE: [CallbackQueryHandler(enter_finish_date, pattern=f"^CALENDAR-CALLBACK_(.+|{END})$")], 
+            SET_FINISH_TIME: [CallbackQueryHandler(enter_finish_time, pattern=f"^HOURS-CALLBACK_(.+|{END})$")], 
+            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^CHANGE-CONFIRM_({CONFIRM}|{END})$")]},
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             END: MENU,
@@ -103,11 +101,12 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    if (update.callback_query.data == str(END)):
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
         return await back_navigation(update, context)
 
     global booking, old_booking_date
-    booking = next((b for b in selected_bookings if str(b.id) == update.callback_query.data), None)
+    booking = next((b for b in selected_bookings if str(b.id) == data), None)
     LoggerService.info(__name__, "Choose booking", update)
     old_booking_date = booking.start_date
     return await start_date_message(update, context)
@@ -179,13 +178,17 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return SET_FINISH_TIME
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
+        return await back_navigation(update, context)
+
     LoggerService.info(__name__, f"Confirm booking", update)
     updated_booking = database_service.update_booking(booking.id, start_date=start_booking_date, end_date=finish_booking_date)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    admin_handler.inform_changing_booking_date(update, context, updated_booking, old_booking_date)
+    await admin_handler.inform_changing_booking_date(update, context, updated_booking, old_booking_date)
     calendar_service.move_event(updated_booking.calendar_event_id, start_booking_date, finish_booking_date)
-    await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text=f"✅ <b>Бронирование успешно перенесено!</b>\n\n"
             f"📅 <b>С:</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -202,9 +205,10 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
     
     keyboard = []
     for booking in selected_bookings:
-        keyboard.append([InlineKeyboardButton(f"{booking.start_date.strftime('%d.%m.%Y %H:%M')} - {booking.end_date.strftime('%d.%m.%Y %H:%M')}", callback_data=str(booking.id))])
+        keyboard.append([InlineKeyboardButton(f"{booking.start_date.strftime('%d.%m.%Y %H:%M')} - {booking.end_date.strftime('%d.%m.%Y %H:%M')}", 
+                                              callback_data=f"CHANGE-BOOKING_{booking.id}")])
 
-    keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
+    keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=f"CHANGE-BOOKING_{END}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
         text="📅 <b>Выберите бронирование, которое хотите изменить.</b>\n",
@@ -279,8 +283,8 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("Подтвердить", callback_data=CONFIRM)],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Подтвердить", callback_data=f"CHANGE-CONFIRM_{CONFIRM}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"CHANGE-CONFIRM_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
         text = (f"📅 Подтвердите изменение даты бронирования:\n"
