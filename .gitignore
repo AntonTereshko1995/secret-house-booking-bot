@@ -160,3 +160,10 @@ cython_debug/
 #.idea/
 src/config/credentials.json
 the_secret_house.db
+test_the_secret_house.db
+the_secret_house.db
+the_secret_house.db
+src/config/.env.debug
+src/config/.env.production
+the_secret_house.db
+*.db
