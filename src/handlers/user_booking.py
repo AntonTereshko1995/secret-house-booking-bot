@@ -36,11 +36,11 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
-    LoggerService.info(f"user_booking: Back to menu", update)
+    LoggerService.info(__name__, f"Back to menu", update)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info("user_booking: Enter user contact", update)
+    LoggerService.info(__name__, "Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -63,7 +63,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await display_bookings(update, context)
         else:
-            LoggerService.warning("user_booking: User name is invalid", update)
+            LoggerService.warning(__name__, "User name is invalid", update)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
@@ -75,7 +75,7 @@ async def display_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking_list = database_service.get_booking_by_user_contact(user_contact)
     message = ""
     if not booking_list or len(booking_list) == 0:
-        LoggerService.info("user_booking: Booking not found", update)
+        LoggerService.info(__name__, "Booking not found", update)
         message = ("❌ <b>Ошибка!</b>\n"
             "🔍 Не удалось найти бронирование.\n\n"
             "🔄 Пожалуйста, попробуйте еще раз.\n\n"
@@ -85,7 +85,7 @@ async def display_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❗️ Пожалуйста, вводите данные строго в указанном формате.")
     else:
         for booking in booking_list:
-            LoggerService.info("user_booking: Booking is founded.", update)
+            LoggerService.info(__name__, "Booking is founded.", update)
             message += (
                 f"📌 <b>Бронирование подтверждено</b>\n"
                 f"📅 <b>Заезд:</b> {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"

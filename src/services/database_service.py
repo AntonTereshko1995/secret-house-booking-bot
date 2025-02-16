@@ -41,7 +41,7 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error adding user: {e}")
-                LoggerService.error(f"DatabaseService: add_user", e)
+                LoggerService.error(__name__, f"add_user", e)
 
     def get_or_create_user(self, contact: str) -> UserBase:
         with self.Session() as session:
@@ -58,7 +58,7 @@ class DatabaseService:
                 return new_user
             except Exception as e:
                 print(f"Error in get_or_create_user: {e}")
-                LoggerService.error(f"DatabaseService: get_or_create_user", e)
+                LoggerService.error(__name__, f"get_or_create_user", e)
                 session.rollback()
 
     def get_user_by_contact(self, contact: str) -> UserBase:
@@ -68,7 +68,7 @@ class DatabaseService:
                 return user
         except Exception as e:
             print(f"Error in get_user_by_contact: {e}")
-            LoggerService.error(f"DatabaseService: get_user_by_contact", e)
+            LoggerService.error(__name__, f"get_user_by_contact", e)
         
     def get_user_by_id(self, user_id: int) -> UserBase:
         try:
@@ -77,7 +77,7 @@ class DatabaseService:
                 return user
         except Exception as e:
             print(f"Error in get_user_by_id: {e}")
-            LoggerService.error(f"DatabaseService: get_user_by_id", e)
+            LoggerService.error(__name__, f"get_user_by_id", e)
         
     def add_gift(
             self, 
@@ -107,7 +107,7 @@ class DatabaseService:
             except Exception as e:
                 print(f"Error adding gift: {e}")
                 session.rollback()
-                LoggerService.error(f"DatabaseService: add_gift", e)
+                LoggerService.error(__name__, f"add_gift", e)
 
     def update_gift(
             self, 
@@ -138,7 +138,7 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error updating Gift: {e}")
-                LoggerService.error(f"DatabaseService: update_gift", e)
+                LoggerService.error(__name__, f"update_gift", e)
 
     def get_gift_by_code(self, code: str) -> GiftBase:
         try:
@@ -148,7 +148,7 @@ class DatabaseService:
                 return gift
         except Exception as e:
             print(f"Error in get_gift_by_code: {e}")
-            LoggerService.error(f"DatabaseService: get_gift_by_code", e)
+            LoggerService.error(__name__, f"get_gift_by_code", e)
         
     def get_gift_by_id(self, id: int) -> GiftBase:
         try:
@@ -158,7 +158,7 @@ class DatabaseService:
                 return gift
         except Exception as e:
             print(f"Error in get_gift_by_id: {e}")
-            LoggerService.error(f"DatabaseService: get_gift_by_id", e)
+            LoggerService.error(__name__, f"get_gift_by_id", e)
 
     def add_subscription(
             self, 
@@ -183,7 +183,7 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error adding Subscription: {e}")
-                LoggerService.error(f"DatabaseService: add_subscription", e)
+                LoggerService.error(__name__, f"add_subscription", e)
 
     def update_subscription(
             self, 
@@ -214,7 +214,7 @@ class DatabaseService:
             except Exception as e:
                 session.rollback()
                 print(f"Error updating Subscription: {e}")
-                LoggerService.error(f"DatabaseService: update_subscription", e)
+                LoggerService.error(__name__, f"update_subscription", e)
     
     def get_subscription_by_code(self, code: str) -> SubscriptionBase:
         try:
@@ -224,7 +224,7 @@ class DatabaseService:
                 return subscription
         except Exception as e:
             print(f"Error in get_subscription_by_code: {e}")
-            LoggerService.error(f"DatabaseService: get_subscription_by_code", e)
+            LoggerService.error(__name__, f"get_subscription_by_code", e)
 
     def get_subscription_by_id(self, id: int) -> SubscriptionBase: 
         try:
@@ -234,7 +234,7 @@ class DatabaseService:
                 return subscription
         except Exception as e:
             print(f"Error in get_subscription_by_id: {e}")
-            LoggerService.error(f"DatabaseService: get_subscription_by_id", e)
+            LoggerService.error(__name__, f"get_subscription_by_id", e)
 
     def add_booking(
             self, 
@@ -287,7 +287,7 @@ class DatabaseService:
             except Exception as e:
                 print(f"Error adding booking: {e}")
                 session.rollback()
-                LoggerService.error(f"DatabaseService: add_booking", e)
+                LoggerService.error(__name__, f"add_booking", e)
                 
 
     def get_booking_by_start_date_user(
@@ -311,7 +311,7 @@ class DatabaseService:
                 return booking
         except Exception as e:
             print(f"Error in get_booking_by_start_date_user: {e}")
-            LoggerService.error(f"DatabaseService: get_booking_by_start_date_user", e)
+            LoggerService.error(__name__, f"get_booking_by_start_date_user", e)
     
     def get_booking_by_start_date(
             self, 
@@ -329,7 +329,7 @@ class DatabaseService:
                 return booking
         except Exception as e:
             print(f"Error in get_booking_by_start_date: {e}")
-            LoggerService.error(f"DatabaseService: get_booking_by_start_date", e)
+            LoggerService.error(__name__, f"get_booking_by_start_date", e)
         
     def get_booking_by_finish_date(
             self, 
@@ -347,7 +347,7 @@ class DatabaseService:
                 return booking
         except Exception as e:
             print(f"Error in get_booking_by_finish_date: {e}")
-            LoggerService.error(f"DatabaseService: get_booking_by_finish_date", e)
+            LoggerService.error(__name__, f"get_booking_by_finish_date", e)
             
     def get_booking_by_period(self, from_date: date, to_date: date, is_admin: bool = False):
         try:
@@ -377,7 +377,7 @@ class DatabaseService:
                 return bookings
         except Exception as e:
             print(f"Error in get_booking_by_period: {e}")
-            LoggerService.error(f"DatabaseService: get_booking_by_period", e)
+            LoggerService.error(__name__, f"get_booking_by_period", e)
 
     def get_booking_by_day(self, target_date: date, except_booking_id: int = None):
         try:
@@ -411,7 +411,7 @@ class DatabaseService:
                 return bookings
         except Exception as e:
             print(f"Error in get_booking_by_day: {e}")
-            LoggerService.error(f"DatabaseService: get_booking_by_day", e)
+            LoggerService.error(__name__, f"get_booking_by_day", e)
 
     def is_booking_between_dates(self, start: datetime, end: datetime) -> bool:
         try:
@@ -442,7 +442,7 @@ class DatabaseService:
                 return overlapping_bookings is not None
         except Exception as e:
             print(f"Error in is_booking_between_dates: {e}")
-            LoggerService.error(f"DatabaseService: is_booking_between_dates", e)
+            LoggerService.error(__name__, f"is_booking_between_dates", e)
 
     def get_booking_by_id(
             self, 
@@ -454,7 +454,7 @@ class DatabaseService:
                 return booking
         except Exception as e:
             print(f"Error in get_booking_by_id: {e}")
-            LoggerService.error(f"DatabaseService: get_booking_by_id", e)
+            LoggerService.error(__name__, f"get_booking_by_id", e)
 
     def get_booking_by_user_contact(
             self, 
@@ -474,7 +474,7 @@ class DatabaseService:
                 return bookings  
         except Exception as e:
             print(f"Error in get_booking_by_user_contact: {e}")
-            LoggerService.error(f"DatabaseService: get_booking_by_user_contact", e)
+            LoggerService.error(__name__, f"get_booking_by_user_contact", e)
 
     def update_booking(
             self, 

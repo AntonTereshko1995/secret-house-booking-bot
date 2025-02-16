@@ -5,6 +5,7 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
 LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
+LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE")
 DATABASE_URL = os.getenv("DATABASE_URL")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 INFORM_CHAT_ID = os.getenv("INFORM_CHAT_ID")

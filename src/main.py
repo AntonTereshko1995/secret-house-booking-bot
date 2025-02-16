@@ -43,7 +43,7 @@ def main() -> None:
 
     job = job_service.JobService()
     job.set_application(application)
-    LoggerService.init_logger()
+    # LoggerService.init_logger()
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

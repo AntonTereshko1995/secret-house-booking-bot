@@ -19,12 +19,12 @@ def get_handler() -> ConversationHandler:
     return handler
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"price_handler: Back to menu", update)
+    LoggerService.info(__name__, f"Back to menu", update)
     await menu_handler.show_menu(update, context)
     return END
 
 async def send_prices(update: Update, context: CallbackContext):
-    LoggerService.info(f"price_handler: send prices", update)
+    LoggerService.info(__name__, f"send prices", update)
     tariffs = (
         "🏡 <b>ТАРИФ 'СУТОЧНЫЙ'</b>\n"
         "✔ <b>1 день</b> — 750 BYN\n"

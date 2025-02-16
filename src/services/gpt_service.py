@@ -36,5 +36,5 @@ class GptService:
             return response.choices[0].message.content
         except Exception as e:
             print(f"Chat GPT Error: {e}")
-            LoggerService.error(f"GptService: generate_response", e)
+            LoggerService.error(__name__, f"generate_response", e)
             return "Произошла ошибка. Попробуйте позже."

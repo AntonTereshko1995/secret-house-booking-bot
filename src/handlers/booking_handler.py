@@ -1,9 +1,7 @@
 import sys
 import os
-
-from src.handlers.base_handler import disable_last_button
-from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 from matplotlib.dates import relativedelta
 from db.models.booking import BookingBase
 from db.models.subscription import SubscriptionBase
@@ -122,11 +120,11 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
-    LoggerService.info(f"booking_handler: Available dates", update)
+    LoggerService.info(__name__, f"Available dates", update)
     return END
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"booking_handler: Generate tariff", update)
+    LoggerService.info(__name__, f"Generate tariff", update)
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
@@ -166,9 +164,9 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included, is_additional_bedroom_included
-    LoggerService.info(f"booking_handler: Select tariff [{tariff}]", update)
     tariff = tariff_helper.get_by_str(data)
     rental_rate  = rate_service.get_tariff(tariff)
+    LoggerService.info(__name__, f"Select tariff", update, kwargs={'tariff': tariff})
 
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
         is_sauna_included = True
@@ -185,7 +183,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await count_of_people_message(update, context)
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"booking_handler: Enter user contact", update)
+    LoggerService.info(__name__, f"Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -222,7 +220,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             else:
                 return await pay(update, context)
         else:
-            LoggerService.warning(f"booking_handler: User name is invalid", update)
+            LoggerService.warning(__name__, f"User name is invalid", update)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
@@ -237,7 +235,7 @@ async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     global is_photoshoot_included
     is_photoshoot_included = eval(data)
-    LoggerService.info(f"booking_handler: Include photoshoot [{is_photoshoot_included}]", update)
+    LoggerService.info(__name__, f"Include photoshoot", update, kwargs={'is_photoshoot_included': is_photoshoot_included})
     return await count_of_people_message(update, context)
 
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -248,7 +246,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global is_sauna_included
     is_sauna_included = eval(data)
-    LoggerService.info(f"booking_handler: Include sauna [{is_sauna_included}]", update)
+    LoggerService.info(__name__, f"Include sauna", update, kwargs={'is_sauna_included': is_sauna_included})
 
     if gift:
         return await navigate_next_step_for_gift(update, context)
@@ -265,7 +263,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     global is_secret_room_included
     is_secret_room_included = eval(data)
-    LoggerService.info(f"booking_handler: Include secret room [{is_secret_room_included}]", update)
+    LoggerService.info(__name__, f"Include secret room", update, kwargs={'is_secret_room_included': is_secret_room_included})
 
     if gift:
         return await navigate_next_step_for_gift(update, context)
@@ -279,7 +277,7 @@ async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     bedroom = bedroom_halper.get_by_str(data)
-    LoggerService.info(f"booking_handler: Select bedroom [{bedroom}]", update)
+    LoggerService.info(__name__, f"Select bedroom", update, kwargs={'bedroom': bedroom})
     if (bedroom == Bedroom.GREEN):
         global is_green_room_included
         is_green_room_included = True
@@ -299,7 +297,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
         return await back_navigation(update, context)
 
     is_added = eval(data)
-    LoggerService.info(f"booking_handler: Select additional bedroom [{is_added}]", update)
+    LoggerService.info(__name__, f"Select additional bedroom", update, kwargs={'is_added': is_added})
     if is_added:
         global is_green_room_included, is_white_room_included, is_additional_bedroom_included
         is_additional_bedroom_included = True
@@ -321,7 +319,7 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
 
     global number_of_guests
     number_of_guests = int(data)
-    LoggerService.info(f"booking_handler: Select number of people [{number_of_guests}]", update)
+    LoggerService.info(__name__, f"Select number of people", update, kwargs={'number_of_guests': number_of_guests})
     return await start_date_message(update, context)
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -331,7 +329,7 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (data == str(END)):
             return await back_navigation(update, context)
 
-    LoggerService.info(f"booking_handler: Write secret code", update)
+    LoggerService.info(__name__, f"Write secret code", update)
 
     if (tariff == Tariff.GIFT):
         return await initi_gift_code(update, context)
@@ -346,10 +344,10 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global start_booking_date
         start_booking_date = selected_date
-        LoggerService.info(f"booking_handler: Start date {start_booking_date.date()}", update)
+        LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': start_booking_date.date()})
         return await start_time_message(update, context)
     elif is_action:
-        LoggerService.info(f"booking_handler: Start date [Cancel]", update)
+        LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': 'cancel'})
         return await back_navigation(update, context)
     return SET_START_DATE
 
@@ -359,10 +357,10 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global start_booking_date
         start_booking_date = start_booking_date.replace(hour=time.hour, minute=time.minute)
-        LoggerService.info(f"booking_handler: Start time {start_booking_date.time()}", update)
+        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': start_booking_date.time()})
         return await finish_date_message(update, context)
     elif is_action:
-        LoggerService.info(f"booking_handler: Start time [Cancel]", update)
+        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': 'cancel'})
         return await back_navigation(update, context)
     return SET_START_TIME
 
@@ -374,10 +372,10 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global finish_booking_date
         finish_booking_date = selected_date
-        LoggerService.info(f"booking_handler: Finish date {finish_booking_date.date()}", update)
+        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': finish_booking_date.date()})
         return await finish_time_message(update, context)
     elif is_action:
-        LoggerService.info(f"booking_handler: Finish date [Cancel]", update)
+        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': 'cancel'})
         return await back_navigation(update, context)
     return SET_FINISH_DATE
 
@@ -387,14 +385,15 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if selected:
         global finish_booking_date
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
-        LoggerService.info(f"booking_handler: Finish time {finish_booking_date.time()}", update)
+        LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
+            LoggerService.info(__name__, f"there are bookings between the selected dates", update)
             return await start_date_message(update, context, is_error=True)
 
         return await comment_message(update, context)
     elif is_action:
-        LoggerService.info(f"booking_handler: Finish time [Cancel]", update)
+        LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': "cancel"})
         return await back_navigation(update, context)
     return SET_FINISH_TIME
 
@@ -407,6 +406,7 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         global booking_comment
         booking_comment = update.message.text
+        LoggerService.info(__name__, f"Write comment", update, kwargs={'comment': booking_comment})
 
     return await confirm_pay(update, context)
 
@@ -429,7 +429,7 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #         return await enter_user_contact(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"booking_handler: Confirm pay", update)
+    LoggerService.info(__name__, f"Confirm pay", update)
     keyboard = [
         [InlineKeyboardButton("Перейти к оплате.", callback_data=f"BOOKING-CONFIRM-PAY_{SET_USER}")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CONFIRM-PAY_{END}")]]
@@ -480,7 +480,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (update.callback_query.data == str(END)):
             return await back_navigation(update, context)
     
-    LoggerService.info(f"booking_handler: Pay", update)
+    LoggerService.info(__name__, f"Pay", update)
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"BOOKING-PAY_{CANCEL}")]]
     if gift or subscription:
         keyboard.append([InlineKeyboardButton("Оплата наличкой", callback_data=f"BOOKING-PAY_{CASH_PAY}")])
@@ -521,7 +521,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return PHOTO_UPLOAD
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"booking_handler: Cancel booking", update)
+    LoggerService.info(__name__, f"Cancel booking", update)
     await update.callback_query.answer()
 
     if booking:
@@ -529,7 +529,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await back_navigation(update, context)
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"booking_handler: Confirm booking", update)
+    LoggerService.info(__name__, f"Confirm booking", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CONFIRM_{END}")]]
     message = (
         "✨ <b>Спасибо за доверие к The Secret House!</b> ✨\n"
@@ -966,7 +966,7 @@ def save_booking_information(chat_id: int):
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global photo
     photo = update.message.photo[-1].file_id
-    LoggerService.info(f"booking_handler: Handle photo", update)
+    LoggerService.info(__name__, f"Handle photo", update)
     return await send_approving_to_admin(update, context, photo)
 
 async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):

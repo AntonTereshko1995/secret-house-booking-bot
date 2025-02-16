@@ -29,7 +29,7 @@ def get_handler() -> ConversationHandler:
     return handler
 
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    LoggerService.info(f"menu_handler: show menu", update)
+    LoggerService.info(__name__, f"show menu", update)
     await job.init_job(update, context)
     
     buttons = [

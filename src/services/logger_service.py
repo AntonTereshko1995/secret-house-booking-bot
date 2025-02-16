@@ -1,39 +1,65 @@
 import sys
 import os
+from typing import Any, Dict
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import logging
 from loguru import logger
 from logtail import LogtailHandler
-from src.config.config import LOGTAIL_TOKEN
+from src.config.config import LOGTAIL_TOKEN, LOGTAIL_SOURCE
 
 class LoggerService:
-    @staticmethod
-    def init_logger():
-        logtail_handler = LogtailHandler(source_token=LOGTAIL_TOKEN)
-        logger.remove()  # Remove default loguru handler
-        logger.add(logtail_handler, level="INFO")  # Attach Logtail handler
+    loggers: Dict[str, logging.Logger] = {}
 
     @staticmethod
-    def info(message: str, update=None):
+    def info(file_name: str, message: str, update=None, **kwargs: Any):
+        logger = LoggerService.__get_logger__(file_name)
+
         if update:
-            if update.message:
-                chat_id = update.message.chat.id
-            else:
-                chat_id = update.callback_query.message.chat.id
-            logger.info(f"{message} [Chat {chat_id}]")
-        else:
-            logger.info(message)
+            kwargs['chat_id'] = LoggerService.__get_chat_id__(update)
+
+        logger.info(f"{message}", extra=kwargs)
 
     @staticmethod
-    def error(message: str, exception: Exception = None):
+    def error(file_name: str, message: str, exception: Exception = None, update=None, **kwargs: Any):
+        logger = LoggerService.__get_logger__(file_name)
+
+        if update:
+            kwargs['chat_id'] = LoggerService.__get_chat_id__(update)
+
         if exception:
-            logger.error(f"{message} | Exception: {exception}")
+            logger.exception(f"{message}", exc_info=exception, extra=kwargs)
         else:
-            logger.error(message)
+            logger.error(message, extra=kwargs)
 
     @staticmethod
-    def debug(message: str):
-        logger.debug(message)
+    def warning(file_name: str, message: str, update=None, **kwargs: Any):
+        logger = LoggerService.__get_logger__(file_name)
+
+        if update:
+            kwargs['chat_id'] = LoggerService.__get_chat_id__(update)
+
+        logger.warning(message, extra=kwargs)
 
     @staticmethod
-    def warning(message: str, update=None):
-        logger.warning(message)
+    def __get_chat_id__(update):
+        if update.message:
+            return update.message.chat.id
+        else:
+            return update.callback_query.message.chat.id
+        
+    @staticmethod
+    def __get_logger__(file_name: str) -> logging.Logger:
+        if file_name in LoggerService.loggers:
+            return LoggerService.loggers[file_name]
+
+        logtail_handler = LogtailHandler(
+            source_token=LOGTAIL_TOKEN, 
+            host=LOGTAIL_SOURCE,
+        )
+
+        logger = logging.getLogger(file_name)
+        logger.setLevel(logging.INFO)
+        logger.handlers = []
+        logger.addHandler(logtail_handler)
+        LoggerService.loggers[file_name] = logger
+        return logger

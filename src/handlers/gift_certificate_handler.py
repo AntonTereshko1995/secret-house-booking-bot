@@ -65,12 +65,12 @@ def get_handler() -> ConversationHandler:
     return handler
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"gift_certificate_handler: Back to menu", update)
+    LoggerService.info(__name__, f"Back to menu", update)
     await menu_handler.show_menu(update, context)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"gift_certificate_handler: enter user contact", update)
+    LoggerService.info(__name__, f"enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -85,7 +85,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return VALIDATE_USER
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"gift_certificate_handler: generate tariff menu", update)
+    LoggerService.info(__name__, f"generate tariff menu", update)
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
@@ -121,7 +121,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await confirm_pay(update, context)
         else:
-            LoggerService.warning(f"gift_certificate_handler: user name is invalid", update)
+            LoggerService.warning(__name__, f"user name is invalid", update)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
@@ -139,7 +139,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global tariff, rental_rate
     tariff = tariff_helper.get_by_str(data)
     rental_rate = rate_service.get_tariff(tariff)
-    LoggerService.warning(f"gift_certificate_handler: select tariff: {tariff}", update)
+    LoggerService.info(__name__, f"select tariff", update, kwargs={'tariff': tariff})
 
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
         global is_sauna_included, is_secret_room_included, is_additional_bedroom_included
@@ -157,7 +157,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
 
     global is_additional_bedroom_included
     is_additional_bedroom_included = eval(update.callback_query.data)
-    LoggerService.warning(f"gift_certificate_handler: select additional bedroom: {is_additional_bedroom_included}", update)
+    LoggerService.info(__name__, f"select additional bedroom", update, kwargs={'is_additional_bedroom_included': is_additional_bedroom_included})
     return await secret_room_message(update, context)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -168,7 +168,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     global is_secret_room_included
     is_secret_room_included = eval(data)
-    LoggerService.warning(f"gift_certificate_handler: include secret room: {is_secret_room_included}", update)
+    LoggerService.info(__name__, f"include secret room", update, kwargs={'is_secret_room_included': is_secret_room_included})
     return await sauna_message(update, context)
 
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -179,7 +179,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global is_sauna_included
     is_sauna_included = eval(update.callback_query.data)
-    LoggerService.warning(f"gift_certificate_handler: include sauna: {is_sauna_included}", update)
+    LoggerService.info(__name__, f"include sauna", update, kwargs={'is_sauna_included': is_sauna_included})
     return await enter_user_contact(update, context)
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -187,7 +187,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
-    LoggerService.warning(f"gift_certificate_handler: pay", update)
+    LoggerService.info(__name__, f"pay", update)
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=BACK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
@@ -213,7 +213,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global price
     price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
-    LoggerService.warning(f"gift_certificate_handler: confirm pay: {price}", update)
+    LoggerService.info(__name__, f"confirm pay", update, kwargs={'price': price})
     await update.message.reply_text(
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n"
             f"📌 <b>В стоимость входит:</b> {categories}.\n\n"
@@ -302,6 +302,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1].file_id
     chat_id = update.message.chat.id
     gift = save_gift_information()
-    LoggerService.warning(f"gift_certificate_handler: handle photo", update)
+    LoggerService.info(__name__, f"handle photo", update)
     await admin_handler.accept_gift_payment(update, context, gift, chat_id, photo)
     return await confirm_booking(update, context)

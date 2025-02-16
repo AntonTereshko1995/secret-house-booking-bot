@@ -28,11 +28,11 @@ def get_handler() -> ConversationHandler:
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     await menu_handler.show_menu(update, context)
-    LoggerService.info(f"question_handler: back to menu", update)
+    LoggerService.info(__name__, f"back to menu", update)
     return END
 
 async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(f"question_handler: start conversation", update)
+    LoggerService.info(__name__, f"start conversation", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
@@ -43,7 +43,7 @@ async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
-    LoggerService.info(f"question_handler: message: {message}", update)
+    LoggerService.info(__name__, f"message from gpt", update, kwargs={'message': message})
     responce = await gpt_service.generate_response(message)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)

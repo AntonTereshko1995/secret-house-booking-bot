@@ -34,11 +34,11 @@ class CalendarService:
             }
             event = self.service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
             print(f"Событие добавлено: {event.get('htmlLink')}")
-            LoggerService.info(f"CalendarService: add_event")
+            LoggerService.info(__name__, f"add_event")
             return event["id"]
         except Exception as e:
             print(f"Error to add event: {e}")
-            LoggerService.error(f"CalendarService: add_event", e)
+            LoggerService.error(__name__, f"add_event", e)
     
     def get_event_by_id(self, id: str):
         try:
@@ -47,11 +47,11 @@ class CalendarService:
                 print("❌ Нет событий в указанное время.")
                 return
             
-            LoggerService.info(f"CalendarService: get_event_by_id")
+            LoggerService.info(__name__, f"get_event_by_id")
             return event
         except Exception as e:
             print(f"Error to get event by id: {e}")
-            LoggerService.error(f"CalendarService: get_event_by_id", e)
+            LoggerService.error(__name__, f"get_event_by_id", e)
     
     def move_event(self, event_id: str, start_datetime: datetime, finish_datetime: datetime):
         try:
@@ -65,10 +65,10 @@ class CalendarService:
             updated_event = self.service.events().update(calendarId=CALENDAR_ID, eventId=event["id"], body=event).execute()
             
             print(f"✅ Событие перенесено: {updated_event.get('htmlLink')}")
-            LoggerService.info(f"CalendarService: move_event")
+            LoggerService.info(__name__, f"move_event")
         except Exception as e:
             print(f"Error to move event: {e}")
-            LoggerService.error(f"CalendarService: move_event", e)
+            LoggerService.error(__name__, f"move_event", e)
         
     def cancel_event(self, event_id: str):
         try:
@@ -85,7 +85,7 @@ class CalendarService:
                 eventId=event_id, 
                 body=event).execute()
             print(f"✅ Событие {event['id']} успешно удалено.")
-            LoggerService.info(f"CalendarService: cancel_event")
+            LoggerService.info(__name__, f"cancel_event")
         except Exception as e:
             print(f"Error to remove event: {e}")
-            LoggerService.error(f"CalendarService: cancel_event", e)
+            LoggerService.error(__name__, f"cancel_event", e)
