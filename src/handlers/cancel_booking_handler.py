@@ -1,30 +1,28 @@
-import datetime
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from matplotlib.dates import relativedelta
-from src.config.config import PERIOD_IN_MONTHS
 from src.services.calendar_service import CalendarService
-from datetime import datetime, date, timedelta
-from src.date_time_picker import calendar_picker
+from datetime import date
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters)
+from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, MessageHandler, filters)
 from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper
-from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, SET_BOOKING_DATE, CONFIRM
+from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, CHOOSE_BOOKING, CONFIRM
 
 user_contact = ''
-booking_date = date.today()
 database_service = DatabaseService()
 calendar_service = CalendarService()
+selected_bookings = []
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(CANCEL_BOOKING)}$")],
         states={ 
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            SET_BOOKING_DATE: [CallbackQueryHandler(enter_booking_date)], 
+            CHOOSE_BOOKING: [CallbackQueryHandler(choose_booking)], 
             CONFIRM: [CallbackQueryHandler(confirm_cancel_booking, pattern=f"^{CONFIRM}$")], 
             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")], 
             },
@@ -37,18 +35,21 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
+    LoggerService.info(__name__, f"Back to menu", update)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_variables()
+    LoggerService.info(__name__, f"Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Напишите Ваш <b>Telegram</b>.\n"
-        "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-        "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
@@ -60,34 +61,29 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-            return await start_date_message(update, context)
+            return await choose_booking_message(update, context)
         else:
-            await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
-
+            LoggerService.warning(__name__, "User name is invalid", update)
+            await update.message.reply_text(
+                "❌ <b>Ошибка!</b>\n"
+                "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
+                "🔄 Пожалуйста, попробуйте еще раз.",
+                parse_mode='HTML'
+            )
     return VALIDATE_USER
 
-async def enter_booking_date(update: Update, context: CallbackContext):
+async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = date.today() - timedelta(days=1)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
-    if selected:
-        global booking_date
-        booking_date = selected_date
-        is_loaded = load_booking()
-        if is_loaded:
-            return await confirm_message(update, context)
-        else:
-            return await warning_message(update, context)
-    elif is_action:
+    if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
-    return SET_BOOKING_DATE
+
+    global booking
+    booking = next((b for b in selected_bookings if str(b.id) == update.callback_query.data), None)
+    LoggerService.info(__name__, f"Choose booking", update, kwargs={'booking_id': booking.id})
+    return await confirm_message(update, context)
 
 async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, f"Confirm cancel booking", update)
     updated_booking = database_service.update_booking(booking.id, is_canceled=True)
     calendar_service.cancel_event(updated_booking.calendar_event_id)
     admin_handler.inform_cancel_booking(update, context, updated_booking)
@@ -95,50 +91,61 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text=f"Бронирование успешно отменено на {booking_date.strftime('%d.%m.%Y')}.",
+        text=f"❌ <b>Бронирование отменено</b> на <b>{booking_date.strftime('%d.%m.%Y')}</b>.\n\n"
+            "📌 Если у вас возникли вопросы, свяжитесь с администратором.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return MENU
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    today = date.today()
-    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = today - timedelta(days=1)
+async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global selected_bookings
+    selected_bookings = database_service.get_booking_by_user_contact(user_contact)
+    if not selected_bookings or len(selected_bookings) == 0:
+        return await warning_message(update, context)
+    
+    keyboard = []
+    for booking in selected_bookings:
+        keyboard.append([InlineKeyboardButton(f"{booking.start_date.strftime('%d.%m.%Y %H:%M')} - {booking.end_date.strftime('%d.%m.%Y %H:%M')}", callback_data=str(booking.id))])
+
+    keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        text="Введите дату заезда Вашего бронирования.\n",
-        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
-    return SET_BOOKING_DATE
+        text="📅 <b>Выберите бронирование, которое хотите отменить.</b>\n",
+        parse_mode='HTML',
+        reply_markup=reply_markup)
+    return CHOOSE_BOOKING
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Подтвердить", callback_data=CONFIRM)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        text=f"Подтвердите отмену бронирования на {booking_date.strftime('%d.%m.%Y')}.", 
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text=f"❌ <b>Подтвердите отмену бронирования</b>.\n\n"
+            "🔄 Для продолжения выберите соответствующую опцию.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return CONFIRM
 
-def load_booking() -> bool:
-    global booking
-    booking = database_service.get_booking_by_start_date_user(user_contact, booking_date.date())
-    return True if booking else False
-
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.warning(__name__, f"Booking is empty", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text(
-        text="Ошибка!\n"
-            "Не удалось найти брониование.\n"
-            "Повторите попытку еще раз.\n"
-            "\n"
-            "Введите имя пользователя повторно. \n"
-            "Напишите Ваш <b>Telegram</b>.\n"
-            "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-            "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+    await update.message.reply_text(
+        text="❌ <b>Ошибка!</b>\n"
+            "🔍 Не удалось найти бронирование.\n\n"
+            "🔄 Пожалуйста, попробуйте еще раз.\n\n"
+            "📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
 
 def reset_variables():
-    global user_contact, booking_date
+    global user_contact, booking_date, selected_bookings
     user_contact = ''
     booking_date = date.today()
+    selected_bookings = []

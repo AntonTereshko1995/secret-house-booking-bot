@@ -2,8 +2,10 @@ import sys
 import os
 
 from src.services.database_service import DatabaseService
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.rental_price import RentalPrice
+from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.services.calculation_rate_service import CalculationRateService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
@@ -63,23 +65,27 @@ def get_handler() -> ConversationHandler:
     return handler
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, f"Back to menu", update)
     await menu_handler.show_menu(update, context)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, f"enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Напишите Ваш <b>Telegram</b>.\n"
-        "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-        "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, f"generate tariff menu", update)
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
@@ -101,7 +107,8 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Выберете тариф для сертификата.\n",
+        text="🎟 <b>Выберите тариф для сертификата.</b>",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return SELECT_TARIFF    
 
@@ -114,12 +121,13 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await confirm_pay(update, context)
         else:
-            await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
-
+            LoggerService.warning(__name__, f"user name is invalid", update)
+            await update.message.reply_text(
+                "❌ <b>Ошибка!</b>\n"
+                "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
+                "🔄 Пожалуйста, попробуйте еще раз.",
+                parse_mode='HTML'   
+            )
     return VALIDATE_USER
 
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -131,6 +139,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global tariff, rental_rate
     tariff = tariff_helper.get_by_str(data)
     rental_rate = rate_service.get_tariff(tariff)
+    LoggerService.info(__name__, f"select tariff", update, kwargs={'tariff': tariff})
 
     if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
         global is_sauna_included, is_secret_room_included, is_additional_bedroom_included
@@ -148,6 +157,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
 
     global is_additional_bedroom_included
     is_additional_bedroom_included = eval(update.callback_query.data)
+    LoggerService.info(__name__, f"select additional bedroom", update, kwargs={'is_additional_bedroom_included': is_additional_bedroom_included})
     return await secret_room_message(update, context)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -158,7 +168,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     global is_secret_room_included
     is_secret_room_included = eval(data)
-
+    LoggerService.info(__name__, f"include secret room", update, kwargs={'is_secret_room_included': is_secret_room_included})
     return await sauna_message(update, context)
 
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -169,6 +179,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global is_sauna_included
     is_sauna_included = eval(update.callback_query.data)
+    LoggerService.info(__name__, f"include sauna", update, kwargs={'is_sauna_included': is_sauna_included})
     return await enter_user_contact(update, context)
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -176,20 +187,19 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (update.callback_query.data == str(END)):
         return await back_navigation(update, context)
     
+    LoggerService.info(__name__, f"pay", update)
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=BACK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
-        text=f"Общая сумма оплаты {price} руб.\n"
-            "\n"
-            "Информация для оплаты (Альфа-Банк):\n"
-            "по номеру телефона +375257908378\n"
+        text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
+            "📌 <b>Информация для оплаты (Альфа-Банк):</b>\n"
+            f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
             "или\n"
-            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
-            "\n"
-            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
-            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
-            "Спасибо за понимание.\n\n"
-            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный подарочный сертификат.",
+            f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
+            "❗️ <b>После оплаты отправьте скриншот с чеком об оплате.</b>\n"
+            "К сожалению, только так мы можем подтвердить, что именно вы отправили предоплату.\n"
+            "🙏 Спасибо за понимание.\n\n"
+            "✅ Как только мы получим оплату, администратор свяжется с вами и отправит ваш <b>электронный подарочный сертификат</b>.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return PHOTO_UPLOAD
@@ -203,11 +213,12 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global price
     price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
+    LoggerService.info(__name__, f"confirm pay", update, kwargs={'price': price})
     await update.message.reply_text(
-        text=f"Общая сумма оплаты {price} руб.\n"
-            f"В стоимость входит: {categories}.\n"
-            "\n"
-            "Подтверждаете покупку сертификата?\n",
+        text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n"
+            f"📌 <b>В стоимость входит:</b> {categories}.\n\n"
+            "✅ <b>Подтверждаете покупку сертификата?</b>",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return PAY
 
@@ -221,9 +232,11 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.edit_message_text(
-        text="Планируете ли Вы пользоваться 'Секретной комнатой'?\n"
-            f"Стоимость {rental_rate.secret_room_price} руб. для тарифа '{tariff_helper.get_name(tariff)}'.",
-    reply_markup=reply_markup)
+        text="🔞 <b>Планируете ли вы пользоваться 'Секретной комнатой'?</b>\n\n"
+            f"💰 <b>Стоимость:</b> {rental_rate.secret_room_price} руб. \n"
+            f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
+        parse_mode='HTML',
+        reply_markup=reply_markup)
     return INCLUDE_SECRET_ROOM
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -235,8 +248,9 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-    text="Планируете ли Вы пользоваться сауной?\n"
-        f"Стоимость {rental_rate.sauna_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
+    text="🧖‍♂️ <b>Планируете ли вы пользоваться сауной?</b>\n\n"
+        f"💰 <b>Стоимость:</b> {rental_rate.sauna_price} руб.\n"
+        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
     reply_markup=reply_markup)
     return INCLUDE_SAUNA
 
@@ -244,8 +258,11 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        text="Спасибо Вам за доверие к The Secret House.\n"
-            "Скоро мы свяжемся с Вами.\n",
+        text="🙏 <b>Спасибо за доверие к The Secret House!</b>\n\n"
+            "📩 Ваша заявка получена.\n"
+            "🔍 Администратор проверит оплату и свяжется с вами в ближайшее время.\n\n"
+            "⏳ Пожалуйста, ожидайте подтверждения.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return MENU
 
@@ -258,8 +275,10 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Нужна ли Вам вторая спальная комната?\n"
-            f"Стоимость {rental_rate.second_bedroom_price} руб для тарифа '{tariff_helper.get_name(tariff)}'.",
+        text="🛏 <b>Планируете ли вы пользоваться второй спальней комнатой?</b>\n\n"
+            f"💰 <b>Стоимость:</b> {rental_rate.second_bedroom_price} руб.\n"
+            f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return ADDITIONAL_BEDROOM
 
@@ -283,5 +302,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1].file_id
     chat_id = update.message.chat.id
     gift = save_gift_information()
+    LoggerService.info(__name__, f"handle photo", update)
     await admin_handler.accept_gift_payment(update, context, gift, chat_id, photo)
     return await confirm_booking(update, context)

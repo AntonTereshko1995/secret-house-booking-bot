@@ -1,26 +1,39 @@
-import asyncio
 import sys
 import os
 import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db import database
-from telegram import Update
+from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from src.handlers import menu_handler, admin_handler
-from src.config.config import TELEGRAM_TOKEN
+from src.services.logger_service import LoggerService
+from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
 import logging
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
 logger = logging.getLogger(__name__)
+
+async def set_commands(application: Application):
+    user_commands = [
+        BotCommand("start", "Меню"),
+        # BotCommand("prices", "Посмотреть тарифы"),
+    ]
+    admin_commands = user_commands + [
+        BotCommand("booking_list", "Бронирования"),
+        BotCommand("change_password", "Изменить пароль"),
+    ]
+    
+    await application.bot.set_my_commands(user_commands)
+    await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
 
 def main() -> None:
     database.create_db_and_tables()
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     application.add_handler(menu_handler.get_handler())
+    application.add_handler(CommandHandler("start", menu_handler.show_menu))
 
     # Admin
     application.add_handler(CommandHandler("booking_list", admin_handler.get_booking_list))
@@ -30,6 +43,8 @@ def main() -> None:
 
     job = job_service.JobService()
     job.set_application(application)
+    # LoggerService.init_logger()
+
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':

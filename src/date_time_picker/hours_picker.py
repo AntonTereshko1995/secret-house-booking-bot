@@ -44,7 +44,7 @@ def create_hours_picker(date=None, free_slots=None, action_text=""):
         callback_data = create_callback_data(str(HOURS), time_slots[i])
         row.append(InlineKeyboardButton(time_str, callback_data=callback_data))
 
-        if len(row) == 2:
+        if len(row) == 4:
             keyboard.append(row)
             row = []
 
@@ -57,7 +57,8 @@ def create_hours_picker(date=None, free_slots=None, action_text=""):
 async def process_hours_selection(update, context):
     # Selected, Time, Is_action
     return_data = (False, None, False)
-    query = update.callback_query
+    query = update.callback_query 
+    # TODO exception
     (_, action, time_str) = string_helper.separate_callback_data(query.data)
     if action == str(ACTION):
         return_data = (False, None, True)

@@ -96,4 +96,5 @@ class CalculationRateService:
         return self._rates
     
     def calculate_discounted_price(self, original_price, discount_percent):
-        return original_price * (1 - discount_percent / 100)
+        discounted_price = original_price * (1 - discount_percent / 100)
+        return round(discounted_price / 10) * 10

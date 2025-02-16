@@ -1,14 +1,15 @@
 import calendar
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext)
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper
-from src.config.config import CLEANING_HOURS
 from src.constants import END, MENU, AVAILABLE_DATES, STOPPING, GET_AVAILABLE_DATES, BACK
 from src.config.config import PERIOD_IN_MONTHS
 
@@ -16,11 +17,10 @@ database_service = DatabaseService()
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(select_month, pattern=f"^{str(AVAILABLE_DATES)}$")],
+        entry_points=[CallbackQueryHandler(select_month, pattern=f"^{AVAILABLE_DATES}$")],
         states={ 
             GET_AVAILABLE_DATES: [CallbackQueryHandler(get_available_dates)], 
-            BACK: [CallbackQueryHandler(select_month, pattern=f"^{BACK}$")], 
-            },
+            BACK: [CallbackQueryHandler(select_month, pattern=f"^{BACK}$")]},
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={
             END: MENU,
@@ -30,9 +30,11 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
+    LoggerService.info(__name__, f"Back to menu", update)
     return END
 
 async def select_month(update: Update, context: CallbackContext):
+    LoggerService.info(__name__, f"Select month", update)
     months = date_time_helper.get_future_months(PERIOD_IN_MONTHS) 
     keyboard = [[InlineKeyboardButton(text=value, callback_data=f"month_{str(key)}")] for key, value in months.items()]
     keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
@@ -40,16 +42,18 @@ async def select_month(update: Update, context: CallbackContext):
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Выберете доступный месяц для бронирования.",
+        text="📅 <b>Выберите доступный месяц для бронирования.</b>",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return GET_AVAILABLE_DATES
 
 async def get_available_dates(update: Update, context: CallbackContext):
     await update.callback_query.answer()
     if (update.callback_query.data == str(END)):
-            return await back_navigation(update, context)
+        return await back_navigation(update, context)
 
     month, year = parse_callback_data(update)
+    LoggerService.info(__name__, f"Available dates", update)
     keyboard = [
         [InlineKeyboardButton("Выбрать другой месяц", callback_data=BACK)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]

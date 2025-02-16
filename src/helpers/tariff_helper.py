@@ -33,5 +33,6 @@ def get_by_value(value: int) -> Tariff:
         return Tariff.GIFT 
 
 def get_by_str(value_str: str) -> Tariff:
-    value = int(value_str)
+    # TODO exception
+    value = int(value_str) 
     return get_by_value(value)

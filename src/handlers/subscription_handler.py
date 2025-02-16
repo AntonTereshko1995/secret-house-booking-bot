@@ -1,9 +1,12 @@
 import sys
 import os
+
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
+from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper, subscription_helper
 from src.models.enum.subscription_type import SubscriptionType
@@ -54,22 +57,26 @@ def get_handler() -> ConversationHandler:
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
+    LoggerService.info(__name__, "Back to menu", update)
     return END
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, "Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Напишите Ваш <b>Telegram</b>.\n"
-            "Формат ввода @user_name (обязательно начинайте ввод с @).\n"
-            "Формат ввода номера телефона +375251111111 (обязательно начинайте ввод с +375).\n",
+        text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
+            "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
+            "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return VALIDATE_USER
 
 async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, "Generate subscription menu", update)
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
@@ -85,8 +92,12 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Выберете удобный для Вас абонемент.\n"
-            "В каждый абонемент входит аренда на 12 часов, 2 спальные комнаты и секретная комната.\n",
+        text="📌 <b>Выберите удобный абонемент</b>.\n\n"
+            "Каждый абонемент включает:\n"
+            "🏠 Аренду на <b>12 часов</b>\n"
+            "🛏 <b>2 спальные комнаты</b>\n"
+            "🔞 <b>Секретную комнату</b>",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return SUBSCRIPTION_TYPE
 
@@ -99,11 +110,12 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_contact = user_input
             return await confirm_pay(update, context)
         else:
-            await update.message.reply_text("Ошибка: имя пользователя в Telegram или номер телефона введены не коректно.\n"
-                                            "Повторите ввод еще раз.")
-    else:
-        await update.message.reply_text("Ошибка: Пустая строка.\n"
-                                        "Повторите ввод еще раз.")
+            LoggerService.warning(__name__, "User name is invalid", update)
+            await update.message.reply_text(
+                "❌ <b>Ошибка!</b>\n"
+                "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
+                "🔄 Пожалуйста, попробуйте еще раз.",
+                parse_mode='HTML',)
 
     return VALIDATE_USER
 
@@ -115,11 +127,13 @@ async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT
 
     global subscription_type, rental_rate
     subscription_type = subscription_helper.get_by_str(data)
+    LoggerService.info(__name__, f"select subscription type", update, kwargs={'subscription_type': subscription_type})
     rental_rate = rate_service.get_subscription(subscription_type)
 
     return await enter_user_contact(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, f"confirm pay", update)
     keyboard = [
         [InlineKeyboardButton("Перейти к оплате.", callback_data=PAY)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]
@@ -130,11 +144,11 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     categories = rate_service.get_price_categories(rental_rate, False, True, True)
 
     await update.message.reply_text(
-    text=f"Общая сумма оплаты {price} руб.\n"
-        f"В стоимость входит: {categories}.\n"
-        "\n"
-        "Подтверждаете покупку абонемента?\n",
-    reply_markup=reply_markup)
+        text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
+            f"📌 <b>В стоимость входит:</b> {categories}.\n\n"
+            "✅ <b>Подтверждаете покупку абонемента?</b>",
+        parse_mode='HTML',
+        reply_markup=reply_markup)
     return PAY
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -145,31 +159,33 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=BACK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = rental_rate.price
+    LoggerService.info(__name__, f"pay", update, kwargs={'price': price})
 
     await update.callback_query.edit_message_text(
-        text=f"Общая сумма оплаты {price} руб.\n"
-            "\n"
-            "Информация для оплаты (Альфа-Банк):\n"
-            "по номеру телефона +375257908378\n"
+        text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
+            "📌 <b>Информация для оплаты (Альфа-Банк):</b>\n"
+            f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
             "или\n"
-            "по номеру карты 4373 5000 0654 0553 ANTON TERESHKO\n"
-            "\n"
-            "<b>После оплаты отправьте скриншот с чеком об опалте.</b>\n"
-            "К сожалению, только так мы можешь узнать, что именно Вы отправили предоплату.\n"
-            "Спасибо за понимание.\n\n"
-            "Как только мы получим средства, то свяжемся с Вами и вышлем Вам электронный код.\n"
-            "Код мы можете вводить в пункте меню 'Забронировать' и автоматически будут списываться брони.\n"
-            "Держите код в тайне!\n",
+            f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
+            "⚠️ <b>После оплаты отправьте скриншот с чеком об оплате.</b>\n"
+            "К сожалению, только так мы можем подтвердить, что именно Вы отправили предоплату.\n\n"
+            "✅ Как только мы получим средства, администратор свяжется с вами и отправит электронный код.\n"
+            "🔑 Код можно ввести в разделе <b>«Забронировать»</b> – бронирования будут списываться автоматически.\n\n"
+            "🔒 <b>Держите код в тайне!</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
     return PHOTO_UPLOAD
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(__name__, f"confirm booking", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        text="Спасибо Вам за доверие к The Secret House.\n"
-            "Скоро мы свяжемся с Вами.\n",
+        text="🙏 <b>Спасибо за доверие к The Secret House!</b>\n\n"
+            "📩 Ваша заявка получена.\n"
+            "🔍 Администратор проверит оплату и свяжется с вами в ближайшее время.\n\n"
+            "⏳ Пожалуйста, ожидайте подтверждения.",
+        parse_mode='HTML',
         reply_markup=reply_markup)
     return MENU
 
@@ -190,5 +206,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1].file_id
     chat_id = update.message.chat.id
     subscription = save_subscription_information()
+    LoggerService.info(__name__, f"handle photo", update)
     await admin_handler.accept_subscription_payment(update, context, subscription, chat_id, photo)
     return await confirm_booking(update, context)
