@@ -2,9 +2,8 @@ import calendar
 from datetime import datetime, timedelta
 import sys
 import os
-
-from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext)
