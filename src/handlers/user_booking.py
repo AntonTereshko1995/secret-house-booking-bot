@@ -13,7 +13,6 @@ from src.constants import (
     STOPPING, 
     SET_USER,
     VALIDATE_USER, 
-    CONFIRM,
     USER_BOOKING)
 
 user_contact: str
@@ -25,7 +24,6 @@ def get_handler() -> ConversationHandler:
         states={
             SET_USER: [CallbackQueryHandler(enter_user_contact)],
             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            CONFIRM: [CallbackQueryHandler(display_bookings, pattern=f"^{CONFIRM}$")],
         },
         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
         map_to_parent={

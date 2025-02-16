@@ -7,7 +7,7 @@ from src.services.calculation_rate_service import CalculationRateService
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
-from src.constants import END
+from src.constants import END, MENU
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase

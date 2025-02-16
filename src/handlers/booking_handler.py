@@ -530,7 +530,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Confirm booking", update)
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CONFIRM_{END}")]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     message = (
         "✨ <b>Спасибо за доверие к The Secret House!</b> ✨\n"
         "📩 Мы скоро отправим вам сообщение с подтверждением бронирования.\n\n"
@@ -550,8 +550,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message,
             parse_mode='HTML',
             reply_markup=reply_markup)
-        
-    return MENU
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
