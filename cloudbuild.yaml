@@ -1,2 +1,11 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/telegram-bot', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/telegram-bot']
+
+images:
+  - 'gcr.io/$PROJECT_ID/telegram-bot'
+
 options:
   logging: NONE
