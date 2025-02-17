@@ -1,0 +1,15 @@
+python-telegram-bot
+singleton_decorator
+sqlalchemy
+python-dotenv
+logtail-python
+loguru
+openai
+pytz
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+matplotlib
+python-telegram-bot[job-queue]
+requests

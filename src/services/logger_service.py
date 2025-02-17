@@ -3,7 +3,6 @@ import os
 from typing import Any, Dict
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import logging
-from loguru import logger
 from logtail import LogtailHandler
 from src.config.config import LOGTAIL_TOKEN, LOGTAIL_SOURCE
 

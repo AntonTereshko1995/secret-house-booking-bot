@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 async def set_commands(application: Application):
     user_commands = [
         BotCommand("start", "Меню"),
-        # BotCommand("prices", "Посмотреть тарифы"),
     ]
     admin_commands = user_commands + [
         BotCommand("booking_list", "Бронирования"),
