@@ -67,3 +67,6 @@ IGNORE = "IGNORE"
 
 # Вопросы
 MESSAGE = "MESSAGE"
+
+# Admin
+SET_PASSWORD = "SET_PASSWORD"

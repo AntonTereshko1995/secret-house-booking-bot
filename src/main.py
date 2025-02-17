@@ -36,14 +36,13 @@ def main() -> None:
 
     # Admin
     application.add_handler(CommandHandler("booking_list", admin_handler.get_booking_list))
+    application.add_handler(admin_handler.get_password_handler())
     application.add_handler(CallbackQueryHandler(admin_handler.booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"))
     application.add_handler(CallbackQueryHandler(admin_handler.gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"))
     application.add_handler(CallbackQueryHandler(admin_handler.subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$"))
 
     job = job_service.JobService()
     job.set_application(application)
-    # LoggerService.init_logger()
-
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':

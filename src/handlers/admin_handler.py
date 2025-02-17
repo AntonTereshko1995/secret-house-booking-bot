@@ -2,25 +2,85 @@ from datetime import date
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.settings_service import SettingsService
 from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
-from src.constants import END, MENU
+from src.constants import END, SET_PASSWORD
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
-from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS, INFORM_CHAT_ID, PREPAYMENT, BANK_CARD_NUMBER, BANK_PHONE_NUMBER, ADMINISTRATION_CONTACT, HOUSE_PASSWORD
+from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS, INFORM_CHAT_ID, PREPAYMENT, BANK_CARD_NUMBER, BANK_PHONE_NUMBER, ADMINISTRATION_CONTACT
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes)
+from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters, CallbackQueryHandler)
 from src.helpers import string_helper, string_helper, tariff_helper
 
 database_service = DatabaseService()
 calendar_service = CalendarService()
 calculation_rate_service = CalculationRateService()
 file_service = FileService()
+settings_service = SettingsService()
+writing_password = ''
+
+def get_password_handler() -> ConversationHandler:
+    handler = ConversationHandler(
+        entry_points=[CommandHandler('change_password', change_password)],
+        states={ 
+            SET_PASSWORD: [CallbackQueryHandler(enter_house_password)]
+            },
+        fallbacks=[],
+        map_to_parent={
+            END: END
+            })
+    return handler
+
+async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if str(chat_id) != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+    
+    keyboard = [
+        [InlineKeyboardButton('1', callback_data="1"), InlineKeyboardButton('2', callback_data="2"), InlineKeyboardButton('3', callback_data="3")],
+        [InlineKeyboardButton('4', callback_data="4"), InlineKeyboardButton('5', callback_data="5"), InlineKeyboardButton('6', callback_data="6")],
+        [InlineKeyboardButton('7', callback_data="7"), InlineKeyboardButton('8', callback_data="8"), InlineKeyboardButton('9', callback_data="9")],
+        [InlineKeyboardButton('Очистить', callback_data="clear"), InlineKeyboardButton('0', callback_data="0"), InlineKeyboardButton('Отмена', callback_data=str(END))]]
+
+    message = f"Введите новый пароль и 4 цифр. Например 1235.\n Старый пароль: {settings_service.password}.\n Новый пароль: {writing_password}"
+    if update.message:
+        await update.message.reply_text(
+            text=message, 
+            reply_markup=InlineKeyboardMarkup(keyboard))
+    elif update.callback_query:
+        await update.callback_query.edit_message_text(
+            text=message, 
+            reply_markup=InlineKeyboardMarkup(keyboard))
+    return SET_PASSWORD
+
+async def enter_house_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global writing_password
+    await update.callback_query.answer()
+    data = update.callback_query.data
+    if data == str(END):
+        writing_password = ''
+        return END
+    elif data == "clear":
+        writing_password = ''
+        await change_password(update, context)
+        return SET_PASSWORD
+    
+    writing_password += data
+    if len(writing_password) == 4:
+        settings_service.password = writing_password
+        await update.callback_query.edit_message_text(text=f"Пароль изменен на {writing_password}.")
+        writing_password = ''
+        return END
+    else:
+        await change_password(update, context)
+        return SET_PASSWORD
 
 async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -29,6 +89,7 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         message = get_future_booking_message()
         await update.message.reply_text(message)
+    return END
 
 async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo, is_payment_by_cash = False):
     user = database_service.get_user_by_id(booking.user_id)
@@ -357,7 +418,7 @@ async def send_booking_details(context: ContextTypes.DEFAULT_TYPE, booking: Book
     await context.bot.send_photo(
         chat_id=booking.chat_id, 
         caption="Мы предоставляем самостоятельное заселение.\n"
-            f"1. Слева отображена ключница, которая располагается за территорией дома. В которой лежат ключи от ворот и дома. Пароль: {HOUSE_PASSWORD}\n"
+            f"1. Слева отображена ключница, которая располагается за территорией дома. В которой лежат ключи от ворот и дома. Пароль: {settings_service.password}\n"
             "2. Справа отображен ящик, который располагается на территории дома. В ящик нужно положить подписанный договор и оплату за проживание, если вы платите наличкой.\n\n"
             "Попрошу это сделать в первые 30 мин. Вашего пребывания в The Secret House. Администратор заберет договор и деньги."
             "Договор и ручка будут лежать в дома на острове на кухне. Вложите деньги и договор с розовый конверт.\n\n"
