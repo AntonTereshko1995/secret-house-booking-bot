@@ -1,6 +1,9 @@
 import sys
 import os
 import logging
+import threading
+import http.server
+import socketserver
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db import database
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
@@ -42,6 +45,18 @@ def main() -> None:
 
     job = job_service.JobService()
     job.set_application(application)
+
+
+    def keep_alive():
+        port = int(os.environ.get("PORT", 8080))
+        handler = http.server.SimpleHTTPRequestHandler
+        with socketserver.TCPServer(("", port), handler) as httpd:
+            logging.info(f"Serving at port {port}")
+            httpd.serve_forever()
+
+    # Запускаем сервер-заглушку в отдельном потоке
+    threading.Thread(target=keep_alive, daemon=True).start()
+
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
