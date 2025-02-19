@@ -1,8 +1,12 @@
 from dotenv import load_dotenv
 import os
 
-ENV_FILE = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
-load_dotenv(ENV_FILE)
+if "the-secret-house-secret" in os.environ:
+    with open("/var/secrets/the-secret-house-secret") as f:
+        load_dotenv(stream=f)
+else:
+    ENV_FILE = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
+    load_dotenv(ENV_FILE)
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
