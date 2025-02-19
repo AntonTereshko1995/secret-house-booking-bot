@@ -4,6 +4,8 @@ import logging
 import threading
 import http.server
 import socketserver
+
+from flask import Flask, app
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db import database
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
@@ -18,6 +20,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+app = Flask(__name__)
+
 async def set_commands(application: Application):
     user_commands = [
         BotCommand("start", "Меню"),
@@ -30,6 +34,7 @@ async def set_commands(application: Application):
     await application.bot.set_my_commands(user_commands)
     await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
 
+@app.route("/")
 def main() -> None:
     database.create_db_and_tables()
     application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
@@ -47,17 +52,19 @@ def main() -> None:
     job.set_application(application)
 
 
-    def keep_alive():
-        port = int(os.environ.get("PORT", 8080))
-        handler = http.server.SimpleHTTPRequestHandler
-        with socketserver.TCPServer(("", port), handler) as httpd:
-            logging.info(f"Serving at port {port}")
-            httpd.serve_forever()
+    # def keep_alive():
+    #     port = int(os.environ.get("PORT", 8080))
+    #     handler = http.server.SimpleHTTPRequestHandler
+    #     with socketserver.TCPServer(("", port), handler) as httpd:
+    #         logging.info(f"Serving at port {port}")
+    #         httpd.serve_forever()
 
-    # Запускаем сервер-заглушку в отдельном потоке
-    threading.Thread(target=keep_alive, daemon=True).start()
+    # # Запускаем сервер-заглушку в отдельном потоке
+    # threading.Thread(target=keep_alive, daemon=True).start()
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
-    main()
+    # main()
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
