@@ -4,8 +4,7 @@ import logging
 import threading
 import http.server
 import socketserver
-
-from flask import Flask, app
+from flask import Flask, request
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db import database
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
@@ -19,8 +18,8 @@ import logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 app = Flask(__name__)
+application: Application
 
 async def set_commands(application: Application):
     user_commands = [
@@ -34,9 +33,18 @@ async def set_commands(application: Application):
     await application.bot.set_my_commands(user_commands)
     await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
 
+# Webhook endpoint for Flask
+@app.route('/webhook', methods=['POST'])
+async def webhook():
+    await application.update_queue.put(
+        Update.de_json(data=await request.get_json(), bot=application.bot)
+    )
+    return "ok"
+
 @app.route("/")
 def main() -> None:
     database.create_db_and_tables()
+    global application
     application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     application.add_handler(menu_handler.get_handler())
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
@@ -51,20 +59,9 @@ def main() -> None:
     job = job_service.JobService()
     job.set_application(application)
 
-
-    # def keep_alive():
-    #     port = int(os.environ.get("PORT", 8080))
-    #     handler = http.server.SimpleHTTPRequestHandler
-    #     with socketserver.TCPServer(("", port), handler) as httpd:
-    #         logging.info(f"Serving at port {port}")
-    #         httpd.serve_forever()
-
-    # # Запускаем сервер-заглушку в отдельном потоке
-    # threading.Thread(target=keep_alive, daemon=True).start()
-
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
-    # main()
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=port)
+    # app.run()
