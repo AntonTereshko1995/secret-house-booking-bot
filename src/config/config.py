@@ -2,8 +2,9 @@ from dotenv import load_dotenv
 import os
 
 if "secrets-production" in os.environ:
-    with open("projects/535413863315/secrets/the-secret-house-secret/versions/2/the-secret-house-secret") as f:
-        load_dotenv(stream=f)
+    pass
+    # with open("projects/535413863315/secrets/the-secret-house-secret/versions/2/the-secret-house-secret") as f:
+    #     load_dotenv(stream=f)
 else:
     ENV_FILE = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
     load_dotenv(ENV_FILE)
