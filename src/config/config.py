@@ -19,7 +19,6 @@ def get_secret(project_id: str) -> secretmanager.GetSecretRequest:
         replication = "MANAGED"
     else:
         raise Exception(f"Unknown replication {response.replication}")
-    
     return response.payload.data.decode("UTF-8")
 
 if "secrets-production" in os.environ:
