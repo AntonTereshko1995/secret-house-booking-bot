@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
 
-if "the-secret-house-secret" in os.environ:
+if "secrets-production" in os.environ:
     with open("the-secret-house-secret") as f:
         load_dotenv(stream=f)
 else:
