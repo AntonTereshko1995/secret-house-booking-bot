@@ -4,7 +4,7 @@ import logging
 import threading
 import http.server
 import socketserver
-from flask import Flask, request
+from flask import Flask, jsonify, request
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db import database
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
@@ -32,6 +32,10 @@ async def set_commands(application: Application):
     
     await application.bot.set_my_commands(user_commands)
     await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
+
+@app.route('/health/liveness')
+def liveness_check():
+    return jsonify({"status": "ok"}), 200
 
 # Webhook endpoint for Flask
 @app.route('/webhook', methods=['POST'])
