@@ -63,7 +63,6 @@ def main() -> None:
     job = job_service.JobService()
     job.set_application(application)
     return "Bot is running!"
-
     # application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
