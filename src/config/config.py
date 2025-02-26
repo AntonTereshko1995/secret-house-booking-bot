@@ -13,8 +13,9 @@ CLEANING_HOURS = 2
 def get_secret(secret_id: str) -> secretmanager.GetSecretRequest:
     client = secretmanager.SecretManagerServiceClient()
     # name = client.secret_path("the-secret-house", secret_id)
+    # response = client.get_secret(request={"name": name})
     name = f"projects/the-secret-house/secrets/{secret_id}/versions/latest"
-    response = client.get_secret(request={"name": name})
+    response = client.access_secret_version(request={"name": name})
     return response.payload.data.decode("UTF-8")
 
 if "secrets-production" in os.environ:
