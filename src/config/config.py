@@ -14,7 +14,7 @@ PREPAYMENT = 80
 CLEANING_HOURS = 2
 
 if "secrets-production" in os.environ:
-    secrets = secre_manager_service.get_secret_values_by_dict("the-secret-house-secret")
+    secrets = secre_manager_service.get_secret_by_dict("the-secret-house-secret")
     DEBUG = False
     TELEGRAM_TOKEN = secrets.get("TELEGRAM_TOKEN")
     LOGTAIL_TOKEN = secrets.get("LOGTAIL_TOKEN")

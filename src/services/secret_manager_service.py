@@ -3,7 +3,7 @@ from google.cloud import secretmanager
 
 @singleton
 class SecretManagerService:
-    def get_secret_values_by_dict(secret_id: str) -> dict:
+    def get_secret_by_dict(secret_id: str) -> dict:
         client = secretmanager.SecretManagerServiceClient()
         secret_path = f"projects/the-secret-house/secrets/{secret_id}/versions/latest"
         response = client.access_secret_version(request={"name": secret_path})
