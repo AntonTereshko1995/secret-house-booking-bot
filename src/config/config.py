@@ -13,12 +13,6 @@ def get_secret(project_id: str) -> secretmanager.GetSecretRequest:
     client = secretmanager.SecretManagerServiceClient()
     name = client.secret_path(project_id, "the-secret-house")
     response = client.get_secret(request={"name": name})
-    if "automatic" in response.replication:
-        replication = "AUTOMATIC"
-    elif "user_managed" in response.replication:
-        replication = "MANAGED"
-    else:
-        raise Exception(f"Unknown replication {response.replication}")
     return response.payload.data.decode("UTF-8")
 
 if "secrets-production" in os.environ:
