@@ -9,9 +9,11 @@ MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS = 3
 PREPAYMENT = 80
 CLEANING_HOURS = 2
 
+# projects/535413863315/secrets/TELEGRAM_TOKEN
 def get_secret(secret_id: str) -> secretmanager.GetSecretRequest:
     client = secretmanager.SecretManagerServiceClient()
-    name = client.secret_path("the-secret-house", secret_id)
+    # name = client.secret_path("the-secret-house", secret_id)
+    name = f"projects/{"the-secret-house"}/secrets/{secret_id}/versions/latest"
     response = client.get_secret(request={"name": name})
     return response.payload.data.decode("UTF-8")
 
