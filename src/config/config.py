@@ -12,7 +12,8 @@ CLEANING_HOURS = 2
 # projects/535413863315/secrets/TELEGRAM_TOKEN
 def get_secret_value() -> dict:
     client = secretmanager.SecretManagerServiceClient()
-    secret_path = client.secret_path("the-secret-house", "the-secret-house-secret")
+    # secret_path = client.secret_path("the-secret-house", "the-secret-house-secret")
+    secret_path = f"projects/the-secret-house/secrets/the-secret-house-secret/versions/latest"
     # try:
     response = client.access_secret_version(request={"name": secret_path})
     secret_string = response.payload.data.decode("UTF-8")
