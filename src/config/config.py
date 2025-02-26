@@ -13,7 +13,7 @@ CLEANING_HOURS = 2
 def get_secret(secret_id: str) -> secretmanager.GetSecretRequest:
     client = secretmanager.SecretManagerServiceClient()
     # name = client.secret_path("the-secret-house", secret_id)
-    name = f"projects/{"the-secret-house"}/secrets/{secret_id}/versions/latest"
+    name = f"projects/the-secret-house/secrets/{secret_id}/versions/latest"
     response = client.get_secret(request={"name": name})
     return response.payload.data.decode("UTF-8")
 
