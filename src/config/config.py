@@ -9,9 +9,9 @@ MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS = 3
 PREPAYMENT = 80
 CLEANING_HOURS = 2
 
-def get_secret(project_id: str) -> secretmanager.GetSecretRequest:
+def get_secret(secret_id: str) -> secretmanager.GetSecretRequest:
     client = secretmanager.SecretManagerServiceClient()
-    name = client.secret_path(project_id, "the-secret-house")
+    name = client.secret_path("the-secret-house", secret_id)
     response = client.get_secret(request={"name": name})
     return response.payload.data.decode("UTF-8")
 
