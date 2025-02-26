@@ -1,7 +1,9 @@
 from datetime import datetime
+import json
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.secret_manager_service import SecretManagerService
 from src.services.logger_service import LoggerService
 from src.helpers import string_helper, tariff_helper
 from google.oauth2 import service_account
@@ -13,13 +15,22 @@ from src.config.config import CALENDAR_ID
 
 SERVICE_ACCOUNT_FILE = "src/config/credentials.json"  
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+secret_manager_service = SecretManagerService()
 
 @singleton
 class CalendarService:
     def __init__(self):
-        credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, 
+
+        # credentials = service_account.Credentials.from_service_account_file(
+        #     SERVICE_ACCOUNT_FILE, 
+        #     scopes=SCOPES)
+        
+        credentials_json = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
+        credentials_dict = json.loads(credentials_json)
+        credentials = service_account.Credentials.from_service_account_info(
+            credentials_dict, 
             scopes=SCOPES)
+
         self.service = build("calendar", "v3", credentials=credentials)
 
     def add_event(self, booking: BookingBase, user: UserBase) -> str:
@@ -87,3 +98,5 @@ class CalendarService:
         except Exception as e:
             print(f"Error to remove event: {e}")
             LoggerService.error(__name__, f"cancel_event", e)
+
+ 

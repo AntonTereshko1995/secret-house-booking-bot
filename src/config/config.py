@@ -1,6 +1,10 @@
 from dotenv import load_dotenv
-from google.cloud import secretmanager
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.secret_manager_service import SecretManagerService
+
+secre_manager_service = SecretManagerService()
 
 TELEGRAM_CONTACT = "https://t.me/the_secret_house"
 PERIOD_IN_MONTHS = 2
@@ -9,22 +13,9 @@ MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS = 3
 PREPAYMENT = 80
 CLEANING_HOURS = 2
 
-# projects/535413863315/secrets/TELEGRAM_TOKEN
-def get_secret_value() -> dict:
-    client = secretmanager.SecretManagerServiceClient()
-    # secret_path = client.secret_path("the-secret-house", "the-secret-house-secret")
-    secret_path = f"projects/the-secret-house/secrets/the-secret-house-secret/versions/latest"
-    # try:
-    response = client.access_secret_version(request={"name": secret_path})
-    secret_string = response.payload.data.decode("UTF-8")
-    secret_dict = dict(line.split("=", 1) for line in secret_string.splitlines() if "=" in line)
-    return secret_dict
-    # except Exception as e:
-    #     print(f"Error retrieving secret: {e}")
-    #     return None
-
 if "secrets-production" in os.environ:
-    secrets = get_secret_value()
+    secrets = secre_manager_service.get_secret_values_by_dict("the-secret-house-secret")
+    DEBUG = False
     TELEGRAM_TOKEN = secrets.get("TELEGRAM_TOKEN")
     LOGTAIL_TOKEN = secrets.get("LOGTAIL_TOKEN")
     LOGTAIL_SOURCE = secrets.get("LOGTAIL_SOURCE")
@@ -40,6 +31,7 @@ if "secrets-production" in os.environ:
 else:
     file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
     load_dotenv(file)
+    DEBUG = True
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
     LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE")

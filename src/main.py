@@ -1,16 +1,13 @@
 import sys
 import os
-import logging
-import threading
-import http.server
-import socketserver
-from flask import Flask, jsonify, request
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import logging
+from flask import Flask, jsonify, request
 from db import database
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from src.handlers import menu_handler, admin_handler
-from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
+from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID, DEBUG
 from src.services import job_service
 import logging
 
@@ -37,7 +34,6 @@ async def set_commands(application: Application):
 def liveness_check():
     return jsonify({"status": "ok"}), 200
 
-# Webhook endpoint for Flask
 @app.route('/webhook', methods=['POST'])
 async def webhook():
     await application.update_queue.put(
@@ -62,6 +58,7 @@ def main() -> None:
 
     job = job_service.JobService()
     job.set_application(application)
+    
     return "Bot is running!"
     # application.run_polling(allowed_updates=Update.ALL_TYPES)
 

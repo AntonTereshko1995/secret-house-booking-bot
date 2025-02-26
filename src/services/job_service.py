@@ -7,7 +7,6 @@ from src.handlers import admin_handler
 from datetime import date, time, timedelta
 from telegram import Update
 from telegram.ext import Application, CallbackContext, JobQueue
-from src.services.file_service import FileService
 from singleton_decorator import singleton
 from src.services.database_service import DatabaseService
 
