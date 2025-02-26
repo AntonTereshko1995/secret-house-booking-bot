@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # ✅ Load Webhook URL from environment
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+WEBHOOK_URL = "https://telegram-bot-535413863315.us-central1.run.app"
 
 # ✅ Global Application instance (initialized later)
 application: Application = None
