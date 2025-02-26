@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 import asyncio
 import logging
 from flask import Flask, jsonify, request
@@ -32,6 +33,7 @@ def liveness_check():
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
+    LoggerService.info(__name__, f"webhook is called")
     global application
     update = Update.de_json(request.get_json(), application.bot)
     asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
