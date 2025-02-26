@@ -11,17 +11,11 @@ from src.handlers import menu_handler, admin_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
 
-# ✅ Logging setup
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ✅ Flask app
 app = Flask(__name__)
-
-# ✅ Load Webhook URL from environment
 WEBHOOK_URL = "https://telegram-bot-535413863315.us-central1.run.app"
 
-# ✅ Global Application instance (initialized later)
 application: Application = None
 
 async def set_commands(application: Application):
@@ -34,12 +28,10 @@ async def set_commands(application: Application):
 
 @app.route("/health/liveness")
 def liveness_check():
-    """Health check endpoint."""
     return jsonify({"status": "ok"}), 200
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
-    """Handles incoming webhook updates from Telegram."""
     global application
     update = Update.de_json(request.get_json(), application.bot)
     asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
@@ -47,24 +39,19 @@ def webhook():
 
 @app.route("/")
 def home():
-    """Simple home route for debugging."""
     return "Bot is running!", 200
 
 def set_webhook():
-    """Registers the webhook with Telegram."""
     global application
     webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
     application.bot.set_webhook(url=webhook_url)
     logging.info(f"✅ Webhook set to {webhook_url}")
 
 if __name__ == "__main__":
-    # ✅ Initialize database
     database.create_db_and_tables()
 
-    # ✅ Initialize Telegram bot
     application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     
-    # ✅ Handlers
     application.add_handler(menu_handler.get_handler())
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
     application.add_handler(CommandHandler("booking_list", admin_handler.get_booking_list))
@@ -73,13 +60,10 @@ if __name__ == "__main__":
     application.add_handler(CallbackQueryHandler(admin_handler.gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"))
     application.add_handler(CallbackQueryHandler(admin_handler.subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$"))
 
-    # ✅ Job Service
     job = job_service.JobService()
     job.set_application(application)
 
-    # ✅ Set webhook
     set_webhook()
 
-    # ✅ Start Flask server
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
