@@ -29,8 +29,8 @@ if "secrets-production" in os.environ:
     BANK_PHONE_NUMBER = get_secret("BANK_PHONE_NUMBER")
     ADMINISTRATION_CONTACT = get_secret("ADMINISTRATION_CONTACT")
 else:
-    ENV_FILE = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
-    load_dotenv(ENV_FILE)
+    file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
+    load_dotenv(file)
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
     LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE")
