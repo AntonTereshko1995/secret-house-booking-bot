@@ -1,68 +1,85 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import asyncio
 import logging
 from flask import Flask, jsonify, request
-from db import database
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
+from db import database
 from src.handlers import menu_handler, admin_handler
-from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID, DEBUG
+from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
-import logging
 
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+# ✅ Logging setup
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ✅ Flask app
 app = Flask(__name__)
-application: Application
+
+# ✅ Load Webhook URL from environment
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+
+# ✅ Global Application instance (initialized later)
+application: Application = None
 
 async def set_commands(application: Application):
-    user_commands = [
-        BotCommand("start", "Меню"),
-    ]
-    admin_commands = user_commands + [
-        BotCommand("booking_list", "Бронирования"),
-        BotCommand("change_password", "Изменить пароль"),
-    ]
+    """Sets bot commands."""
+    user_commands = [BotCommand("start", "Меню")]
+    admin_commands = user_commands + [BotCommand("booking_list", "Бронирования"), BotCommand("change_password", "Изменить пароль")]
     
     await application.bot.set_my_commands(user_commands)
     await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
 
-@app.route('/health/liveness')
+@app.route("/health/liveness")
 def liveness_check():
+    """Health check endpoint."""
     return jsonify({"status": "ok"}), 200
 
-@app.route('/webhook', methods=['POST'])
-async def webhook():
-    await application.update_queue.put(
-        Update.de_json(data=await request.get_json(), bot=application.bot)
-    )
-    return "ok"
+@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+def webhook():
+    """Handles incoming webhook updates from Telegram."""
+    global application
+    update = Update.de_json(request.get_json(), application.bot)
+    asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
+    return "OK", 200
 
 @app.route("/")
-def main() -> None:
-    database.create_db_and_tables()
+def home():
+    """Simple home route for debugging."""
+    return "Bot is running!", 200
+
+def set_webhook():
+    """Registers the webhook with Telegram."""
     global application
+    webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
+    application.bot.set_webhook(url=webhook_url)
+    logging.info(f"✅ Webhook set to {webhook_url}")
+
+if __name__ == "__main__":
+    # ✅ Initialize database
+    database.create_db_and_tables()
+
+    # ✅ Initialize Telegram bot
     application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+    
+    # ✅ Handlers
     application.add_handler(menu_handler.get_handler())
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
-
-    # Admin
     application.add_handler(CommandHandler("booking_list", admin_handler.get_booking_list))
     application.add_handler(admin_handler.get_password_handler())
     application.add_handler(CallbackQueryHandler(admin_handler.booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"))
     application.add_handler(CallbackQueryHandler(admin_handler.gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"))
     application.add_handler(CallbackQueryHandler(admin_handler.subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$"))
 
+    # ✅ Job Service
     job = job_service.JobService()
     job.set_application(application)
-    
-    return "Bot is running!"
-    # application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-if __name__ == '__main__':
+    # ✅ Set webhook
+    set_webhook()
+
+    # ✅ Start Flask server
     port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
-    # app.run()
+    app.run(host="0.0.0.0", port=port)
