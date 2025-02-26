@@ -10,17 +10,17 @@ PREPAYMENT = 80
 CLEANING_HOURS = 2
 
 # projects/535413863315/secrets/TELEGRAM_TOKEN
-def get_secret_value():
+def get_secret_value() -> dict:
     client = secretmanager.SecretManagerServiceClient()
     secret_path = client.secret_path("the-secret-house", "the-secret-house-secret")
-    try:
-        response = client.access_secret_version(request={"name": secret_path})
-        secret_string = response.payload.data.decode("UTF-8")
-        # Convert secret string into a dictionary
-        secret_dict = dict(line.split("=", 1) for line in secret_string.splitlines() if "=" in line)
-        return secret_dict
-    except Exception as e:
-        return None
+    # try:
+    response = client.access_secret_version(request={"name": secret_path})
+    secret_string = response.payload.data.decode("UTF-8")
+    secret_dict = dict(line.split("=", 1) for line in secret_string.splitlines() if "=" in line)
+    return secret_dict
+    # except Exception as e:
+    #     print(f"Error retrieving secret: {e}")
+    #     return None
 
 if "secrets-production" in os.environ:
     secrets = get_secret_value()
