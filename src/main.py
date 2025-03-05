@@ -1,3 +1,4 @@
+import http
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -41,7 +42,9 @@ def webhook():
 
 @app.route("/")
 def home():
-    return "Bot is running!", 200
+    application.process_update(
+        Update.de_json(request.get_json(force=True), application.bot))
+    return "", http.HTTPStatus.NO_CONTENT
 
 def set_webhook():
     global application
