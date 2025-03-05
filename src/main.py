@@ -51,7 +51,7 @@ def set_webhook():
     global application
     webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
     application.bot.set_webhook(url=webhook_url)
-    LoggerService.info(f"✅ Webhook set to {webhook_url}")
+    LoggerService.info(__name__, f"✅ Webhook set to {webhook_url}")
 
 if __name__ == "__main__":
     database.create_db_and_tables()
