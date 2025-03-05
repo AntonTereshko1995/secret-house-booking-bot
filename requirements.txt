@@ -13,7 +13,7 @@ google-api-python-client
 google-cloud-secret-manager
 matplotlib
 python-telegram-bot[job-queue]
-python-telegram-bot[webhooks]
+flask[async]
 aiohttp
 flask
 requests

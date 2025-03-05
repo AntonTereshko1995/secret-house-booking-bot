@@ -1,11 +1,9 @@
-import http
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
-import asyncio
 import logging
-from flask import Flask, Response, jsonify, request
+from flask import Flask, request
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from db import database
