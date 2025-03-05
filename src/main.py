@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 import asyncio
 import logging
-# from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from db import database
@@ -15,7 +15,7 @@ from src.services import job_service
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-# app = Flask(__name__)
+app = Flask(__name__)
 WEBHOOK_URL = "https://telegram-bot-535413863315.us-central1.run.app"
 
 application: Application = None
@@ -28,44 +28,44 @@ async def set_commands(application: Application):
     await application.bot.set_my_commands(user_commands)
     await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
 
-# @app.route("/health/liveness")
-# def liveness_check():
-#     return jsonify({"status": "ok"}), 200
+@app.route("/health/liveness")
+def liveness_check():
+    return jsonify({"status": "ok"}), 200
 
-# @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
-# def webhook():
-#     LoggerService.info(__name__, f"webhook is called")
-#     global application
-#     update = Update.de_json(request.get_json(), application.bot)
-#     asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
-#     return "OK", 200
+@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+def webhook():
+    LoggerService.info(__name__, f"webhook is called")
+    global application
+    update = Update.de_json(request.get_json(), application.bot)
+    asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
+    return "OK", 200
 
 
-# @app.route("/home")
-# def home():
-#     LoggerService.info(__name__, "📩 Webhook /home received a request")
+@app.route("/home")
+def home():
+    LoggerService.info(__name__, "📩 Webhook /home received a request")
     
-#     try:
-#         application.run_webhook
-#         # if request.content_type != "application/json":
-#         #     LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
-#         #     return f"Unsupported Media Type. Media: {request.content_type} Req {request}", 415
+    try:
+        if request.content_type != "application/json":
+            LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
+            return f"Unsupported Media Type. Media: {request.content_type} Req {request}", 415
 
-#         # update_data = request.get_json()
-#         # LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
+        update_data = request.get_json()
+        LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
 
-#         # update = Update.de_json(update_data, application.bot)
-#         # asyncio.run(application.process_update(update))
+        update = Update.de_json(update_data, application.bot)
+        asyncio.run(application.process_update(update))
 
-#         return f"OK content: {update_data}", 200
+        return f"OK content: {update_data}", 200
 
-#     except Exception as e:
-#         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
-#         return f"Error: {e} json: {request.get_json()}  Req {request}", 500
-#     # LoggerService.info(__name__, f"home is called")
-#     # application.process_update(
-#     #     Update.de_json(request.get_json(force=True), application.bot))
-#     # return "OK", http.HTTPStatus.NO_CONTENT
+    except Exception as e:
+        LoggerService.error(__name__, f"❌ Error in webhook: {e}")
+        return f"Error: {e} json: {request.get_json()}  Req {request}", 500
+
+@app.route('/ajax_ddl')
+def ajax_ddl():
+    json = 'foo'
+    return Response(json, mimetype='application/json')
 
 def set_webhook():
     global application
@@ -91,12 +91,12 @@ if __name__ == "__main__":
 
     set_webhook()
 
-    # port = int(os.environ.get("PORT", 8080))
-    # app.run(host="0.0.0.0", port=port)
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=8080,
-        url_path=TELEGRAM_TOKEN,  # это часть пути в вебхуке
-        webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}",  # полная ссылка для Telegram
-        allowed_updates=Update.ALL_TYPES
-    )
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+    # application.run_webhook(
+    #     listen="0.0.0.0",
+    #     port=8080,
+    #     url_path=TELEGRAM_TOKEN,  # это часть пути в вебхуке
+    #     webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}",  # полная ссылка для Telegram
+    #     allowed_updates=Update.ALL_TYPES
+    # )
