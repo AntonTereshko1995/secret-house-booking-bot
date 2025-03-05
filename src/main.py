@@ -5,8 +5,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 import asyncio
 import logging
-from aiohttp import web
-# from flask import Flask, Response, jsonify, request
+# from aiohttp import web
+from flask import Flask, Response, jsonify, request
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from db import database
@@ -16,7 +16,7 @@ from src.services import job_service
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-# app = Flask(__name__)
+app = Flask(__name__)
 WEBHOOK_URL = "https://telegram-bot-535413863315.us-central1.run.app"
 
 async def set_commands(application: Application):
@@ -29,60 +29,37 @@ async def set_commands(application: Application):
 
 application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
 
-# @app.route("/health/liveness")
-# def liveness_check():
-#     return "OK", 200
+@app.route("/health/liveness")
+def liveness_check():
+    return "OK", 200
 
-# @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
-# def webhook():
-#     try:
-#         LoggerService.info(__name__, f"webhook is called")
-#         global application
-#         update = Update.de_json(request.get_json(), application.bot)
-#         asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
-#         return "OK", 200
-#     except Exception as e:
-#         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
-#         return f"Error: {e} json: {request.get_json()}  Req {request}", 500
+@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+def webhook():
+    try:
+        LoggerService.info(__name__, f"webhook is called")
+        update = Update.de_json(request.get_json(), application.bot)
+        asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
+        return "OK", 200
+    except Exception as e:
+        LoggerService.error(__name__, f"❌ Error in webhook: {e}")
+        return f"Error: {e} json: {request.get_json()}  Req {request}", 500
 
-# @app.route("/home")
-# def home():
-#     LoggerService.info(__name__, "📩 Webhook /home received a request")
-    
-#     try:
-#         if request.content_type != "application/json":
-#             LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
-#             return f"Unsupported Media Type. Media: {request.content_type} Req {request}", 415
+# async def health_check(request):
+#     return web.json_response({"status": "ok"})
 
-#         update_data = request.get_json()
-#         LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
-
-#         update = Update.de_json(update_data, application.bot)
-#         asyncio.run(application.process_update(update))
-
-#         return f"OK content: {update_data}", 200
-
-#     except Exception as e:
-#         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
-#         return f"Error: {e} json: {request.get_json()}  Req {request}", 500
-
-async def health_check(request):
-    return web.json_response({"status": "ok"})
-
-async def create_web_app():
-    app = web.Application()
-    app.router.add_get("/health", health_check)  # Добавляем кастомный health check
-    return app
+# async def create_web_app():
+#     app = web.Application()
+#     app.router.add_get("/health/liveness", health_check)  # Добавляем кастомный health check
+#     return app
 
 def set_webhook():
-    global application
     webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
     application.bot.set_webhook(url=webhook_url)
     LoggerService.info(__name__, f"✅ Webhook set to {webhook_url}")
 
 if __name__ == "__main__":
     database.create_db_and_tables()
-    web_app = create_web_app()
+    # web_application = create_web_app()
     # application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     
     application.add_handler(menu_handler.get_handler())
@@ -98,13 +75,12 @@ if __name__ == "__main__":
 
     set_webhook()
 
-    # port = int(os.environ.get("PORT", 8080))
-    # app.run(host="0.0.0.0", port=port)
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=8080,
-        url_path=TELEGRAM_TOKEN,  # это часть пути в вебхуке
-        webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}",  # полная ссылка для Telegram
-        allowed_updates=Update.ALL_TYPES,
-        web_app=web_app
-    )
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+    # application.run_webhook(
+    #     listen="0.0.0.0",
+    #     port=8080,
+    #     url_path=TELEGRAM_TOKEN,  # это часть пути в вебхуке
+    #     webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}",  # полная ссылка для Telegram
+    #     allowed_updates=Update.ALL_TYPES,
+    # )
