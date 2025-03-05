@@ -45,11 +45,12 @@ def webhook():
 def home():
     LoggerService.info(__name__, "📩 Webhook /home received a request")
     
-    if request.content_type != "application/json":
-        LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
-        return f"Unsupported Media Type. Media: {request.content_type}", 415
-
     try:
+        request.content_type = "application/json"
+        if request.content_type != "application/json":
+            LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
+            return f"Unsupported Media Type. Media: {request.content_type}", 415
+
         update_data = request.get_json()
         LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
 
