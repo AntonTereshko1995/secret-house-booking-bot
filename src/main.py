@@ -40,17 +40,18 @@ def webhook():
     asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
     return "OK", 200
 
-@app.route("/")
+@app.route("/home")
 def home():
+    LoggerService.info(__name__, f"home is called")
     application.process_update(
         Update.de_json(request.get_json(force=True), application.bot))
-    return "", http.HTTPStatus.NO_CONTENT
+    return "OK", http.HTTPStatus.NO_CONTENT
 
 def set_webhook():
     global application
     webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
     application.bot.set_webhook(url=webhook_url)
-    logging.info(f"✅ Webhook set to {webhook_url}")
+    LoggerService.info(f"✅ Webhook set to {webhook_url}")
 
 if __name__ == "__main__":
     database.create_db_and_tables()
