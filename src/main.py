@@ -49,7 +49,7 @@ def home():
         request.content_type = "application/json"
         if request.content_type != "application/json":
             LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
-            return f"Unsupported Media Type. Media: {request.content_type}", 415
+            return f"Unsupported Media Type. Media: {request.content_type} Req {request}", 415
 
         update_data = request.get_json()
         LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
@@ -57,11 +57,11 @@ def home():
         update = Update.de_json(update_data, application.bot)
         asyncio.run(application.process_update(update))
 
-        return "OK", 200
+        return f"OK content: {update_data}", 200
 
     except Exception as e:
         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
-        return f"Error: {e} json: {request.get_json()}", 500
+        return f"Error: {e} json: {request.get_json()}  Req {request}", 500
     # LoggerService.info(__name__, f"home is called")
     # application.process_update(
     #     Update.de_json(request.get_json(force=True), application.bot))
