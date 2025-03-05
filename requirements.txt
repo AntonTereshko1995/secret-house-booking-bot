@@ -14,5 +14,6 @@ google-cloud-secret-manager
 matplotlib
 python-telegram-bot[job-queue]
 python-telegram-bot[webhooks]
+aiohttp
 flask
 requests

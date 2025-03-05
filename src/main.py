@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 import asyncio
 import logging
+from aiohttp import web
 # from flask import Flask, Response, jsonify, request
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
@@ -30,7 +31,7 @@ application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init
 
 # @app.route("/health/liveness")
 # def liveness_check():
-#     return jsonify({"status": "ok"}), 200
+#     return "OK", 200
 
 # @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 # def webhook():
@@ -65,6 +66,13 @@ application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init
 #         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
 #         return f"Error: {e} json: {request.get_json()}  Req {request}", 500
 
+async def health_check(request):
+    return web.json_response({"status": "ok"})
+
+async def create_web_app():
+    app = web.Application()
+    app.router.add_get("/health", health_check)  # Добавляем кастомный health check
+    return app
 
 def set_webhook():
     global application
@@ -74,6 +82,7 @@ def set_webhook():
 
 if __name__ == "__main__":
     database.create_db_and_tables()
+    web_app = create_web_app()
     # application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     
     application.add_handler(menu_handler.get_handler())
@@ -96,5 +105,6 @@ if __name__ == "__main__":
         port=8080,
         url_path=TELEGRAM_TOKEN,  # это часть пути в вебхуке
         webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}",  # полная ссылка для Telegram
-        allowed_updates=Update.ALL_TYPES
+        allowed_updates=Update.ALL_TYPES,
+        web_app=web_app
     )
