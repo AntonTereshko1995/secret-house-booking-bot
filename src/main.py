@@ -35,7 +35,10 @@ async def webhook():
     try:
         LoggerService.info(__name__, f"webhook is called")
         update = Update.de_json(request.get_json(), application.bot)
-        await application.initialize()
+
+        if not application._initialized:
+            await application.initialize()
+            
         await application.process_update(update)
         return "OK", 200
     except Exception as e:
