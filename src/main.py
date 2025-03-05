@@ -40,17 +40,27 @@ def webhook():
     asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
     return "OK", 200
 
-@app.route("/home")
+
+@app.route("/home", methods=["POST"])
 def home():
+    LoggerService.info(__name__, "📩 Webhook /home received a request")
+    
+    if request.content_type != "application/json":
+        LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
+        return "Unsupported Media Type", 415
+
     try:
         update_data = request.get_json()
         LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
+
         update = Update.de_json(update_data, application.bot)
         asyncio.run(application.process_update(update))
+
         return "OK", 200
+
     except Exception as e:
         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
-        return f"Error {e}", 500
+        return f"Error: {e} json: {request.get_json()}", 500
     # LoggerService.info(__name__, f"home is called")
     # application.process_update(
     #     Update.de_json(request.get_json(force=True), application.bot))
