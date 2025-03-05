@@ -42,10 +42,19 @@ def webhook():
 
 @app.route("/home")
 def home():
-    LoggerService.info(__name__, f"home is called")
-    application.process_update(
-        Update.de_json(request.get_json(force=True), application.bot))
-    return "OK", http.HTTPStatus.NO_CONTENT
+    try:
+        update_data = request.get_json()
+        LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
+        update = Update.de_json(update_data, application.bot)
+        asyncio.run(application.process_update(update))
+        return "OK", 200
+    except Exception as e:
+        LoggerService.error(__name__, f"❌ Error in webhook: {e}")
+        return f"Error {e}", 500
+    # LoggerService.info(__name__, f"home is called")
+    # application.process_update(
+    #     Update.de_json(request.get_json(force=True), application.bot))
+    # return "OK", http.HTTPStatus.NO_CONTENT
 
 def set_webhook():
     global application
