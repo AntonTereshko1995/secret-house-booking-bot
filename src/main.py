@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 WEBHOOK_URL = "https://telegram-bot-535413863315.us-central1.run.app"
 
-application: Application = None
-
 async def set_commands(application: Application):
     """Sets bot commands."""
     user_commands = [BotCommand("start", "Меню")]
@@ -28,44 +26,45 @@ async def set_commands(application: Application):
     await application.bot.set_my_commands(user_commands)
     await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
 
+application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+
 @app.route("/health/liveness")
 def liveness_check():
     return jsonify({"status": "ok"}), 200
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
-    LoggerService.info(__name__, f"webhook is called")
-    global application
-    update = Update.de_json(request.get_json(), application.bot)
-    asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
-    return "OK", 200
-
-
-@app.route("/home")
-def home():
-    LoggerService.info(__name__, "📩 Webhook /home received a request")
-    
     try:
-        if request.content_type != "application/json":
-            LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
-            return f"Unsupported Media Type. Media: {request.content_type} Req {request}", 415
-
-        update_data = request.get_json()
-        LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
-
-        update = Update.de_json(update_data, application.bot)
-        asyncio.run(application.process_update(update))
-
-        return f"OK content: {update_data}", 200
-
+        LoggerService.info(__name__, f"webhook is called")
+        global application
+        update = Update.de_json(request.get_json(), application.bot)
+        asyncio.run(application.process_update(update))  # ✅ Fix: Run async function properly
+        return "OK", 200
     except Exception as e:
         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
         return f"Error: {e} json: {request.get_json()}  Req {request}", 500
 
-@app.route('/ajax_ddl')
-def ajax_ddl():
-    json = 'foo'
-    return Response(json, mimetype='application/json')
+# @app.route("/home")
+# def home():
+#     LoggerService.info(__name__, "📩 Webhook /home received a request")
+    
+#     try:
+#         if request.content_type != "application/json":
+#             LoggerService.error(__name__, "❌ Unsupported Content-Type received.")
+#             return f"Unsupported Media Type. Media: {request.content_type} Req {request}", 415
+
+#         update_data = request.get_json()
+#         LoggerService.info(__name__, f"📩 Webhook received update: {update_data}")
+
+#         update = Update.de_json(update_data, application.bot)
+#         asyncio.run(application.process_update(update))
+
+#         return f"OK content: {update_data}", 200
+
+#     except Exception as e:
+#         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
+#         return f"Error: {e} json: {request.get_json()}  Req {request}", 500
+
 
 def set_webhook():
     global application
@@ -76,7 +75,7 @@ def set_webhook():
 if __name__ == "__main__":
     database.create_db_and_tables()
 
-    application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+    # application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     
     application.add_handler(menu_handler.get_handler())
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
