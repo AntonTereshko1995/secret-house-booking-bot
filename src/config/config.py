@@ -3,6 +3,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.secret_manager_service import SecretManagerService
+from src.services.logger_service import LoggerService
 
 secre_manager_service = SecretManagerService()
 
@@ -28,6 +29,7 @@ if "secrets-production" in os.environ:
     BANK_CARD_NUMBER = secrets.get("BANK_CARD_NUMBER")
     BANK_PHONE_NUMBER = secrets.get("BANK_PHONE_NUMBER")
     ADMINISTRATION_CONTACT = secrets.get("ADMINISTRATION_CONTACT")
+    LoggerService.warning(__name__, f"Config {DATABASE_URL}")
 else:
     file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
     load_dotenv(file)
