@@ -14,7 +14,7 @@ from src.services import job_service
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
-WEBHOOK_URL = "https://telegram-bot-535413863315.us-central1.run.app"
+WEBHOOK_URL = "https://telegram-bot-535413863315.europe-west1.run.app"
 
 async def set_commands(application: Application):
     """Sets bot commands."""
