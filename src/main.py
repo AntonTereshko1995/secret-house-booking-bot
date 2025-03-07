@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -26,20 +27,21 @@ async def set_commands(application: Application):
 
 application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
 
+@app.before_first_request
+def initialize():
+    asyncio.run(application.initialize())
+
 @app.route("/health/liveness")
 def liveness_check():
     return "OK", 200
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
-async def webhook():
+def webhook():
     try:
         LoggerService.info(__name__, f"webhook is called")
         update = Update.de_json(request.get_json(), application.bot)
 
-        if not application._initialized:
-            await application.initialize()
-            
-        await application.process_update(update)
+        asyncio.run(application.process_update(update))
         return "OK", 200
     except Exception as e:
         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
