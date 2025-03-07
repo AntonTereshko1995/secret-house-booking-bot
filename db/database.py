@@ -8,12 +8,12 @@ from db.models.booking import BookingBase
 from db.models.gift import GiftBase
 from db.models.subscription import SubscriptionBase
 from sqlalchemy import create_engine
-from src.config.config import DATABASE_URL
+from src.config.config import DATABASE_URL, TELEGRAM_TOKEN
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-logger.error(f"BD path {DATABASE_URL}")
+logger.error(f"BD path {DATABASE_URL}, Token {TELEGRAM_TOKEN}")
 engine = create_engine(DATABASE_URL, echo=True)
 
 def create_db_and_tables() -> None:
