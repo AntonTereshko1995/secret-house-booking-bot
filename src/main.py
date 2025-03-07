@@ -27,10 +27,6 @@ async def set_commands(application: Application):
 
 application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
 
-@app.before_first_request
-def initialize():
-    asyncio.run(application.initialize())
-
 @app.route("/health/liveness")
 def liveness_check():
     return "OK", 200
@@ -53,6 +49,8 @@ def set_webhook():
     LoggerService.info(__name__, f"✅ Webhook set to {webhook_url}")
 
 if __name__ == "__main__":
+    asyncio.run(application.initialize())
+
     database.create_db_and_tables()
     # application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     
