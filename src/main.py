@@ -25,34 +25,34 @@ async def set_commands(application: Application):
     await application.bot.set_my_commands(user_commands)
     await application.bot.set_my_commands(admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID))
 
-application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+# application: Application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
 
-@app.route("/health/liveness")
-def liveness_check():
-    return "OK", 200
+# @app.route("/health/liveness")
+# def liveness_check():
+#     return "OK", 200
 
-@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
-def webhook():
-    try:
-        LoggerService.info(__name__, f"webhook is called")
-        update = Update.de_json(request.get_json(), application.bot)
+# @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+# def webhook():
+#     try:
+#         LoggerService.info(__name__, f"webhook is called")
+#         update = Update.de_json(request.get_json(), application.bot)
 
-        asyncio.run(application.process_update(update))
-        return "OK", 200
-    except Exception as e:
-        LoggerService.error(__name__, f"❌ Error in webhook: {e}")
-        return f"Error: {e} json: {request.get_json()}  Req {request}", 500
+#         asyncio.run(application.process_update(update))
+#         return "OK", 200
+#     except Exception as e:
+#         LoggerService.error(__name__, f"❌ Error in webhook: {e}")
+#         return f"Error: {e} json: {request.get_json()}  Req {request}", 500
 
-def set_webhook():
-    webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
-    application.bot.set_webhook(url=webhook_url)
-    LoggerService.info(__name__, f"✅ Webhook set to {webhook_url}")
+# def set_webhook():
+#     webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
+#     application.bot.set_webhook(url=webhook_url)
+#     LoggerService.info(__name__, f"✅ Webhook set to {webhook_url}")
 
 if __name__ == "__main__":
-    asyncio.run(application.initialize())
+    # asyncio.run(application.initialize())
 
     database.create_db_and_tables()
-    # application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+    application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     
     application.add_handler(menu_handler.get_handler())
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
@@ -65,6 +65,8 @@ if __name__ == "__main__":
     job = job_service.JobService()
     job.set_application(application)
 
-    set_webhook()
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    # set_webhook()
+    # port = int(os.environ.get("PORT", 8080))
+    # app.run(host="0.0.0.0", port=port)
+
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
