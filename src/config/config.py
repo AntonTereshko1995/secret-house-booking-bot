@@ -13,7 +13,21 @@ MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS = 3
 PREPAYMENT = 80
 CLEANING_HOURS = 2
 
-if "secrets-production" in os.environ:
+if os.environ["AMVERA"] == 1:
+    DEBUG = False
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+    LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
+    LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE")
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
+    INFORM_CHAT_ID = os.getenv("INFORM_CHAT_ID")
+    GPT_KEY = os.getenv("GPT_KEY")
+    GPT_PROMPT = os.getenv("GPT_PROMPT")
+    CALENDAR_ID = os.getenv("CALENDAR_ID")
+    BANK_CARD_NUMBER = os.getenv("BANK_CARD_NUMBER")
+    BANK_PHONE_NUMBER = os.getenv("BANK_PHONE_NUMBER")
+    ADMINISTRATION_CONTACT = os.getenv("ADMINISTRATION_CONTACT")
+elif "secrets-production" in os.environ:
     secrets = secre_manager_service.get_secret_by_dict("the-secret-house-secret")
     DEBUG = False
     TELEGRAM_TOKEN = secrets.get("TELEGRAM_TOKEN")
