@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 from db.models.user import UserBase
 from db.models.booking import BookingBase
 from singleton_decorator import singleton
-from src.config.config import CALENDAR_ID
+from src.config.config import CALENDAR_ID, GOOGLE_CREDENTIALS
 
 SERVICE_ACCOUNT_FILE = "src/config/credentials.json"  
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
@@ -21,11 +21,16 @@ secret_manager_service = SecretManagerService()
 class CalendarService:
     def __init__(self):
 
+        # Local file
         # credentials = service_account.Credentials.from_service_account_file(
         #     SERVICE_ACCOUNT_FILE, 
         #     scopes=SCOPES)
         
-        credentials_json = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
+        # Google cloud
+        # credentials_json = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
+
+        # Getenv
+        credentials_json = GOOGLE_CREDENTIALS
         credentials_dict = json.loads(credentials_json)
         credentials = service_account.Credentials.from_service_account_info(
             credentials_dict, 

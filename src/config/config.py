@@ -13,21 +13,7 @@ MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS = 3
 PREPAYMENT = 80
 CLEANING_HOURS = 2
 
-if os.environ["AMVERA"] == 1:
-    DEBUG = False
-    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
-    LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE")
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
-    INFORM_CHAT_ID = os.getenv("INFORM_CHAT_ID")
-    GPT_KEY = os.getenv("GPT_KEY")
-    GPT_PROMPT = os.getenv("GPT_PROMPT")
-    CALENDAR_ID = os.getenv("CALENDAR_ID")
-    BANK_CARD_NUMBER = os.getenv("BANK_CARD_NUMBER")
-    BANK_PHONE_NUMBER = os.getenv("BANK_PHONE_NUMBER")
-    ADMINISTRATION_CONTACT = os.getenv("ADMINISTRATION_CONTACT")
-elif "secrets-production" in os.environ:
+if "secrets-production" in os.environ:
     secrets = secre_manager_service.get_secret_by_dict("the-secret-house-secret")
     DEBUG = False
     TELEGRAM_TOKEN = secrets.get("TELEGRAM_TOKEN")
@@ -43,9 +29,11 @@ elif "secrets-production" in os.environ:
     BANK_PHONE_NUMBER = secrets.get("BANK_PHONE_NUMBER")
     ADMINISTRATION_CONTACT = secrets.get("ADMINISTRATION_CONTACT")
 else:
-    file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
-    load_dotenv(file)
-    DEBUG = True
+    if os.environ["AMVERA"] != 1:
+        file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
+        load_dotenv(file)
+
+    DEBUG = os.getenv("DEBUG")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
     LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE")
