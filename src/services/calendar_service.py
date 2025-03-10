@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 import json
 import sys
@@ -30,8 +31,10 @@ class CalendarService:
         # credentials_json = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
 
         # Getenv
-        credentials_json = GOOGLE_CREDENTIALS
+        credentials_base64 = os.getenv("GOOGLE_CREDENTIALS")
+        credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
         credentials_dict = json.loads(credentials_json)
+
         credentials = service_account.Credentials.from_service_account_info(
             credentials_dict, 
             scopes=SCOPES)

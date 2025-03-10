@@ -30,7 +30,7 @@ if "secrets-production" in os.environ:
     ADMINISTRATION_CONTACT = secrets.get("ADMINISTRATION_CONTACT")
     GOOGLE_CREDENTIALS = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
 else:
-    if os.environ["AMVERA"] != 1:
+    if os.environ.get("AMVERA") != 1:
         file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
         load_dotenv(file)
 
