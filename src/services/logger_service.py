@@ -1,7 +1,7 @@
 import sys
 import os
-from typing import Any, Dict
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from typing import Any, Dict
 import logging
 from logtail import LogtailHandler
 from src.config.config import LOGTAIL_TOKEN, LOGTAIL_SOURCE
