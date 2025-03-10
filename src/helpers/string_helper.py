@@ -95,7 +95,7 @@ def generate_booking_info_message(booking: BookingBase, user: UserBase, is_addit
         f"Сауна: {bool_to_str(booking.has_sauna)}\n"
         f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
         f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
-        f"Секретная комната спальня: {bool_to_str(booking.has_secret_room)}\n"
+        f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
         f"Колличество гостей: {booking.number_of_guests}\n"
         f"Комментарий: {booking.comment if booking.comment else ''}\n"
         f"Скидка: {sale_halper.get_name(booking.sale)}\n"

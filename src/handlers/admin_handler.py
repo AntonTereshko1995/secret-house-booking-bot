@@ -393,7 +393,7 @@ async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, boo
         f"Сауна: {string_helper.bool_to_str(booking.has_sauna)}\n"
         f"Белая спальня: {string_helper.bool_to_str(booking.has_white_bedroom)}\n"
         f"Зеленая спальня: {string_helper.bool_to_str(booking.has_green_bedroom)}\n"
-        f"Секретная комната спальня: {string_helper.bool_to_str(booking.has_secret_room)}\n"
+        f"Секретная комната: {string_helper.bool_to_str(booking.has_secret_room)}\n"
         f"Колличество гостей: {booking.number_of_guests}\n"
         f"Комментарий: {booking.comment if booking.comment else ''}\n")
 
