@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -49,7 +49,9 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton('7', callback_data="7"), InlineKeyboardButton('8', callback_data="8"), InlineKeyboardButton('9', callback_data="9")],
         [InlineKeyboardButton('Очистить', callback_data="clear"), InlineKeyboardButton('0', callback_data="0"), InlineKeyboardButton('Отмена', callback_data=str(END))]]
 
-    message = f"Введите новый пароль и 4 цифр. Например 1235.\n Старый пароль: {settings_service.password}.\n Новый пароль: {writing_password}"
+    message = (f"Введите новый пароль и 4 цифр. Например 1235.\n" 
+            f"Старый пароль: {settings_service.password}.\n" 
+            f"Новый пароль: {writing_password} Time {datetime.today()}" )
     if update.message:
         await update.message.reply_text(
             text=message, 
