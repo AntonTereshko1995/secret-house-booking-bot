@@ -550,6 +550,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message,
             parse_mode='HTML',
             reply_markup=reply_markup)
+    return END
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
