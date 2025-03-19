@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -51,7 +51,7 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = (f"Введите новый пароль и 4 цифр. Например 1235.\n" 
             f"Старый пароль: {settings_service.password}.\n" 
-            f"Новый пароль: {writing_password} Time {datetime.today()}" )
+            f"Новый пароль: {writing_password}" )
     if update.message:
         await update.message.reply_text(
             text=message, 
@@ -204,8 +204,7 @@ async def subscription_callback(update: Update, context: ContextTypes.DEFAULT_TY
     
 async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int, is_payment_by_cash: bool):
     (booking, user) = await prepare_approve_process(update, context, booking_id, is_payment_by_cash=is_payment_by_cash)
-    if booking.start_date.date() == date.today():
-        await send_booking_details(context, booking)
+    await check_and_send_booking(context, booking)
 
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -459,3 +458,13 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             "Ссылка:\n"
             "https://docs.google.com/forms/d/1FIDlSsLZLWfKOnhAZ8pPKiPEzLcwl5COI7rEIVGgFEM/edit?ts=66719dd9 \n\n"
             "После получения фидбека мы дарим Вам 10% скидки для следующей поездки.")
+    
+async def check_and_send_booking(context, booking):
+    now = datetime.now()
+    job_run_time = time(8, 0)
+
+    condition_1 = booking.start_date.date() == date.today() and now.time() > job_run_time
+    condition_2 = now.date() == date.today() and booking.start_date.time() < job_run_time
+
+    if condition_1 or condition_2:
+        await send_booking_details(context, booking)

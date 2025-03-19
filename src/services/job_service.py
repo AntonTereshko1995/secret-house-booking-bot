@@ -32,10 +32,11 @@ class JobService:
 
     def register_jobs(self, update: Update, context: CallbackContext):
         timezone = pytz.timezone("Europe/Minsk")
+        job_time = time(8, 0, tzinfo=timezone)
         if not context.job_queue.get_jobs_by_name("send_booking_details"):
-            context.job_queue.run_daily(self.send_booking_details, time=time(15, 4, tzinfo=timezone), name="send_booking_details")
+            context.job_queue.run_daily(self.send_booking_details, time=job_time, name="send_booking_details")
         if not context.job_queue.get_jobs_by_name("send_feeback"):
-            context.job_queue.run_daily(self.send_feeback, time=time(14, 15, tzinfo=timezone), name="send_feeback")
+            context.job_queue.run_daily(self.send_feeback, time=job_time, name="send_feeback")
             
     async def send_booking_details(self, context: CallbackContext):
         tomorrow = date.today() + timedelta(days=1)
