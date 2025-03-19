@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -15,7 +15,7 @@ from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS, INFORM_CHAT_ID, PREPAYMENT, BANK_CARD_NUMBER, BANK_PHONE_NUMBER, ADMINISTRATION_CONTACT
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters, CallbackQueryHandler)
+from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler)
 from src.helpers import string_helper, string_helper, tariff_helper
 
 database_service = DatabaseService()
@@ -29,7 +29,7 @@ def get_password_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CommandHandler('change_password', change_password)],
         states={ 
-            SET_PASSWORD: [CallbackQueryHandler(enter_house_password)]
+            SET_PASSWORD: [CallbackQueryHandler(enter_house_password, pattern=r"^password_\d$")],
             },
         fallbacks=[],
         map_to_parent={
@@ -44,14 +44,14 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return END
     
     keyboard = [
-        [InlineKeyboardButton('1', callback_data="1"), InlineKeyboardButton('2', callback_data="2"), InlineKeyboardButton('3', callback_data="3")],
-        [InlineKeyboardButton('4', callback_data="4"), InlineKeyboardButton('5', callback_data="5"), InlineKeyboardButton('6', callback_data="6")],
-        [InlineKeyboardButton('7', callback_data="7"), InlineKeyboardButton('8', callback_data="8"), InlineKeyboardButton('9', callback_data="9")],
-        [InlineKeyboardButton('Очистить', callback_data="clear"), InlineKeyboardButton('0', callback_data="0"), InlineKeyboardButton('Отмена', callback_data=str(END))]]
+        [InlineKeyboardButton('1', callback_data="password_1"), InlineKeyboardButton('2', callback_data="password_2"), InlineKeyboardButton('3', callback_data="password_3")],
+        [InlineKeyboardButton('4', callback_data="password_4"), InlineKeyboardButton('5', callback_data="password_5"), InlineKeyboardButton('6', callback_data="password_6")],
+        [InlineKeyboardButton('7', callback_data="password_7"), InlineKeyboardButton('8', callback_data="password_8"), InlineKeyboardButton('9', callback_data="password_9")],
+        [InlineKeyboardButton('Очистить', callback_data="password_clear"), InlineKeyboardButton('0', callback_data="password_0"), InlineKeyboardButton('Отмена', callback_data=f"password_{str(END)}")]]
 
     message = (f"Введите новый пароль и 4 цифр. Например 1235.\n" 
             f"Старый пароль: {settings_service.password}.\n" 
-            f"Новый пароль: {writing_password}" )
+            f"Новый пароль: {writing_password}")
     if update.message:
         await update.message.reply_text(
             text=message, 
@@ -65,7 +65,7 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_house_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global writing_password
     await update.callback_query.answer()
-    data = update.callback_query.data
+    data = string_helper.get_callback_data(update.callback_query.data)
     if data == str(END):
         writing_password = ''
         return END
@@ -463,8 +463,8 @@ async def check_and_send_booking(context, booking):
     now = datetime.now()
     job_run_time = time(8, 0)
 
-    condition_1 = booking.start_date.date() == date.today() and now.time() > job_run_time
-    condition_2 = now.date() == date.today() and booking.start_date.time() < job_run_time
+    condition_1 = booking.start_date.date() == now.date() and now.time() > job_run_time
+    condition_2 = (booking.start_date.date() == now.date() or booking.start_date.date() - timedelta(days=1) == now.date())  and booking.start_date.time() < job_run_time
 
     if condition_1 or condition_2:
         await send_booking_details(context, booking)
