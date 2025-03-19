@@ -4,13 +4,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from typing import Any, Dict
 import logging
 from logtail import LogtailHandler
-from src.config.config import LOGTAIL_TOKEN, LOGTAIL_SOURCE
+from src.config.config import LOGTAIL_TOKEN, LOGTAIL_SOURCE, DEBUG
 
 class LoggerService:
     loggers: Dict[str, logging.Logger] = {}
 
     @staticmethod
     def info(file_name: str, message: str, update=None, **kwargs: Any):
+        if DEBUG:
+            pass
+
         logger = LoggerService.__get_logger__(file_name)
 
         if update:
@@ -20,6 +23,9 @@ class LoggerService:
 
     @staticmethod
     def error(file_name: str, message: str, exception: Exception = None, update=None, **kwargs: Any):
+        if DEBUG:
+            pass
+
         logger = LoggerService.__get_logger__(file_name)
 
         if update:
@@ -32,6 +38,9 @@ class LoggerService:
 
     @staticmethod
     def warning(file_name: str, message: str, update=None, **kwargs: Any):
+        if DEBUG:
+            pass
+
         logger = LoggerService.__get_logger__(file_name)
 
         if update:
