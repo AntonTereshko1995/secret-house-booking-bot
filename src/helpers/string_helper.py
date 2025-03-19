@@ -12,8 +12,15 @@ from random import choice
 from string import ascii_uppercase
 from src.config.config import CLEANING_HOURS, PREPAYMENT
 
-def is_valid_user_contact(text: str) -> bool:
-    return (text.startswith("+375") and len(text) == 13) or (text.startswith("@") and len(text) > 1)
+def is_valid_user_contact(user_name: str) -> bool:
+    if user_name.count(" ") >= 1 or user_name.count("\n") >= 1:
+        return False
+    
+    if user_name.startswith("@"):
+        pattern = r"^@[A-Za-z0-9_]{5,32}$"
+        return bool(re.match(pattern, user_name))
+
+    return (user_name.startswith("+375") and len(user_name) == 13)
 
 def separate_callback_data(data):
     return data.split("_")
