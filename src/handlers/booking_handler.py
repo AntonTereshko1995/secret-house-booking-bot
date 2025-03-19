@@ -187,6 +187,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     message = ("📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+            "или\n"
             "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
             "❗️ Пожалуйста, вводите данные строго в указанном формате.")
     if (update.message == None):
@@ -222,7 +223,8 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
-                "🔄 Пожалуйста, попробуйте еще раз.")
+                "🔄 Пожалуйста, попробуйте еще раз.",
+                parse_mode='HTML')
     return VALIDATE_USER
 
 async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -386,7 +388,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
-            LoggerService.info(__name__, f"there are bookings between the selected dates", update)
+            LoggerService.warning(__name__, f"there are bookings between the selected dates", update)
             return await start_date_message(update, context, is_error=True)
 
         return await comment_message(update, context)
