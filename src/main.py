@@ -1,6 +1,5 @@
-import asyncio
+import os, time
 import sys
-import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 import logging
@@ -68,5 +67,8 @@ if __name__ == "__main__":
     # set_webhook()
     # port = int(os.environ.get("PORT", 8080))
     # app.run(host="0.0.0.0", port=port)
+
+    os.environ['TZ'] = 'Europe/Minsk'
+    time.tzset()
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
