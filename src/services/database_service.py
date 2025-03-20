@@ -314,36 +314,32 @@ class DatabaseService:
     
     def get_booking_by_start_date(
             self, 
-            start_date: date) -> BookingBase:
+            start_date: date):
         try:
             with self.Session() as session:
-                booking = session.scalar(select(BookingBase).where(
-                    and_(
-                        func.date(BookingBase.start_date) == start_date,
-                        BookingBase.is_canceled == False,
-                        BookingBase.is_done == False,
-                        BookingBase.is_prepaymented == True
-                    )
-                ))
-                return booking
+                bookings = session.scalars(
+                        select(BookingBase).where(and_(
+                            func.date(BookingBase.start_date) == start_date,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True))).all()
+                return bookings
         except Exception as e:
             print(f"Error in get_booking_by_start_date: {e}")
             LoggerService.error(__name__, f"get_booking_by_start_date", e)
         
     def get_booking_by_finish_date(
             self, 
-            end_date: date) -> BookingBase:
+            end_date: date):
         try:
             with self.Session() as session:
-                booking = session.scalar(select(BookingBase).where(
-                    and_(
-                        func.date(BookingBase.end_date) == end_date,
-                        BookingBase.is_canceled == False,
-                        BookingBase.is_done == False,
-                        BookingBase.is_prepaymented == True
-                    )
-                ))
-                return booking
+                bookings = session.scalars(
+                        select(BookingBase).where(and_(
+                            func.date(BookingBase.end_date) == end_date,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == True,
+                            BookingBase.is_prepaymented == True))).all()
+                return bookings
         except Exception as e:
             print(f"Error in get_booking_by_finish_date: {e}")
             LoggerService.error(__name__, f"get_booking_by_finish_date", e)
