@@ -12,7 +12,7 @@ class LoggerService:
     @staticmethod
     def info(file_name: str, message: str, update=None, **kwargs: Any):
         if DEBUG:
-            pass
+            return
 
         logger = LoggerService.__get_logger__(file_name)
 
@@ -24,7 +24,7 @@ class LoggerService:
     @staticmethod
     def error(file_name: str, message: str, exception: Exception = None, update=None, **kwargs: Any):
         if DEBUG:
-            pass
+            return
 
         logger = LoggerService.__get_logger__(file_name)
 
@@ -39,7 +39,7 @@ class LoggerService:
     @staticmethod
     def warning(file_name: str, message: str, update=None, **kwargs: Any):
         if DEBUG:
-            pass
+            return
 
         logger = LoggerService.__get_logger__(file_name)
 
