@@ -3,6 +3,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.gpt_service import GptService
+from telegram.constants import ChatAction
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, MessageHandler, filters)
 from src.handlers import menu_handler
@@ -41,8 +42,10 @@ async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
-    LoggerService.info(__name__, f"message from gpt", update, kwargs={'message': message})
+    LoggerService.info(__name__, f"user", update, kwargs={'message': message})
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
     responce = await gpt_service.generate_response(message)
+    LoggerService.info(__name__, f"gpt", update, kwargs={'message': responce})
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
