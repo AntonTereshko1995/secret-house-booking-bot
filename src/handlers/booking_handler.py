@@ -342,6 +342,14 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     min_date_booking = date.today() - timedelta(days=1)
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
     if selected:
+        if not tariff_helper.is_booking_available(tariff, selected_date):
+            LoggerService.warning(__name__, f"start date is incorrect for {select_tariff}", update)
+            error_message = ("❌ <b>Ошибка!</b>\n\n"
+                "⏳ <b>Тариф 'Рабочий' доступен только с понедельника по четверг.</b>\n"
+                "🔄 Пожалуйста, выберите новую дату начала бронирования.")
+            LoggerService.warning(__name__, f"there are bookings between the selected dates", update)
+            return await start_date_message(update, context, error_message=error_message)
+        
         global start_booking_date
         start_booking_date = selected_date
         LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': start_booking_date.date()})
@@ -388,8 +396,13 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
+            error_message = ("❌ <b>Ошибка!</b>\n\n"
+                "⏳ <b>Выбранные дата и время недоступны.</b>\n"
+                "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
+                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
+                "🔄 Пожалуйста, выберите новую дату начала бронирования.")
             LoggerService.warning(__name__, f"there are bookings between the selected dates", update)
-            return await start_date_message(update, context, is_error=True)
+            return await start_date_message(update, context, error_message=error_message)
 
         return await comment_message(update, context)
     elif is_action:
@@ -657,13 +670,9 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=reply_markup) 
     return NUMBER_OF_PEOPLE
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False):
-    if is_error:
-        message = ("❌ <b>Ошибка!</b>\n\n"
-            "⏳ <b>Выбранные дата и время недоступны.</b>\n"
-            "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
-            f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
-            "🔄 Пожалуйста, выберите новую дату начала бронирования.")
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, error_message: str = None):
+    if error_message:
+        message = error_message
     else:
         message = ("📅 <b>Выберите дату начала бронирования.</b>\n"
                    "Укажите день, когда хотите заселиться в дом.")
