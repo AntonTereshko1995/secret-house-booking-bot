@@ -142,7 +142,7 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
             callback_data=f"BOOKING-TARIFF_{Tariff.WORKER.value}")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.SUBSCRIPTION)} 🎟", 
-            callback_data=f"BOOKING-TARIFF_{Tariff.SUBSCRIPTION.value} 🎁")],
+            callback_data=f"BOOKING-TARIFF_{Tariff.SUBSCRIPTION.value}")],
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.GIFT)}", 
             callback_data=f"BOOKING-TARIFF_{Tariff.GIFT.value}")],
