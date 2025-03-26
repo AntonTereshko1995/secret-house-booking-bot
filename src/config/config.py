@@ -3,6 +3,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.secret_manager_service import SecretManagerService
+import ast
 
 secret_manager_service = SecretManagerService()
 
@@ -34,7 +35,7 @@ else:
         file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
         load_dotenv(file)
 
-    DEBUG = bool(os.getenv("DEBUG")) 
+    DEBUG = ast.literal_eval(os.getenv("DEBUG")) 
     GOOGLE_CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
