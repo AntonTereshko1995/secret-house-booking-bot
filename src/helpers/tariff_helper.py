@@ -1,3 +1,4 @@
+from datetime import date
 from src.models.enum.tariff import Tariff
 
 def get_name(tariff: Tariff) -> str:
@@ -36,3 +37,12 @@ def get_by_str(value_str: str) -> Tariff:
     # TODO exception
     value = int(value_str) 
     return get_by_value(value)
+
+def is_booking_available(tariff: Tariff, start_date: date) -> bool:
+    if tariff != Tariff.WORKER:
+        return True
+    lol = start_date.weekday()
+    if start_date.weekday() == 4 or start_date.weekday() == 5 or start_date.weekday() == 6:
+        return False
+    
+    return True
