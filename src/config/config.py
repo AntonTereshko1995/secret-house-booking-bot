@@ -35,7 +35,7 @@ else:
         file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
         load_dotenv(file)
 
-    DEBUG = ast.literal_eval(os.getenv("DEBUG", "False").capitalize()) 
+    DEBUG = os.getenv("DEBUG").strip().lower() in ("true", "1", "yes", "on")
     GOOGLE_CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
     LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
