@@ -8,7 +8,7 @@ from src.services.calculation_rate_service import CalculationRateService
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
-from src.constants import END, SET_PASSWORD
+from src.constants import END, SET_PASSWORD, CHANGE_BOOKING_ADMIN, UPDATE_BOOKING
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
@@ -89,8 +89,28 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if str(chat_id) != ADMIN_CHAT_ID:
         await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
     else:
-        message = get_future_booking_message()
-        await update.message.reply_text(message)
+        bookings = get_future_bookings()
+        if not bookings:
+            await update.message.reply_text("🔍 Не найдено бронирований.")
+            return END
+
+        for booking in bookings:
+            user = database_service.get_user_by_id(booking.user_id)
+
+            keyboard = [
+                [InlineKeyboardButton('Изменить бронирование', callback_data=f"{CHANGE_BOOKING_ADMIN}_bookingid_{booking.id}")],
+                [InlineKeyboardButton('Обновить бронь в чатах', callback_data=UPDATE_BOOKING)],]
+
+            message = (
+                f"Пользователь: {user.contact}\n"
+                f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+                f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+                f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+                f"Стоимость: {booking.price} руб.\n"
+                f"Предоплата: {booking.prepayment_price} руб.\n") 
+            await update.message.reply_text(
+                text=message, 
+                reply_markup=InlineKeyboardMarkup(keyboard))
     return END
 
 async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo, is_payment_by_cash = False):
@@ -318,22 +338,11 @@ async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, c
         reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n Скидка: {sale_percentage}% \n\n{string_helper.generate_booking_info_message(booking, user)}")
 
-def get_future_booking_message():
+def get_future_bookings():
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     booking_list = database_service.get_booking_by_period(today, max_date_booking, True)
-    message = ""
-    for booking in booking_list:
-      user = database_service.get_user_by_id(booking.user_id)
-      message += (
-            f"Пользователь: {user.contact}\n"
-            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
-            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
-            f"Стоимость: {booking.price} руб.\n"
-            f"Is prepaymented: {booking.is_prepaymented}\n"
-            f"Is canceled: {booking.is_canceled}\n\n") 
-    return message
+    return booking_list
 
 async def prepare_approve_process(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: int, sale_percentage: int = None, is_payment_by_cash: bool = None):
     booking = database_service.get_booking_by_id(booking_id)
@@ -438,17 +447,6 @@ async def send_booking_details(context: ContextTypes.DEFAULT_TYPE, booking: Book
                 "3. Все рубильники подписаны. Переключите рубильник с надписей «Сауна».\n"
                 "4. Через 1 час сауна нагреется."
                 "5. После использования выключите рубильник.\n")
-        
-    # keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    # reply_markup = InlineKeyboardMarkup(keyboard)    
-    # await context.bot.send_message(
-    #         chat_id=user.chat_id, 
-    #         text="Инструкция по включению сауны:\n"
-    #             "1. Подойдите к входной двери.\n"
-    #             "2. По правую руку находился электрический счетчик.\n"
-    #             "3. Все рубильники подписаны. Переключите рубильник с надписей «Сауна».\n"
-    #             "4. Через 1 час сауна нагреется."
-    #             "5. После использования выключите рубильник.\n")
 
 async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
     await context.bot.send_message(
