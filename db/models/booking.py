@@ -10,6 +10,7 @@ from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from src.config.config import PREPAYMENT
 
 class BookingBase(Base):
     __tablename__ = 'booking'
@@ -30,6 +31,7 @@ class BookingBase(Base):
     is_prepaymented: Mapped[bool] = mapped_column(Boolean, default=False)
     is_done: Mapped[bool] = mapped_column(Boolean, default=False)
     price: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    prepayment_price: Mapped[float] = mapped_column(Float, nullable=False, default=PREPAYMENT)
     comment: Mapped[str] = mapped_column(String, nullable=True)
     sale: Mapped[Sale] = mapped_column(IntEnumType(Sale), nullable=True)
     sale_comment: Mapped[str] = mapped_column(String, nullable=True)

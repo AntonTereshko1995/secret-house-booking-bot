@@ -337,7 +337,7 @@ class DatabaseService:
                         select(BookingBase).where(and_(
                             func.date(BookingBase.end_date) == end_date,
                             BookingBase.is_canceled == False,
-                            BookingBase.is_done == True,
+                            BookingBase.is_done == False,
                             BookingBase.is_prepaymented == True))).all()
                 return bookings
         except Exception as e:
@@ -480,7 +480,8 @@ class DatabaseService:
             is_data_changed: bool = None,
             price: float = None,
             is_prepaymented: bool = None,
-            calendar_event_id: str = None) -> BookingBase:
+            calendar_event_id: str = None,
+            is_done: bool = None) -> BookingBase:
         with self.Session() as session:
             try:
                 booking = session.scalar(select(BookingBase).where(BookingBase.id == booking_id))
@@ -502,6 +503,8 @@ class DatabaseService:
                     booking.price = price
                 if calendar_event_id:
                     booking.calendar_event_id = calendar_event_id
+                if is_done:
+                    booking.is_done = is_done
 
                 session.commit()
                 print(f"Booking updated: {booking}")

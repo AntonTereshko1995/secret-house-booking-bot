@@ -50,7 +50,6 @@ async def set_commands(application: Application):
 if __name__ == "__main__":
     # asyncio.run(application.initialize())
 
-    database.create_db_and_tables()
     application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
     
     application.add_handler(menu_handler.get_handler())

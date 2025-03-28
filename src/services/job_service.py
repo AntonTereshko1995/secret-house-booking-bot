@@ -33,6 +33,7 @@ class JobService:
     def register_jobs(self, update: Update, context: CallbackContext):
         timezone = pytz.timezone("Europe/Minsk")
         job_time = time(8, 0, tzinfo=timezone)
+
         if not context.job_queue.get_jobs_by_name("send_booking_details"):
             context.job_queue.run_daily(self.send_booking_details, time=job_time, name="send_booking_details")
         if not context.job_queue.get_jobs_by_name("send_feeback"):
@@ -54,4 +55,5 @@ class JobService:
             return
 
         for booking in bookings:
+            database_service.update_booking(booking.id, is_done=True)
             await admin_handler.send_feedback(context, booking)

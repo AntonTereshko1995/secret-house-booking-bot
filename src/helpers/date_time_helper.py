@@ -55,7 +55,7 @@ def get_free_time_slots(
     day_end = datetime.combine(date, time(23, 59))
     free_slots = []
 
-    if len(bookings) == 0:
+    if not bookings or len(bookings) == 0:
         free_slots.append((day_start.time(), day_end.time()))
         return free_slots
 
