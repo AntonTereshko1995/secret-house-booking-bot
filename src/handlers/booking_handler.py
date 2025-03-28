@@ -355,7 +355,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': start_booking_date.date()})
         return await start_time_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': 'cancel'})
+        LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': 'back'})
         return await back_navigation(update, context)
     return SET_START_DATE
 
@@ -368,23 +368,23 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': start_booking_date.time()})
         return await finish_date_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': 'cancel'})
-        return await back_navigation(update, context)
+        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': 'back'})
+        return await start_date_message(update, context)
     return SET_START_TIME
 
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = start_booking_date.date() - timedelta(days=1)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад")
     if selected:
         global finish_booking_date
         finish_booking_date = selected_date
         LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': finish_booking_date.date()})
         return await finish_time_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': 'cancel'})
-        return await back_navigation(update, context)
+        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': 'back'})
+        return await start_time_message(update, context)
     return SET_FINISH_DATE
 
 async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -407,7 +407,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await comment_message(update, context)
     elif is_action:
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': "cancel"})
-        return await back_navigation(update, context)
+        return await finish_date_message(update, context)
     return SET_FINISH_TIME
 
 async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -700,7 +700,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.edit_message_text(
         text=message, 
         parse_mode='HTML',
-        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=start_booking_date.date()))
+        reply_markup = hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date()))
     return SET_START_TIME
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -713,7 +713,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "Теперь укажите день, когда планируете выехать.\n"
             "📌 Выезд должен быть позже времени заезда.", 
         parse_mode='HTML',
-        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
+        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад"))
     return SET_FINISH_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -729,7 +729,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "🔹 Выезд должен быть позже времени заезда.\n"
             f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n",
         parse_mode='HTML',
-        reply_markup=hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=finish_booking_date.date()))
+        reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=finish_booking_date.date()))
     return SET_FINISH_TIME
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
