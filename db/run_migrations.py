@@ -1,6 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from alembic.config import Config
 from alembic import command, script
 from alembic.runtime.environment import EnvironmentContext
+from src.config.config import DATABASE_URL
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine
 import os
@@ -9,8 +13,7 @@ def run_migrations_if_needed():
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     ALEMBIC_INI_PATH = os.path.join(BASE_DIR, "alembic.ini")
     alembic_cfg = Config(ALEMBIC_INI_PATH)
-    db_url = alembic_cfg.get_main_option("sqlalchemy.url")
-    engine = create_engine(db_url)
+    engine = create_engine(DATABASE_URL)
 
     with engine.connect() as connection:
         context = MigrationContext.configure(connection)
