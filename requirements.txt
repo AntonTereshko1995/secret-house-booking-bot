@@ -17,3 +17,5 @@ flask[async]
 aiohttp
 flask
 requests
+alembic
+driver
