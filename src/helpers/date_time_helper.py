@@ -62,8 +62,15 @@ def get_free_time_slots(
     previous_end = day_start
     sorted_bookings = sorted(bookings, key=lambda x: x.start_date)
     for booking in sorted_bookings:
-        booking_start = datetime.combine(date, booking.start_date.time())
-        booking_end = datetime.combine(date, booking.end_date.time())
+        if booking.start_date.date() == date:
+            booking_start = datetime.combine(date, booking.start_date.time())
+        else:
+            booking_start = datetime.combine(date, time(0, 0))
+        
+        if booking.end_date.date() == date:
+            booking_end = datetime.combine(date, booking.end_date.time())
+        else:
+            booking_end = datetime.combine(date, time(23, 59))
 
         if minus_time_from_start:
             booking_start = booking_start - cleaning_time
