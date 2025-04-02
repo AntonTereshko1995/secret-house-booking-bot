@@ -6,31 +6,25 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext)
+from telegram.ext import (ContextTypes, CallbackQueryHandler, CallbackContext)
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper
-from src.constants import END, MENU, AVAILABLE_DATES, STOPPING, GET_AVAILABLE_DATES, BACK
+from src.constants import END, MENU, AVAILABLE_DATES, BACK
 from src.config.config import PERIOD_IN_MONTHS
 
 database_service = DatabaseService()
 
-def get_handler() -> ConversationHandler:
-    handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(select_month, pattern=f"^{AVAILABLE_DATES}$")],
-        states={ 
-            GET_AVAILABLE_DATES: [CallbackQueryHandler(get_available_dates)], 
-            BACK: [CallbackQueryHandler(select_month, pattern=f"^{BACK}$")]},
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-        map_to_parent={
-            END: MENU,
-            STOPPING: END,
-        })
-    return handler
+def get_handler():
+    return [
+        CallbackQueryHandler(get_available_dates, pattern=f"^month_(\d+)_(\d+)$"),
+        CallbackQueryHandler(select_month, pattern=f"^{BACK}$",),
+        CallbackQueryHandler(back_navigation, pattern=f"^{END}$")
+    ]
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, f"Back to menu", update)
-    return END
+    return MENU
 
 async def select_month(update: Update, context: CallbackContext):
     LoggerService.info(__name__, f"Select month", update)
@@ -44,7 +38,7 @@ async def select_month(update: Update, context: CallbackContext):
         text="📅 <b>Выберите доступный месяц для бронирования.</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return GET_AVAILABLE_DATES
+    return AVAILABLE_DATES 
 
 async def get_available_dates(update: Update, context: CallbackContext):
     await update.callback_query.answer()
@@ -65,7 +59,7 @@ async def get_available_dates(update: Update, context: CallbackContext):
             f"{available_date_message}",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return BACK
+    return AVAILABLE_DATES
 
 def parse_callback_data(update: Update):
     data = update.callback_query.data

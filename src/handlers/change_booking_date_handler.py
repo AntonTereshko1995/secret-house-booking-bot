@@ -17,17 +17,10 @@ from src.date_time_picker import calendar_picker, hours_picker
 from src.config.config import PERIOD_IN_MONTHS, CLEANING_HOURS
 from dateutil.relativedelta import relativedelta
 from src.constants import (
-    BACK, 
+    CHANGE_BOOKING_DATE_VALIDATE_USER, 
     END,
     MENU, 
-    STOPPING, 
     CHANGE_BOOKING_DATE, 
-    VALIDATE_USER, 
-    CHOOSE_BOOKING, 
-    SET_START_DATE, 
-    SET_START_TIME, 
-    SET_FINISH_DATE, 
-    SET_FINISH_TIME, 
     CONFIRM)
 
 user_contact = ''
@@ -43,28 +36,21 @@ booking: BookingBase = None
 rental_price: RentalPrice = None
 selected_bookings = []
 
-def get_handler() -> ConversationHandler:
-    handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{str(CHANGE_BOOKING_DATE)}$")],
-        states={ 
-            VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            CHOOSE_BOOKING: [CallbackQueryHandler(choose_booking, pattern=f"^CHANGE-BOOKING_(\d+|{END})$")], 
-            SET_START_DATE: [CallbackQueryHandler(enter_start_date, pattern=f"^CALENDAR-CALLBACK_(.+|{END})$")], 
-            SET_START_TIME: [CallbackQueryHandler(enter_start_time, pattern=f"^HOURS-CALLBACK_(.+|{END})$")], 
-            SET_FINISH_DATE: [CallbackQueryHandler(enter_finish_date, pattern=f"^CALENDAR-CALLBACK_(.+|{END})$")], 
-            SET_FINISH_TIME: [CallbackQueryHandler(enter_finish_time, pattern=f"^HOURS-CALLBACK_(.+|{END})$")], 
-            CONFIRM: [CallbackQueryHandler(confirm_booking, pattern=f"^CHANGE-CONFIRM_({CONFIRM}|{END})$")]},
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-        map_to_parent={
-            END: MENU,
-            STOPPING: END,
-        })
-    return handler
+def get_handler():
+    return [
+        CallbackQueryHandler(choose_booking, pattern=f"^CHANGE-BOOKING_(\d+|{END})$"),
+        CallbackQueryHandler(enter_start_date, pattern=f"^CALENDAR-CALLBACK-START_(.+|{END})$"),
+        CallbackQueryHandler(enter_start_time, pattern=f"^HOURS-CALLBACK-START_(.+|{END})$"),
+        CallbackQueryHandler(enter_finish_date, pattern=f"^CALENDAR-CALLBACK-FINISH_(.+|{END})$"),
+        CallbackQueryHandler(enter_finish_time, pattern=f"^HOURS-CALLBACK-FINISH_(.+|{END})$"),
+        CallbackQueryHandler(confirm_booking, pattern=f"^CHANGE-CONFIRM_({CONFIRM}|{END})$"),
+        CallbackQueryHandler(back_navigation, pattern=f"^{END}$"),
+    ]
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, f"Back to menu", update)
-    return END
+    return MENU
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_variables()
@@ -80,7 +66,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return VALIDATE_USER
+    return CHANGE_BOOKING_DATE_VALIDATE_USER
 
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
@@ -97,7 +83,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.")
 
-    return VALIDATE_USER
+    return CHANGE_BOOKING_DATE_VALIDATE_USER
 
 async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -122,7 +108,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif is_action:
         LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': 'cancel'})
         return await back_navigation(update, context)
-    return SET_START_DATE
+    return CHANGE_BOOKING_DATE
 
 async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -133,9 +119,9 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': start_booking_date.time()})
         return await finish_date_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': 'cancel'})
-        return await back_navigation(update, context)
-    return SET_START_TIME
+        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': 'back'})
+        return await start_date_message(update, context)
+    return CHANGE_BOOKING_DATE
 
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -148,9 +134,9 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': finish_booking_date.date()})
         return await finish_time_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': 'cancel'})
-        return await back_navigation(update, context)
-    return SET_FINISH_DATE
+        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': 'back'})
+        return await start_time_message(update, context)
+    return CHANGE_BOOKING_DATE
 
 async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -173,9 +159,9 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return await confirm_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': "cancel"})
-        return await back_navigation(update, context)
-    return SET_FINISH_TIME
+        LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': "back"})
+        return await finish_date_message(update, context)
+    return CHANGE_BOOKING_DATE
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -195,7 +181,6 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📅 <b>До:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return MENU
 
 async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global selected_bookings
@@ -208,13 +193,13 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
         keyboard.append([InlineKeyboardButton(f"{booking.start_date.strftime('%d.%m.%Y %H:%M')} - {booking.end_date.strftime('%d.%m.%Y %H:%M')}", 
                                               callback_data=f"CHANGE-BOOKING_{booking.id}")])
 
-    keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=f"CHANGE-BOOKING_{END}")])
+    keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
         text="📅 <b>Выберите бронирование, которое хотите изменить.</b>\n",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return CHOOSE_BOOKING
+    return CHANGE_BOOKING_DATE
 
 async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False, incorrect_duration: bool = False):
     today = date.today()
@@ -236,8 +221,8 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
     await update.callback_query.edit_message_text(
         text=message, 
         parse_mode='HTML',
-        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
-    return SET_START_DATE
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START"))
+    return CHANGE_BOOKING_DATE
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_day(start_booking_date.date(), booking.id)
@@ -253,8 +238,8 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.edit_message_text(
         text=message, 
         parse_mode='HTML',
-        reply_markup = hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=start_booking_date.date()))
-    return SET_START_TIME
+        reply_markup = hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date(), callback_prefix="-START"),)
+    return CHANGE_BOOKING_DATE
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     min_date_booking = start_booking_date.date() - timedelta(days=1)
@@ -263,8 +248,9 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"Вы выбрали дату и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "Теперь укажите день, когда планируете выехать.\n"
             "📌 Выезд должен быть позже времени заезда.", 
-        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню"))
-    return SET_FINISH_DATE
+        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"),
+        parse_mode='HTML')
+    return CHANGE_BOOKING_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_day(finish_booking_date.date(), booking.id)
@@ -278,8 +264,9 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "📌 Обратите внимание:\n"
             "🔹 Выезд должен быть позже времени заезда.\n"
             f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n", 
-        reply_markup=hours_picker.create_hours_picker(action_text="Назад в меню", free_slots=available_slots, date=finish_booking_date.date()))
-    return SET_FINISH_TIME
+        reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=finish_booking_date.date(), callback_prefix="-FINISH"),
+        parse_mode='HTML')
+    return CHANGE_BOOKING_DATE
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -294,10 +281,10 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ Подтвердить изменения?"), 
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return CONFIRM
+    return CHANGE_BOOKING_DATE
 
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(__name__, f"Booking in empty", update)
+    LoggerService.info(__name__, f"Not found bookings", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
@@ -310,7 +297,7 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return VALIDATE_USER
+    return CHANGE_BOOKING_DATE
 
 def reset_variables():
     global user_contact, old_booking_date, start_booking_date, finish_booking_date, max_date_booking, min_date_booking, booking, rental_price

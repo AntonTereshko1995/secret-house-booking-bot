@@ -4,15 +4,15 @@ from src.helpers import string_helper, date_time_helper
 from src.constants import CALENDAR_CALLBACK, ACTION, IGNORE
 import calendar
 
-def create_callback_data(action, year, month, day):
-    return CALENDAR_CALLBACK + "_" + "_".join([action, str(year), str(month), str(day)])
+def create_callback_data(action, year, month, day, prefix: str):
+    return CALENDAR_CALLBACK + prefix + "_" + "_".join([action, str(year), str(month), str(day)])
 
-def create_calendar(selected_date: date = None, min_date: date = None, max_date: date = None, action_text: str = " "):
+def create_calendar(selected_date: date = None, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = ""):
     if selected_date == None: 
         selected_date = date.now() 
 
-    data_ignore = create_callback_data(str(IGNORE), selected_date.year, selected_date.month, 0)
-    data_action = create_callback_data(str(ACTION), selected_date.year, selected_date.month, 0)
+    data_ignore = create_callback_data(str(IGNORE), selected_date.year, selected_date.month, 0, callback_prefix)
+    data_action = create_callback_data(str(ACTION), selected_date.year, selected_date.month, 0, callback_prefix)
     keyboard = []
     #First row - Month and Year
     row=[]
@@ -32,20 +32,20 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
             if day == 0 or (min_date is not None and date(selected_date.year, selected_date.month, day) <= min_date):
                 row.append(InlineKeyboardButton(" ",callback_data = data_ignore))
             else:
-                row.append(InlineKeyboardButton(str(day), callback_data = create_callback_data("DAY", selected_date.year, selected_date.month, day)))
+                row.append(InlineKeyboardButton(str(day), callback_data = create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
         keyboard.append(row)
 
     #Last row - Buttons
     row=[]
     if selected_date.month != min_date.month:
-        row.append(InlineKeyboardButton("<", callback_data = create_callback_data("PREV-MONTH", selected_date.year, selected_date.month, day)))
+        row.append(InlineKeyboardButton("<", callback_data = create_callback_data("PREV-MONTH", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
     else:
        row.append(InlineKeyboardButton(" ", callback_data = data_ignore))
 
     row.append(InlineKeyboardButton(action_text, callback_data = data_action))
 
     if selected_date.month != max_date.month:
-        row.append(InlineKeyboardButton(">", callback_data = create_callback_data("NEXT-MONTH", selected_date.year, selected_date.month, day)))
+        row.append(InlineKeyboardButton(">", callback_data = create_callback_data("NEXT-MONTH", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
     else:
        row.append(InlineKeyboardButton(" ", callback_data = data_ignore))
 

@@ -4,38 +4,26 @@ from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
+from telegram.ext import (ContextTypes, CallbackQueryHandler)
 from src.handlers import menu_handler
 from src.helpers import string_helper, tariff_helper
 from src.constants import (
     END,
     MENU, 
-    STOPPING, 
-    SET_USER,
-    VALIDATE_USER, 
+    USER_BOOKING_VALIDATE_USER, 
     USER_BOOKING)
 
 user_contact: str
 database_service = DatabaseService()
 
-def get_handler() -> ConversationHandler:
-    handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{USER_BOOKING}$")],
-        states={
-            SET_USER: [CallbackQueryHandler(enter_user_contact)],
-            VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-        },
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-        map_to_parent={
-            END: MENU,
-            STOPPING: END,
-        })
-    return handler
+def get_handler():
+    return [
+        CallbackQueryHandler(back_navigation, pattern=f"^{END}$")]
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, f"Back to menu", update)
-    return END
+    return MENU
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Enter user contact", update)
@@ -50,7 +38,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return VALIDATE_USER
+    return USER_BOOKING_VALIDATE_USER
 
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
@@ -67,7 +55,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.",
                 parse_mode='HTML',)
-    return VALIDATE_USER
+    return USER_BOOKING_VALIDATE_USER
 
 async def display_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking_list = database_service.get_booking_by_user_contact(user_contact)
@@ -104,3 +92,4 @@ async def display_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=message,
         parse_mode='HTML',
         reply_markup=reply_markup)
+    return USER_BOOKING

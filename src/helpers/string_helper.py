@@ -85,7 +85,8 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
         if start_time == end_time:
             time_ranges.append(start_time.strftime("%H:%M"))
         else:
-            time_ranges.append(f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}")
+            end_str = "23:59" if end_time.hour == 23 and end_time.minute == 0 else end_time.strftime('%H:%M')
+            time_ranges.append(f"{start_time.strftime('%H:%M')} - {end_str}")
 
         message += f"📍 <b>{date}</b>\n{', '.join(time_ranges)}\n\n"
 
