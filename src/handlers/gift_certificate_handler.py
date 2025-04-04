@@ -1,6 +1,5 @@
 import sys
 import os
-
 from src.services.database_service import DatabaseService
 from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -13,21 +12,13 @@ from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper, tariff_helper
 from src.models.enum.tariff import Tariff
 from src.constants import (
-    BACK, 
     END,
+    GIFT_VALIDATE_USER,
     MENU, 
-    STOPPING, 
     GIFT_CERTIFICATE, 
     SET_USER,
-    VALIDATE_USER, 
-    SELECT_TARIFF, 
-    ADDITIONAL_BEDROOM,
-    INCLUDE_SECRET_ROOM, 
-    INCLUDE_SAUNA, 
-    PAY,
-    CONFIRM_PAY,
     CONFIRM,
-    PHOTO_UPLOAD)
+    GIFT_PHOTO_UPLOAD)
 
 user_contact: str
 tariff: Tariff
@@ -39,42 +30,58 @@ database_service = DatabaseService()
 rental_rate: RentalPrice
 price: int
 
-def get_handler() -> ConversationHandler:
-    handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(generate_tariff_menu, pattern=f"^{GIFT_CERTIFICATE}$")],
-        states={
-            SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^GIFT-USER_({SET_USER}|{END})$")],
-            VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            SELECT_TARIFF: [CallbackQueryHandler(select_tariff, pattern=f"^GIFT-TARIFF_(\d+|{END})$")],
-            INCLUDE_SECRET_ROOM: [CallbackQueryHandler(include_secret_room, pattern=f"^GIFT-SECRET_(?i:true|false|{END})$")],
-            INCLUDE_SAUNA: [CallbackQueryHandler(include_sauna, pattern=f"^GIFT-SAUNA_(?i:true|false|{END})$")],
-            ADDITIONAL_BEDROOM: [CallbackQueryHandler(select_additional_bedroom, pattern=f"^GIFT-ADD-BEDROOM_(?i:true|false|{END})$")],
-            CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^GIFT-CONFIRM-PAY_({END}|{SET_USER})$")],
-            PAY: [CallbackQueryHandler(pay, pattern=f"^GIFT-PAY_({END})$")],
-            CONFIRM: [CallbackQueryHandler(confirm_gift, pattern=f"^GIFT-CONFIRM_({CONFIRM}|{END})$")],
-            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
-            PHOTO_UPLOAD: [
-                MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(back_navigation, pattern=f"^GIFT-PAY_{END}$")],
-        },
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-        map_to_parent={
-            END: MENU,
-            STOPPING: END,
-        })
-    return handler
+def get_handler():
+    return [
+        CallbackQueryHandler(enter_user_contact, pattern=f"^GIFT-USER_({SET_USER}|{END})$"),
+        CallbackQueryHandler(select_tariff, pattern=f"^GIFT-TARIFF_(\d+|{END})$"),
+        CallbackQueryHandler(include_secret_room, pattern=f"^GIFT-SECRET_(?i:true|false|{END})$"),
+        CallbackQueryHandler(include_sauna, pattern=f"^GIFT-SAUNA_(?i:true|false|{END})$"),
+        CallbackQueryHandler(select_additional_bedroom, pattern=f"^GIFT-ADD-BEDROOM_(?i:true|false|{END})$"),
+        CallbackQueryHandler(confirm_pay, pattern=f"^GIFT-CONFIRM-PAY_({END}|{SET_USER})$"),
+        CallbackQueryHandler(pay, pattern=f"^GIFT-PAY_({END})$"),
+        CallbackQueryHandler(confirm_gift, pattern=f"^GIFT-CONFIRM_({CONFIRM}|{END})$"),
+        CallbackQueryHandler(back_navigation, pattern=f"^GIFT-CONFIRM_{END}$")]
+
+# def get_handler() -> ConversationHandler:
+#     handler = ConversationHandler(
+#         entry_points=[CallbackQueryHandler(generate_tariff_menu, pattern=f"^{GIFT_CERTIFICATE}$")],
+#         states={
+#             SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^GIFT-USER_({SET_USER}|{END})$")],
+#             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
+#             SELECT_TARIFF: [CallbackQueryHandler(select_tariff, pattern=f"^GIFT-TARIFF_(\d+|{END})$")],
+#             INCLUDE_SECRET_ROOM: [CallbackQueryHandler(include_secret_room, pattern=f"^GIFT-SECRET_(?i:true|false|{END})$")],
+#             INCLUDE_SAUNA: [CallbackQueryHandler(include_sauna, pattern=f"^GIFT-SAUNA_(?i:true|false|{END})$")],
+#             ADDITIONAL_BEDROOM: [CallbackQueryHandler(select_additional_bedroom, pattern=f"^GIFT-ADD-BEDROOM_(?i:true|false|{END})$")],
+#             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^GIFT-CONFIRM-PAY_({END}|{SET_USER})$")],
+#             PAY: [CallbackQueryHandler(pay, pattern=f"^GIFT-PAY_({END})$")],
+#             CONFIRM: [CallbackQueryHandler(confirm_gift, pattern=f"^GIFT-CONFIRM_({CONFIRM}|{END})$")],
+#             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
+#             PHOTO_UPLOAD: [
+#                 MessageHandler(filters.PHOTO, handle_photo),
+#                 CallbackQueryHandler(back_navigation, pattern=f"^GIFT-PAY_{END}$")],
+#         },
+#         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
+#         map_to_parent={
+#             END: MENU,
+#             STOPPING: END,
+#         })
+#     return handler
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Back to menu", update)
     await menu_handler.show_menu(update, context)
-    return END
+    return MENU
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if (data == str(END)):
+        return await back_navigation(update, context)
+
     LoggerService.info(__name__, f"enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
@@ -82,7 +89,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return VALIDATE_USER
+    return GIFT_VALIDATE_USER
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"generate tariff menu", update)
@@ -110,7 +117,7 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         text="🎟 <b>Выберите тариф для сертификата.</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return SELECT_TARIFF    
+    return GIFT_CERTIFICATE    
 
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
@@ -127,7 +134,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.",
                 parse_mode='HTML',)
-    return VALIDATE_USER
+    return GIFT_VALIDATE_USER
 
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -190,7 +197,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await back_navigation(update, context)
     
     LoggerService.info(__name__, f"pay", update)
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"GIFT-PAY_{END}")]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
@@ -204,7 +211,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ Как только мы получим оплату, администратор свяжется с вами и отправит ваш <b>электронный подарочный сертификат</b>.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return PHOTO_UPLOAD
+    return GIFT_PHOTO_UPLOAD
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -228,7 +235,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ <b>Подтверждаете покупку сертификата?</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return SET_USER
+    return GIFT_CERTIFICATE
 
 async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -245,7 +252,7 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return INCLUDE_SECRET_ROOM
+    return GIFT_CERTIFICATE
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -261,7 +268,7 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return INCLUDE_SAUNA
+    return GIFT_CERTIFICATE
 
 async def confirm_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Confirm gift", update)
@@ -274,7 +281,6 @@ async def confirm_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏳ Пожалуйста, ожидайте подтверждения.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return MENU
 
 async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -290,7 +296,7 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
             f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return ADDITIONAL_BEDROOM
+    return GIFT_CERTIFICATE
 
 def save_gift_information():
     code = string_helper.get_generated_code()

@@ -85,7 +85,8 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
         if start_time == end_time:
             time_ranges.append(start_time.strftime("%H:%M"))
         else:
-            time_ranges.append(f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}")
+            end_str = "23:59" if end_time.hour == 23 and end_time.minute == 0 else end_time.strftime('%H:%M')
+            time_ranges.append(f"{start_time.strftime('%H:%M')} - {end_str}")
 
         message += f"📍 <b>{date}</b>\n{', '.join(time_ranges)}\n\n"
 
@@ -117,7 +118,7 @@ def generate_booking_info_message(booking: BookingBase, user: UserBase, is_addit
             f"Абонемент: {booking.subscription_id}\n"
             f"Доплата наличкой: {bool_to_str(is_additional_payment_by_cash)}\n")
     else:
-        message += f"Предоплата: {PREPAYMENT}\n" 
+        message += f"Предоплата: {booking.prepayment_price}\n" 
     return message
 
 def generate_gift_info_message(gift: GiftBase) -> str:
@@ -150,6 +151,17 @@ def parse_booking_callback_data(callback_data: str):
         booking_id = match.group(3)
         is_payment_by_cash = match.group(4)
         return {"user_chat_id": user_chat_id, "booking_id": booking_id, "menu_index": menu_index, "is_payment_by_cash": is_payment_by_cash}
+    else:
+        return None
+    
+def parse_change_price_callback_data(callback_data: str, pattern: str):
+    match = re.match(pattern, callback_data)
+    if match:
+        price = match.group(1)
+        user_chat_id = match.group(2)
+        booking_id = match.group(3)
+        is_payment_by_cash = match.group(4)
+        return {"user_chat_id": user_chat_id, "booking_id": booking_id, "price": price, "is_payment_by_cash": is_payment_by_cash}
     else:
         return None
     
