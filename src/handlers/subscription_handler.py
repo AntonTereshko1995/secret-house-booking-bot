@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
+from telegram.ext import (ContextTypes, CallbackQueryHandler)
 from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper, subscription_helper
@@ -12,18 +12,13 @@ from src.models.enum.subscription_type import SubscriptionType
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from src.constants import (
-    BACK,
     END,
     MENU, 
-    STOPPING, 
     SET_USER,
-    VALIDATE_USER, 
+    SUBSCRIPTION_PHOTO_UPLOAD,
+    SUBSCRIPTION_VALIDATE_USER,
     SUBSCRIPTION,
-    SUBSCRIPTION_TYPE,
-    PAY,
-    CONFIRM_PAY,
-    CONFIRM,
-    PHOTO_UPLOAD)
+    CONFIRM)
 
 user_contact: str
 subscription_type: SubscriptionType
@@ -32,31 +27,19 @@ database_service = DatabaseService()
 rental_rate: RentalPrice
 price: int
 
-def get_handler() -> ConversationHandler:
-    handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(generate_subscription_menu, pattern=f"^{str(SUBSCRIPTION)}$")],
-        states={
-            SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^SUBSCRIPTION-USER_({SET_USER}|{END})$")],
-            VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            SUBSCRIPTION_TYPE: [CallbackQueryHandler(select_subscription_type, pattern=f"^SUBSCRIPTION-TYPE_(\d+|{END})$")],
-            CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^SUBSCRIPTION-CONFIRM-PAY_({END}|{SET_USER})$")],
-            PAY: [CallbackQueryHandler(pay, pattern=f"^SUBSCRIPTION-PAY_({END})$")],
-            CONFIRM: [CallbackQueryHandler(confirm_subscription, pattern=f"^SUBSCRIPTION-CONFIRM_({CONFIRM}|{END})$")],
-            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
-            PHOTO_UPLOAD: [
-                MessageHandler(filters.PHOTO, handle_photo),
-                CallbackQueryHandler(back_navigation, pattern=f"^SUBSCRIPTION-PAY_{END}$")]},
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-        map_to_parent={
-            END: MENU,
-            STOPPING: END,
-        })
-    return handler
+def get_handler():
+    return [
+        CallbackQueryHandler(enter_user_contact, pattern=f"^SUBSCRIPTION-USER_({SET_USER}|{END})$"),
+        CallbackQueryHandler(select_subscription_type, pattern=f"^SUBSCRIPTION-TYPE_(\d+|{END})$"),
+        CallbackQueryHandler(confirm_pay, pattern=f"^SUBSCRIPTION-CONFIRM-PAY_({END}|{SET_USER})$"),
+        CallbackQueryHandler(pay, pattern=f"^SUBSCRIPTION-PAY_({END})$"),
+        CallbackQueryHandler(confirm_subscription, pattern=f"^SUBSCRIPTION-CONFIRM_({CONFIRM}|{END})$"),
+        CallbackQueryHandler(back_navigation, pattern=f"^SUBSCRIPTION-PAY_{END}$")]
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, "Back to menu", update)
-    return END
+    return MENU
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -75,7 +58,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return VALIDATE_USER
+    return SUBSCRIPTION_VALIDATE_USER
 
 async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Generate subscription menu", update)
@@ -101,7 +84,7 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
             "🔞 <b>Секретную комнату</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return SUBSCRIPTION_TYPE
+    return SUBSCRIPTION
 
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
@@ -118,7 +101,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
                 "🔄 Пожалуйста, попробуйте еще раз.",
                 parse_mode='HTML',)
-    return VALIDATE_USER
+    return SUBSCRIPTION_VALIDATE_USER
 
 async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -156,7 +139,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ <b>Подтверждаете покупку абонемента?</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return SET_USER
+    return SUBSCRIPTION
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
@@ -165,7 +148,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (data == str(END)):
             return await back_navigation(update, context)
     
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"SUBSCRIPTION-PAY_{END}")]]
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     price = rental_rate.price
     LoggerService.info(__name__, f"Pay", update, kwargs={'price': price})
@@ -183,7 +166,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🔒 <b>Держите код в тайне!</b>",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return PHOTO_UPLOAD
+    return SUBSCRIPTION_PHOTO_UPLOAD
 
 async def confirm_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Confirm subscription", update)

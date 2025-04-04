@@ -3,25 +3,19 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, CallbackContext)
+from telegram.ext import (ContextTypes, CallbackQueryHandler, CallbackContext)
 from src.handlers import menu_handler
-from src.constants import END, MENU, PRICE, STOPPING
+from src.constants import END, MENU, PRICE
 
-def get_handler() -> ConversationHandler:
-    handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(send_prices, pattern=f"^{PRICE}$")],
-        states={ },
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-        map_to_parent={
-            END: MENU,
-            STOPPING: END,
-        })
-    return handler
+def get_handler():
+    return [
+        CallbackQueryHandler(back_navigation, pattern=f"^{END}$")
+    ]
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Back to menu", update)
     await menu_handler.show_menu(update, context)
-    return END
+    return MENU
 
 async def send_prices(update: Update, context: CallbackContext):
     LoggerService.info(__name__, f"send prices", update)
@@ -86,5 +80,4 @@ async def send_prices(update: Update, context: CallbackContext):
         text=tariffs,
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return MENU
-
+    return PRICE

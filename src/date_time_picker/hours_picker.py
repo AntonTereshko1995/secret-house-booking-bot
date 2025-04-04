@@ -5,13 +5,13 @@ from src.constants import HOURS_CALLBACK, ACTION
 
 HOURS = map(chr, range(1))
 
-def create_callback_data(action, time: time):
-    return HOURS_CALLBACK + "_" + "_".join([action, time.strftime('%H%M') if time else ""])
+def create_callback_data(action, time: time, prefix: str):
+    return HOURS_CALLBACK + prefix + "_" + "_".join([action, time.strftime('%H%M') if time else ""])
 
 from datetime import datetime, time, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-def create_hours_picker(date=None, free_slots=None, action_text=""):
+def create_hours_picker(date=None, free_slots=None, action_text="", callback_prefix=""):
     hour = 0
     now = datetime.now()
     if date == now.date():
@@ -41,7 +41,7 @@ def create_hours_picker(date=None, free_slots=None, action_text=""):
 
     for i in range(0, len(time_slots)):
         time_str = time_slots[i].strftime('%H:%M')  # Форматируем время в строку HH:MM
-        callback_data = create_callback_data(str(HOURS), time_slots[i])
+        callback_data = create_callback_data(str(HOURS), time_slots[i], callback_prefix)
         row.append(InlineKeyboardButton(time_str, callback_data=callback_data))
 
         if len(row) == 4:
@@ -51,7 +51,7 @@ def create_hours_picker(date=None, free_slots=None, action_text=""):
     if row:
         keyboard.append(row)
 
-    keyboard.append([InlineKeyboardButton(action_text, callback_data = create_callback_data(str(ACTION), None))])
+    keyboard.append([InlineKeyboardButton(action_text, callback_data = create_callback_data(str(ACTION), None, callback_prefix))])
     return InlineKeyboardMarkup(keyboard)
 
 async def process_hours_selection(update, context):

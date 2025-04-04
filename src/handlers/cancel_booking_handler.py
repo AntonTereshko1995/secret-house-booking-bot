@@ -1,42 +1,32 @@
 import sys
 import os
-
 from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.calendar_service import CalendarService
 from datetime import date
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CallbackQueryHandler, MessageHandler, filters)
+from telegram.ext import (ContextTypes, CallbackQueryHandler)
 from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper
-from src.constants import BACK, END, MENU, STOPPING, CANCEL_BOOKING, VALIDATE_USER, CHOOSE_BOOKING, CONFIRM
+from src.constants import CANCEL_BOOKING_VALIDATE_USER, END, MENU, CANCEL_BOOKING, CONFIRM
 
 user_contact = ''
 database_service = DatabaseService()
 calendar_service = CalendarService()
 selected_bookings = []
 
-def get_handler() -> ConversationHandler:
-    handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(enter_user_contact, pattern=f"^{CANCEL_BOOKING}$")],
-        states={ 
-            VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-            CHOOSE_BOOKING: [CallbackQueryHandler(choose_booking, pattern=f"^CANCEL-BOOKING_(\d+|{END})$")], 
-            CONFIRM: [CallbackQueryHandler(confirm_cancel_booking, pattern=f"^CANCEL-CONFIRM_({CONFIRM}|{END})$")], 
-            BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")], 
-            },
-        fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-        map_to_parent={
-            END: MENU,
-            STOPPING: END,
-        })
-    return handler
+def get_handler():
+    return [
+        CallbackQueryHandler(choose_booking, pattern=f"^CANCEL-BOOKING_(\d+|{END})$"),
+        CallbackQueryHandler(confirm_cancel_booking, pattern=f"^CANCEL-CONFIRM_({CONFIRM}|{END})$"),
+        CallbackQueryHandler(back_navigation, pattern=f"^{END}$")
+    ]
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, f"Back to menu", update)
-    return END
+    return MENU
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_variables()
@@ -52,7 +42,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return VALIDATE_USER
+    return CANCEL_BOOKING_VALIDATE_USER
 
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
@@ -70,7 +60,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "🔄 Пожалуйста, попробуйте еще раз.",
                 parse_mode='HTML'
             )
-    return VALIDATE_USER
+    return CANCEL_BOOKING_VALIDATE_USER
 
 async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -101,6 +91,7 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
             "📌 Если у вас возникли вопросы, свяжитесь с администратором.",
         parse_mode='HTML',
         reply_markup=reply_markup)
+    return CANCEL_BOOKING
 
 async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global selected_bookings
@@ -110,8 +101,9 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
     
     keyboard = []
     for booking in selected_bookings:
-        keyboard.append([InlineKeyboardButton(f"{booking.start_date.strftime('%d.%m.%Y %H:%M')} - {booking.end_date.strftime('%d.%m.%Y %H:%M')}", 
-                                              callback_data=f"CANCEL-BOOKING_{booking.id}")])
+        keyboard.append([InlineKeyboardButton(
+            f"{booking.start_date.strftime('%d.%m.%Y %H:%M')} - {booking.end_date.strftime('%d.%m.%Y %H:%M')}", 
+            callback_data=f"CANCEL-BOOKING_{booking.id}")])
 
     keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=f"CANCEL-BOOKING_{END}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -119,7 +111,7 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
         text="📅 <b>Выберите бронирование, которое хотите отменить.</b>\n",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return CHOOSE_BOOKING
+    return CANCEL_BOOKING
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -132,7 +124,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🔄 Для продолжения выберите соответствующую опцию.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return CONFIRM
+    return CANCEL_BOOKING
 
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.warning(__name__, f"Booking is empty", update)
@@ -148,7 +140,7 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return VALIDATE_USER
+    return CANCEL_BOOKING_VALIDATE_USER
 
 def reset_variables():
     global user_contact, booking_date, selected_bookings

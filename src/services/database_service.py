@@ -2,8 +2,8 @@ from datetime import date, datetime
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from db import database
 from src.services.logger_service import LoggerService
-import database
 from src.models.enum.sale import Sale
 from db.models.base import Base
 from db.models.user import UserBase
@@ -481,7 +481,8 @@ class DatabaseService:
             price: float = None,
             is_prepaymented: bool = None,
             calendar_event_id: str = None,
-            is_done: bool = None) -> BookingBase:
+            is_done: bool = None,
+            prepayment: float = None) -> BookingBase:
         with self.Session() as session:
             try:
                 booking = session.scalar(select(BookingBase).where(BookingBase.id == booking_id))
@@ -505,6 +506,8 @@ class DatabaseService:
                     booking.calendar_event_id = calendar_event_id
                 if is_done:
                     booking.is_done = is_done
+                if prepayment:
+                    booking.prepayment_price = prepayment
 
                 session.commit()
                 print(f"Booking updated: {booking}")
