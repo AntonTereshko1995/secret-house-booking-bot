@@ -8,14 +8,14 @@ from src.services.calculation_rate_service import CalculationRateService
 from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
-from src.constants import END, SET_PASSWORD, CHANGE_BOOKING_ADMIN, UPDATE_BOOKING
+from src.constants import CONFIRM, EDIT_BOOKING_PURCHASE, END, BACK, SET_PASSWORD
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID, PERIOD_IN_MONTHS, INFORM_CHAT_ID, PREPAYMENT, BANK_CARD_NUMBER, BANK_PHONE_NUMBER, ADMINISTRATION_CONTACT
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler)
+from telegram.ext import (ContextTypes, ConversationHandler, CommandHandler, CallbackQueryHandler, MessageHandler, filters)
 from src.helpers import string_helper, string_helper, tariff_helper
 
 database_service = DatabaseService()
@@ -24,6 +24,27 @@ calculation_rate_service = CalculationRateService()
 file_service = FileService()
 settings_service = SettingsService()
 writing_password = ''
+new_price: str = ''
+new_prepayment_price: str = ''
+
+def get_purchase_handler() -> ConversationHandler:
+    handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"),
+            CallbackQueryHandler(gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"),
+            CallbackQueryHandler(subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$"),
+        ],
+        states={ 
+            EDIT_BOOKING_PURCHASE: [
+                CallbackQueryHandler(change_price, pattern=f"^price_(\d|{CONFIRM}|{BACK})_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"),
+                CallbackQueryHandler(change_prepayment_price, pattern=f"^prepayment_(\d|{CONFIRM}|{BACK})_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$")],
+        },
+        fallbacks=[
+            CallbackQueryHandler(booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"),
+            CallbackQueryHandler(gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"),
+            CallbackQueryHandler(subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$")
+        ])
+    return handler
 
 def get_password_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -31,10 +52,7 @@ def get_password_handler() -> ConversationHandler:
         states={ 
             SET_PASSWORD: [CallbackQueryHandler(enter_house_password, pattern=r"^password_\d$")],
             },
-        fallbacks=[],
-        map_to_parent={
-            END: END
-            })
+        fallbacks=[])
     return handler
 
 async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,11 +114,6 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         for booking in bookings:
             user = database_service.get_user_by_id(booking.user_id)
-
-            keyboard = [
-                [InlineKeyboardButton('Изменить бронирование', callback_data=f"{CHANGE_BOOKING_ADMIN}_bookingid_{booking.id}")],
-                [InlineKeyboardButton('Обновить бронь в чатах', callback_data=UPDATE_BOOKING)],]
-
             message = (
                 f"Пользователь: {user.contact}\n"
                 f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -109,8 +122,7 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Стоимость: {booking.price} руб.\n"
                 f"Предоплата: {booking.prepayment_price} руб.\n") 
             await update.message.reply_text(
-                text=message, 
-                reply_markup=InlineKeyboardMarkup(keyboard))
+                text=message)
     return END
 
 async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo, is_payment_by_cash = False):
@@ -119,11 +131,11 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
     keyboard = [
         [InlineKeyboardButton("Подтвердить оплату", callback_data=f"booking_1_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
         [InlineKeyboardButton("Отмена бронирования", callback_data=f"booking_2_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Скидка 5%", callback_data=f"booking_3_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Скидка 10%", callback_data=f"booking_4_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Скидка 15%", callback_data=f"booking_5_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Скидка 20%", callback_data=f"booking_6_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Скидка 30%", callback_data=f"booking_7_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Изменить стоимость", callback_data=f"booking_3_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Изменить предоплату", callback_data=f"booking_4_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Скидка 5%", callback_data=f"booking_5_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Скидка 10%", callback_data=f"booking_6_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Скидка 15%", callback_data=f"booking_7_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -131,6 +143,22 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
         photo = file_service.get_image("logo.png")
 
     await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
+
+async def edit_accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: int, user_chat_id: int, is_payment_by_cash):
+    booking = database_service.get_booking_by_id(booking_id)
+    user = database_service.get_user_by_id(booking.user_id)
+    message = string_helper.generate_booking_info_message(booking, user, is_payment_by_cash)
+    keyboard = [
+        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"booking_1_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Отмена бронирования", callback_data=f"booking_2_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Изменить стоимость", callback_data=f"booking_3_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Изменить предоплату", callback_data=f"booking_4_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Скидка 5%", callback_data=f"booking_5_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Скидка 10%", callback_data=f"booking_6_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton("Скидка 15%", callback_data=f"booking_7_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_caption(caption=message, reply_markup=reply_markup)
 
 async def accept_gift_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, gift: GiftBase, user_chat_id: int, photo):
     message = string_helper.generate_gift_info_message(gift)
@@ -180,19 +208,19 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     match menu_index:
         case "1":
-            await approve_booking(update, context, chat_id, booking_id, is_payment_by_cash)
+            return await approve_booking(update, context, chat_id, booking_id, is_payment_by_cash)
         case "2":
-            await cancel_booking(update, context, chat_id, booking_id)
+            return await cancel_booking(update, context, chat_id, booking_id)
         case "3":
-            await set_sale_booking(update, context, chat_id, booking_id, 5, is_payment_by_cash)
+            return await change_price_message(update, context, chat_id, booking_id, is_payment_by_cash)
         case "4":
-            await set_sale_booking(update, context, chat_id, booking_id, 10, is_payment_by_cash)
+            return await change_prepayment_price_message(update, context, chat_id, booking_id, is_payment_by_cash)
         case "5":
-            await set_sale_booking(update, context, chat_id, booking_id, 15, is_payment_by_cash)
+            return await set_sale_booking(update, context, chat_id, booking_id, 5, is_payment_by_cash)
         case "6":
-            await set_sale_booking(update, context, chat_id, booking_id, 20, is_payment_by_cash)
+            return await set_sale_booking(update, context, chat_id, booking_id, 10, is_payment_by_cash)
         case "7":
-            await set_sale_booking(update, context, chat_id, booking_id, 30, is_payment_by_cash)
+            return await set_sale_booking(update, context, chat_id, booking_id, 15, is_payment_by_cash)
 
 async def gift_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -225,65 +253,54 @@ async def subscription_callback(update: Update, context: ContextTypes.DEFAULT_TY
 async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int, is_payment_by_cash: bool):
     (booking, user) = await prepare_approve_process(update, context, booking_id, is_payment_by_cash=is_payment_by_cash)
     await check_and_send_booking(context, booking)
-
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="🎉 <b>Отличные новости!</b> 🎉\n"
             "✅ <b>Ваше бронирование подтверждено администратором.</b>\n"
-            "📩 За 1 день до заезда вы получите сообщение с деталями бронирования и инструкцией по заселению.",
-        parse_mode='HTML',
-        reply_markup=reply_markup)
+            "📩 За 1 день до заезда вы получите сообщение с деталями бронирования и инструкцией по заселению.\n"
+            f"Общая стоимость бронирования: {booking.price} руб.\n"
+            f"Предоплата: {booking.prepayment_price} руб.\n",
+        parse_mode='HTML')
     
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_booking_info_message(booking, user)}")
     return END
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int):
     booking = database_service.update_booking(booking_id, is_canceled=True)
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="⚠️ <b>Внимание!</b> ⚠️\n"
             "❌ <b>Ваше бронирование отменено.</b>\n"
             "📞 Администратор свяжется с вами для уточнения деталей.",
-        parse_mode='HTML',  
-        reply_markup=reply_markup)
+        parse_mode='HTML')
     user = database_service.get_user_by_id(booking.user_id)
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_booking_info_message(booking, user)}")
     return END
 
 async def approve_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int):
     gift = database_service.update_gift(gift_id, is_paymented=True)
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     await context.bot.send_message(
         chat_id=chat_id, 
         text=f"{gift.code}")
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="🎉 <b>Отличные новости!</b> 🎉\n"
             "✅ <b>Ваш подарочный сертификат подтвержден администратором.</b>\n"
             "📩 <b>В течение нескольких часов мы отправим вам электронный сертификат.</b>\n"
             "🔑 <b>Мы также отправили код сертификата — укажите его при бронировании.</b>",
-        parse_mode='HTML',  
-        reply_markup=reply_markup)
+        parse_mode='HTML')
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_gift_info_message(gift)}")
     return END
 
 async def cancel_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int):
     gift = database_service.get_gift_by_id(gift_id)
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="⚠️ <b>Внимание!</b> ⚠️\n"
             "❌ <b>Ваша покупка подарочного сертификата была отменена.</b>\n"
             "📞 Администратор свяжется с вами для уточнения деталей.\n",
-        parse_mode='HTML',  
-        reply_markup=reply_markup)
+        parse_mode='HTML')
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_gift_info_message(gift)}")
     return END
 
@@ -294,30 +311,24 @@ async def approve_subscription(update: Update, context: ContextTypes.DEFAULT_TYP
         chat_id=chat_id, 
         text=f"{subscription.code}")
 
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="🎉 <b>Отличные новости!</b> 🎉\n"
             "✅ <b>Покупка абонемента подтверждена администратором.</b>\n"
             "📩 Мы отправили вам код абонемента — укажите его при бронировании.\n",
-        parse_mode='HTML',  
-        reply_markup=reply_markup)
+        parse_mode='HTML')
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_subscription_info_message(subscription, user)}")
     return END
 
 async def cancel_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, subscription_id: int):
     subscription = database_service.get_subscription_by_id(subscription_id)
     user = database_service.get_user_by_id(subscription.user_id)
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=chat_id, 
         text="⚠️ <b>Внимание!</b> ⚠️\n"
             "❌ <b>Ваша покупка абонемента была отменена.</b>\n"
             "📞 Администратор свяжется с вами для уточнения деталей.\n",
-        parse_mode='HTML',  
-        reply_markup=reply_markup)
+        parse_mode='HTML')
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_subscription_info_message(subscription, user)}")
     return END
 
@@ -337,6 +348,7 @@ async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, c
         parse_mode='HTML',  
         reply_markup=reply_markup)
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n Скидка: {sale_percentage}% \n\n{string_helper.generate_booking_info_message(booking, user)}")
+    return END
 
 def get_future_bookings():
     today = date.today()
@@ -396,7 +408,7 @@ async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, boo
     else:
         message += (
             f"Стоимость: {booking.price} руб.\n"
-            f"Предоплата: {PREPAYMENT} руб.\n")
+            f"Предоплата: {booking.prepayment_price} руб.\n")
 
     message += (
         f"Фотосессия: {string_helper.bool_to_str(booking.has_photoshoot)}\n"
@@ -466,3 +478,99 @@ async def check_and_send_booking(context, booking):
 
     if condition_1 or condition_2:
         await send_booking_details(context, booking)
+
+async def change_prepayment_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    chat_id = update.effective_chat.id
+    if str(chat_id) != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+    
+    data = string_helper.parse_change_price_callback_data(update.callback_query.data, f"^prepayment_(\d|{CONFIRM}|{BACK})_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$")
+    prepayment_data = data["price"]
+    chat_id = data["user_chat_id"] 
+    booking_id = data["booking_id"]
+    is_payment_by_cash = data["is_payment_by_cash"]
+
+    global new_prepayment_price
+    if prepayment_data == BACK:
+        new_prepayment_price = ''
+        await edit_accept_booking_payment(update, context, booking_id, chat_id, is_payment_by_cash)
+        return
+    elif prepayment_data == CONFIRM:
+        database_service.update_booking(booking_id, prepayment=float(new_prepayment_price))
+        await edit_accept_booking_payment(update, context, booking_id, chat_id, is_payment_by_cash)
+        new_prepayment_price = ''
+        return
+    
+    if prepayment_data.isdigit():
+        new_prepayment_price += prepayment_data
+    
+    return await change_prepayment_price_message(update, context, chat_id, booking_id, is_payment_by_cash)
+
+async def change_prepayment_price_message(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int = None, booking_id: int = None, is_payment_by_cash: bool = None):
+    keyboard = [
+        [InlineKeyboardButton('1', callback_data=f"prepayment_1_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('2', callback_data=f"prepayment_2_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('3', callback_data=f"prepayment_3_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton('4', callback_data=f"prepayment_4_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('5', callback_data=f"prepayment_5_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('6', callback_data=f"prepayment_6_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton('7', callback_data=f"prepayment_7_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('8', callback_data=f"prepayment_8_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('9', callback_data=f"prepayment_9_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton('Подтвердить', callback_data=f"prepayment_{CONFIRM}_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('0', callback_data=f"prepayment_0_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('Отмена', callback_data=f"prepayment_{BACK}_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")]]
+
+    message = (f"Введите новуй цену для предоплаты. Например 370.\n"
+                f"Вы ввели: {new_prepayment_price}\n")
+    if update.message:
+        await update.message.reply_text(
+            text=message, 
+            reply_markup=InlineKeyboardMarkup(keyboard))
+    elif update.callback_query:
+        await update.callback_query.edit_message_caption(
+            caption=message, 
+            reply_markup=InlineKeyboardMarkup(keyboard))
+    return EDIT_BOOKING_PURCHASE
+
+async def change_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    chat_id = update.effective_chat.id
+    if str(chat_id) != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+
+    data = string_helper.parse_change_price_callback_data(update.callback_query.data, f"^price_(\d|{CONFIRM}|{BACK})_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$")
+    price_data = data["price"]
+    chat_id = data["user_chat_id"] 
+    booking_id = data["booking_id"]
+    is_payment_by_cash = data["is_payment_by_cash"]
+
+    global new_price
+    if price_data == BACK:
+        new_price = ''
+        await edit_accept_booking_payment(update, context, booking_id, chat_id, is_payment_by_cash)
+        return
+    elif price_data == CONFIRM:
+        database_service.update_booking(booking_id, price=float(new_price))
+        await edit_accept_booking_payment(update, context, booking_id, chat_id, is_payment_by_cash)
+        new_price = ''
+        return
+    
+    if price_data.isdigit():
+        new_price += price_data
+
+    return await change_price_message(update, context, chat_id, booking_id, is_payment_by_cash)
+    
+async def change_price_message(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int = None, booking_id: int = None, is_payment_by_cash: bool = None):
+    keyboard = [
+        [InlineKeyboardButton('1', callback_data=f"price_1_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('2', callback_data=f"price_2_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('3', callback_data=f"price_3_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton('4', callback_data=f"price_4_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('5', callback_data=f"price_5_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('6', callback_data=f"price_6_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton('7', callback_data=f"price_7_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('8', callback_data=f"price_8_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('9', callback_data=f"price_9_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [InlineKeyboardButton('Подтвердить', callback_data=f"price_{CONFIRM}_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('0', callback_data=f"price_0_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}"), InlineKeyboardButton('Отмена', callback_data=f"price_{BACK}_chatid_{chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")]]
+
+    message = (f"Введите новуй цену для бронирования. Например 370.\n"
+                f"Вы ввели: {new_price}\n")
+    if update.message:
+        await update.message.reply_text(
+            text=message, 
+            reply_markup=InlineKeyboardMarkup(keyboard))
+    elif update.callback_query:
+        await update.callback_query.edit_message_caption(
+            caption=message, 
+            reply_markup=InlineKeyboardMarkup(keyboard))
+    return EDIT_BOOKING_PURCHASE

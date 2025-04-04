@@ -308,7 +308,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
     if selected:
         if not tariff_helper.is_booking_available(tariff, selected_date):
-            LoggerService.warning(__name__, f"start date is incorrect for {select_tariff}", update)
+            LoggerService.warning(__name__, f"start date is incorrect for {tariff}", update)
             error_message = ("❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Тариф 'Рабочий' доступен только с понедельника по четверг.</b>\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования.")
@@ -491,7 +491,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Confirm booking", update)
-    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
+    keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-BACK_{BACK}")]]
     message = (
         "✨ <b>Спасибо за доверие к The Secret House!</b> ✨\n"
         "📩 Мы скоро отправим вам сообщение с подтверждением бронирования.\n\n"
@@ -511,6 +511,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message,
             parse_mode='HTML',
             reply_markup=reply_markup)
+    return BOOKING
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -593,7 +594,7 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("4 гостя", callback_data="BOOKING-PEOPLE_4")],
         [InlineKeyboardButton("5 гостей", callback_data="BOOKING-PEOPLE_5")],
         [InlineKeyboardButton("6 гостей", callback_data="BOOKING-PEOPLE_6")],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-BACK_{BACK}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     additional_people_text = (
@@ -938,6 +939,5 @@ async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_
     else:
         chat_id = update.callback_query.message.chat.id
     save_booking_information(chat_id)
-    # Init new conversentional handler
     await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, is_cash)
     return await confirm_booking(update, context)

@@ -35,7 +35,9 @@ job = job_service.JobService()
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
-        entry_points=[CommandHandler('start', show_menu)],
+        entry_points=[
+            CommandHandler('start', show_menu),
+            ],
         states={ 
             # SUBSCRIPTION navigation flow
             SUBSCRIPTION: subscription_handler.get_handler(),
