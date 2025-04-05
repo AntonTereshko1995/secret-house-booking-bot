@@ -52,7 +52,7 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     keyboard.append(row)
     return InlineKeyboardMarkup(keyboard)
 
-async def process_calendar_selection(update, context, min_date: date = None, max_date: date = None, action_text: str = " "):
+async def process_calendar_selection(update, context, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = ""):
     # Selected, Time, Is_action
     return_data = (False, None, False)
     query = update.callback_query
@@ -75,14 +75,14 @@ async def process_calendar_selection(update, context, min_date: date = None, max
                 text=query.message.text,
                 chat_id=query.message.chat_id,
                 message_id=query.message.message_id,
-                reply_markup = create_calendar(prev_month.date(), min_date, max_date, action_text))
+                reply_markup = create_calendar(prev_month.date(), min_date, max_date, action_text, callback_prefix))
         elif action == "NEXT-MONTH":
             next_month = selected_date + timedelta(days = 31)
             await context.bot.edit_message_text(
                 text=query.message.text,
                 chat_id=query.message.chat_id,
                 message_id=query.message.message_id,
-                reply_markup = create_calendar(next_month.date(), min_date, max_date, action_text))
+                reply_markup = create_calendar(next_month.date(), min_date, max_date, action_text, callback_prefix))
         else:
             await context.bot.answer_callback_query(callback_query_id = query.id, text = "Something went wrong!")
         return return_data
