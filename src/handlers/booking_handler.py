@@ -305,7 +305,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = date.today() - timedelta(days=1)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню")
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START")
     if selected:
         if not tariff_helper.is_booking_available(tariff, selected_date):
             LoggerService.warning(__name__, f"start date is incorrect for {tariff}", update)
@@ -341,7 +341,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = start_booking_date.date() - timedelta(days=1)
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад")
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH")
     if selected:
         global finish_booking_date
         finish_booking_date = selected_date
