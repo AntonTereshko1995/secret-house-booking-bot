@@ -300,7 +300,7 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CHANGE_BOOKING_DATE
 
 def reset_variables():
-    global user_contact, old_booking_date, start_booking_date, finish_booking_date, max_date_booking, min_date_booking, booking, rental_price
+    global user_contact, old_booking_date, start_booking_date, finish_booking_date, max_date_booking, min_date_booking, booking, rental_price, selected_bookings
     user_contact = ''
     old_booking_date = date.today()
     start_booking_date = datetime.today()
@@ -309,4 +309,4 @@ def reset_variables():
     min_date_booking = date.today() - timedelta(days=1)
     booking = None
     rental_price = None
-    selected_bookings.clear()
+    selected_bookings = []
