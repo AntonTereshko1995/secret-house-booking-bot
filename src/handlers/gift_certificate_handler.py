@@ -2,6 +2,7 @@ import sys
 import os
 from src.services.database_service import DatabaseService
 from src.services.logger_service import LoggerService
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.rental_price import RentalPrice
 from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
@@ -82,12 +83,12 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
             "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return GIFT_VALIDATE_USER
 
@@ -113,9 +114,9 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("Назад в меню", callback_data=f"GIFT-TARIFF_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="🎟 <b>Выберите тариф для сертификата.</b>",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return GIFT_CERTIFICATE    
 
@@ -229,11 +230,11 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
     LoggerService.info(__name__, f"confirm pay", update, kwargs={'price': price})
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n"
             f"📌 <b>В стоимость входит:</b> {categories}.\n\n"
             "✅ <b>Подтверждаете покупку сертификата?</b>",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return GIFT_CERTIFICATE
 
@@ -246,11 +247,11 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         [InlineKeyboardButton("Назад в меню", callback_data=f"GIFT-SECRET_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="🔞 <b>Планируете ли вы пользоваться 'Секретной комнатой'?</b>\n\n"
             f"💰 <b>Стоимость:</b> {rental_rate.secret_room_price} руб. \n"
             f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return GIFT_CERTIFICATE
 
@@ -262,11 +263,11 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="🧖‍♂️ <b>Планируете ли вы пользоваться сауной?</b>\n\n"
             f"💰 <b>Стоимость:</b> {rental_rate.sauna_price} руб.\n"
             f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return GIFT_CERTIFICATE
 
@@ -290,11 +291,11 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="🛏 <b>Планируете ли вы пользоваться второй спальней комнатой?</b>\n\n"
             f"💰 <b>Стоимость:</b> {rental_rate.second_bedroom_price} руб.\n"
             f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return GIFT_CERTIFICATE
 

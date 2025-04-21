@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.gpt_service import GptService
@@ -27,9 +29,9 @@ async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     LoggerService.info(__name__, f"start conversation", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="Напишите любой вопрос, который Вы бы хотели узнать про The Secret House.\n",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return QUESTIONS
 

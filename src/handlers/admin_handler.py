@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.navigation_service import safe_edit_message_text
 from src.services.settings_service import SettingsService
 from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
@@ -75,8 +76,9 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message, 
             reply_markup=InlineKeyboardMarkup(keyboard))
     elif update.callback_query:
-        await update.callback_query.edit_message_text(
-            text=message, 
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
             reply_markup=InlineKeyboardMarkup(keyboard))
     return SET_PASSWORD
 

@@ -1,6 +1,7 @@
 import sys
 import os
 from src.services.logger_service import LoggerService
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.calendar_service import CalendarService
 from datetime import date
@@ -35,12 +36,12 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
             "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return CANCEL_BOOKING_VALIDATE_USER
 
@@ -86,10 +87,10 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text=f"❌ <b>Бронирование отменено</b> на <b>{booking_date.strftime('%d.%m.%Y')}</b>.\n\n"
             "📌 Если у вас возникли вопросы, свяжитесь с администратором.",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return CANCEL_BOOKING
 
@@ -119,10 +120,10 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Назад в меню", callback_data=f"CANCEL-CONFIRM_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text=f"❌ <b>Подтвердите отмену бронирования</b>.\n\n"
             "🔄 Для продолжения выберите соответствующую опцию.",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return CANCEL_BOOKING
 
