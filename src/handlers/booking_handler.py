@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from matplotlib.dates import relativedelta
@@ -114,9 +116,9 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-TARIFF_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="<b>Выберите тариф для бронирования:</b>",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return BOOKING
 
@@ -157,9 +159,9 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "❗️ Пожалуйста, вводите данные строго в указанном формате.")
     if (update.message == None):
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -424,9 +426,9 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -475,9 +477,9 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML',
             reply_markup=reply_markup)
     else:
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     return BOOKING_PHOTO_UPLOAD
 
@@ -502,9 +504,9 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -526,9 +528,9 @@ async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "Instagram фотографа: https://www.instagram.com/eugenechulitskyphoto/")
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -551,9 +553,9 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -575,9 +577,9 @@ async def write_code_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -607,9 +609,9 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
 
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
-            text=message, 
-            parse_mode='HTML',
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -629,9 +631,9 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = today - timedelta(days=1)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=message, 
-        parse_mode='HTML',
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
+        text=message,
         reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START"))
     return BOOKING
 
@@ -647,10 +649,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "🕚 11:00 – 20:00\n"
             "🌙 22:00 – 09:00")
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=message, 
-        parse_mode='HTML',
-        reply_markup = hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date(), callback_prefix="-START"))
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
+        text=message,
+        reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date(), callback_prefix="-START"))
     return BOOKING
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -658,12 +660,12 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = start_booking_date.date() - timedelta(days=1)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="📅 <b>Выберите дату завершения бронирования.</b>\n"
             f"Вы выбрали дату и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "Теперь укажите день, когда планируете выехать.\n"
-            "📌 Выезд должен быть позже времени заезда.", 
-        parse_mode='HTML',
+            "📌 Выезд должен быть позже времени заезда.",
         reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
     return BOOKING
 
@@ -672,7 +674,8 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
     available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="⏳ <b>Выберите времня завершения бронирования.</b>\n"
             f"Вы выбрали заезд: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             f"Вы выбрали дату выезда: {finish_booking_date.strftime('%d.%m.%Y')}.\n"
@@ -680,7 +683,6 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "📌 Обратите внимание:\n"
             "🔹 Выезд должен быть позже времени заезда.\n"
             f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n",
-        parse_mode='HTML',
         reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=finish_booking_date.date(), callback_prefix="-FINISH"))
     return BOOKING
 
@@ -698,9 +700,9 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -715,10 +717,10 @@ async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-COMMENT_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="💬 <b>Хотите оставить комментарий?</b>\n"
             "Если у вас есть пожелания или дополнительная информация, напишите их здесь.", 
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return BOOKING_COMMENT
 
@@ -731,9 +733,9 @@ async def bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = "🛏 <b>Выберите спальную комнату:</b>"
     if update.message == None:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
             text=message,
-            parse_mode='HTML',
             reply_markup=reply_markup)
     else:
         await update.message.reply_text(
@@ -750,12 +752,12 @@ async def additional_bedroom_message(update: Update, context: ContextTypes.DEFAU
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text = (
             "🛏 <b>Нужна ли вам вторая спальная комната?</b>\n\n"
             f"💰 <b>Стоимость:</b> {rental_rate.second_bedroom_price} руб.\n"
             f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}"),
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return BOOKING
 

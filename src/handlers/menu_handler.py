@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services import job_service
@@ -146,9 +148,8 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await update.callback_query.answer()
         except:
             pass
-        await update.callback_query.edit_message_text(
-            text,
-            parse_mode='HTML',
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=text,
             reply_markup=InlineKeyboardMarkup(buttons))
-    
     return MENU

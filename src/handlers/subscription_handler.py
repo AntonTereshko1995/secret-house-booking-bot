@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
@@ -51,12 +53,12 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
             "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return SUBSCRIPTION_VALIDATE_USER
 
@@ -76,13 +78,13 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
         [InlineKeyboardButton("Назад в меню", callback_data=f"SUBSCRIPTION-TYPE_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="📌 <b>Выберите удобный абонемент</b>.\n\n"
             "Каждый абонемент включает:\n"
             "🏠 Аренду на <b>12 часов</b>\n"
             "🛏 <b>2 спальные комнаты</b>\n"
             "🔞 <b>Секретную комнату</b>",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return SUBSCRIPTION
 
@@ -133,11 +135,11 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     price = rate_service.calculate_price(rental_rate, False, True, True)
     categories = rate_service.get_price_categories(rental_rate, False, True, True)
 
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
             f"📌 <b>В стоимость входит:</b> {categories}.\n\n"
             "✅ <b>Подтверждаете покупку абонемента?</b>",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return SUBSCRIPTION
 

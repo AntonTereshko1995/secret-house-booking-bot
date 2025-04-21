@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
@@ -76,8 +78,8 @@ async def send_prices(update: Update, context: CallbackContext):
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=tariffs,
-        parse_mode='HTML',
-        reply_markup=reply_markup)
+    await safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=tariffs,
+            reply_markup=reply_markup)
     return PRICE

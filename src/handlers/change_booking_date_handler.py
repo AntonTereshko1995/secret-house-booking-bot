@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.models.enum.tariff import Tariff
@@ -59,12 +61,12 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
             "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return CHANGE_BOOKING_DATE_VALIDATE_USER
 
@@ -175,11 +177,11 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await admin_handler.inform_changing_booking_date(update, context, updated_booking, old_booking_date)
     calendar_service.move_event(updated_booking.calendar_event_id, start_booking_date, finish_booking_date)
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text=f"✅ <b>Бронирование успешно перенесено!</b>\n\n"
             f"📅 <b>С:</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"📅 <b>До:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
-        parse_mode='HTML',
         reply_markup=reply_markup)
 
 async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -218,9 +220,9 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
     else:
         message = ("✅ <b>Ваше бронирование найдено!</b>\n\n"
             "📅 <b>Введите новую дату, на которую хотите перенести бронирование.</b>")
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text=message, 
-        parse_mode='HTML',
         reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START"))
     return CHANGE_BOOKING_DATE
 
@@ -235,28 +237,29 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
             "🕚 11:00 – 20:00\n"
             "🌙 22:00 – 09:00")
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text=message, 
-        parse_mode='HTML',
-        reply_markup = hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date(), callback_prefix="-START"),)
+        reply_markup = hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date(), callback_prefix="-START"))
     return CHANGE_BOOKING_DATE
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     min_date_booking = start_booking_date.date() - timedelta(days=1)
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="📅 <b>Выберите дату завершения бронирования.</b>\n"
             f"Вы выбрали дату и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "Теперь укажите день, когда планируете выехать.\n"
             "📌 Выезд должен быть позже времени заезда.", 
-        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"),
-        parse_mode='HTML')
+        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
     return CHANGE_BOOKING_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_day(finish_booking_date.date(), booking.id)
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
     available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
-    await update.callback_query.edit_message_text(
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text="⏳ <b>Выберите времня завершения бронирования.</b>\n"
             f"Вы выбрали заезд: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             f"Вы выбрали дату выезда: {finish_booking_date.strftime('%d.%m.%Y')}.\n"
@@ -264,8 +267,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "📌 Обратите внимание:\n"
             "🔹 Выезд должен быть позже времени заезда.\n"
             f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n", 
-        reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=finish_booking_date.date(), callback_prefix="-FINISH"),
-        parse_mode='HTML')
+        reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=finish_booking_date.date(), callback_prefix="-FINISH"))
     return CHANGE_BOOKING_DATE
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -273,13 +275,14 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Подтвердить", callback_data=f"CHANGE-CONFIRM_{CONFIRM}")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"CHANGE-CONFIRM_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text(
+
+    await safe_edit_message_text(
+        callback_query=update.callback_query,
         text = (f"📅 Подтвердите изменение даты бронирования:\n"
             f"🔹 <b>С</b> {old_booking_date.strftime('%d.%m.%Y')} \n"
             f"🔹 <b>На</b> {start_booking_date.strftime('%d.%m.%Y %H:%M')} "
             f"до {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n\n"
             "✅ Подтвердить изменения?"), 
-        parse_mode='HTML',
         reply_markup=reply_markup)
     return CHANGE_BOOKING_DATE
 
