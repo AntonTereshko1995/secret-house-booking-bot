@@ -83,7 +83,7 @@ def get_handler():
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
-    LoggerService.info(__name__, f"Available dates", update)
+    LoggerService.info(__name__, f"Back to menu", update)
     return MENU
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -925,6 +925,28 @@ def save_booking_information(chat_id: int):
         chat_id,
         gift.id if gift else None,
         subscription.id if subscription else None)
+    if booking == None:
+        LoggerService.error(
+            __name__, 
+            f"Booking is None", 
+            user_contact=user_contact, 
+            start_booking_date=start_booking_date, 
+            finish_booking_date=finish_booking_date,
+            tariff=tariff,
+            is_photoshoot_included=is_photoshoot_included,
+            is_sauna_included=is_sauna_included,
+            is_white_room_included=is_white_room_included,
+            is_green_room_included=is_green_room_included,
+            is_secret_room_included=is_secret_room_included,
+            number_of_guests=number_of_guests,
+            price=price,
+            booking_comment=booking_comment,
+            sale=sale,
+            customer_sale_comment=customer_sale_comment,
+            chat_id=chat_id,
+            gift_id=gift.id if gift else None,
+            subscription_id=subscription.id if subscription else None)
+    return booking != None
     
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global photo
@@ -940,6 +962,16 @@ async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_
         chat_id = update.message.chat.id
     else:
         chat_id = update.callback_query.message.chat.id
-    save_booking_information(chat_id)
+    is_done = save_booking_information(chat_id)
+    if not is_done:
+        await update.message.reply_text(
+            text="❌ <b>Ошибка!</b>\n\n"
+                "Не удалось сохранить информацию о бронировании.\n"
+                "Пожалуйста, попробуйте ещё раз или свяжитесь с администратором.\n"
+                "Нажмите на синюю кнопку 'Меню' и выберите 'Открыть Главное меню'.\n\n"
+                "🙏 Спасибо за понимание!",
+            parse_mode='HTML')
+        return BOOKING
+    
     await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, is_cash)
     return await confirm_booking(update, context)
