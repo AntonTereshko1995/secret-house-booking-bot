@@ -101,6 +101,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
+    max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = date.today()
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START")
     if selected:
@@ -130,10 +131,10 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-FINISH")
+    selected, time, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-FINISH")
     if selected:
         global finish_booking_date
-        finish_booking_date = selected_date
+        finish_booking_date = finish_booking_date.replace(hour=time.hour, minute=time.minute)
         LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': finish_booking_date.date()})
         return await finish_time_message(update, context)
     elif is_action:
@@ -210,6 +211,8 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
 
 async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False, incorrect_duration: bool = False):
     today = date.today()
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
+    min_date_booking = today
     if is_error:
         message = ("❌ <b>Ошибка!</b>\n\n"
             "⏳ <b>Выбранные дата и время недоступны.</b>\n"
@@ -249,6 +252,8 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return CHANGE_BOOKING_DATE
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    today = date.today()
+    max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     await safe_edit_message_text(
         callback_query=update.callback_query,
@@ -261,7 +266,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_day(finish_booking_date.date(), booking.id)
-    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
+    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await safe_edit_message_text(
         callback_query=update.callback_query,

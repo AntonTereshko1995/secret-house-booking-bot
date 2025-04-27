@@ -373,7 +373,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected, time, is_action = await hours_picker.process_hours_selection(update, context)
     if selected:
         global finish_booking_date
-        finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        finish_booking_date = finish_booking_date.replace(hour=time.hour, minute=time.minute)
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
@@ -653,8 +653,8 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
     return BOOKING
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    booking = database_service.get_booking_by_day(start_booking_date.date())
-    available_slots = date_time_helper.get_free_time_slots(booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
+    feature_booking = database_service.get_booking_by_day(start_booking_date.date())
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
     message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
                 f"Вы выбрали дату заезда: {start_booking_date.strftime('%d.%m.%Y')}.\n"
                 "Теперь укажите удобное время заезда.\n")
@@ -685,9 +685,9 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     return BOOKING
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    booking = database_service.get_booking_by_day(finish_booking_date.date())
+    feature_booking = database_service.get_booking_by_day(finish_booking_date.date())
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
-    available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.answer()
     await safe_edit_message_text(
         callback_query=update.callback_query,
