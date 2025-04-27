@@ -131,7 +131,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (data == str(END)):
         return await back_navigation(update, context)
 
-    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included, is_additional_bedroom_included
+    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included, is_additional_bedroom_included, is_photoshoot_included
     tariff = tariff_helper.get_by_str(data)
     rental_rate  = rate_service.get_tariff(tariff)
     LoggerService.info(__name__, f"Select tariff", update, kwargs={'tariff': tariff})
