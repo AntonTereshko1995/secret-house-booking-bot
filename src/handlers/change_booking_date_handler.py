@@ -147,7 +147,9 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         global finish_booking_date
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
-        is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
+        created_bookings = database_service.get_booking_by_period(start_booking_date, finish_booking_date)
+        is_any_booking = any(b.id != booking.id for b in created_bookings)
+
         if is_any_booking:
             LoggerService.info(__name__, f"there are bookings between the selected dates", update)
             return await start_date_message(update, context, is_error=True)
@@ -186,7 +188,9 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global selected_bookings
-    selected_bookings = database_service.get_booking_by_user_contact(user_contact)
+    booking_list = database_service.get_booking_by_user_contact(user_contact)
+    selected_bookings = list(filter(lambda x: x.start_date.date() >= date.today(), booking_list))
+    
     if not selected_bookings or len(selected_bookings) == 0:
         return await warning_message(update, context)
     
