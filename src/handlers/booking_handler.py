@@ -394,7 +394,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Confirm pay", update)
     keyboard = [
         [InlineKeyboardButton("Перейти к оплате.", callback_data=SET_USER)],
-        [InlineKeyboardButton("Назад в меню", callback_data=END)]]
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-BACK_{BACK}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     global price, sale
