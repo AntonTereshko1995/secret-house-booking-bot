@@ -17,6 +17,7 @@ class RentalPrice:
     second_bedroom_price: int
     extra_hour_price: int
     extra_people_price: int
+    photoshoot_price: int
     max_people: int
     is_check_in_time_limit: bool
     is_photoshoot: bool

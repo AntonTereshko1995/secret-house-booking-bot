@@ -116,7 +116,8 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         for booking in bookings:
             user = database_service.get_user_by_id(booking.user_id)
-            message = (
+            message = f"⛔ Отменен\n" if booking.is_canceled else ""
+            message += (
                 f"Пользователь: {user.contact}\n"
                 f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
                 f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"

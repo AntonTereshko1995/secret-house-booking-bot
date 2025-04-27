@@ -10,7 +10,7 @@ from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
-from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS, BANK_PHONE_NUMBER, BANK_CARD_NUMBER
+from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS, BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from datetime import date, datetime, time, timedelta
@@ -102,6 +102,9 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
             f"🔹 {tariff_helper.get_name(Tariff.DAY)} — {rate_service.get_price(Tariff.DAY)} руб",
             callback_data=f"BOOKING-TARIFF_{Tariff.DAY.value}")],
         [InlineKeyboardButton(
+            f"🔹 {tariff_helper.get_name(Tariff.DAY_FOR_COUPLE)} — {rate_service.get_price(Tariff.DAY_FOR_COUPLE)} руб",
+            callback_data=f"BOOKING-TARIFF_{Tariff.DAY_FOR_COUPLE.value}")],
+        [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.HOURS_12)} — от {rate_service.get_price(Tariff.HOURS_12)} руб",
             callback_data=f"BOOKING-TARIFF_{Tariff.HOURS_12.value}")],
         [InlineKeyboardButton(
@@ -133,13 +136,22 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rental_rate  = rate_service.get_tariff(tariff)
     LoggerService.info(__name__, f"Select tariff", update, kwargs={'tariff': tariff})
 
-    if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
+    if tariff == Tariff.INCOGNITA_DAY or tariff == Tariff.INCOGNITA_HOURS:
+        is_photoshoot_included = True
         is_sauna_included = True
         is_secret_room_included = True
         is_white_room_included = True
         is_green_room_included = True
         is_additional_bedroom_included = True
         return await photoshoot_message(update, context)
+    elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
+        is_photoshoot_included = False
+        is_sauna_included = False
+        is_secret_room_included = True
+        is_white_room_included = True
+        is_green_room_included = True
+        is_additional_bedroom_included = True
+        return await sauna_message(update, context)
     elif tariff == Tariff.HOURS_12 or tariff == Tariff.WORKER:
         return await bedroom_message(update, context)
     elif tariff == Tariff.GIFT or tariff == Tariff.SUBSCRIPTION:
@@ -217,9 +229,11 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if gift:
         return await navigate_next_step_for_gift(update, context)
-    
-    if subscription:
+    elif subscription:
         return await navigate_next_step_for_subscription(update, context)
+    elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
+        return await photoshoot_message(update, context)
+
     return await count_of_people_message(update, context)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -306,7 +320,7 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = date.today() - timedelta(days=1)
+    min_date_booking = date.today()
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START")
     if selected:
         if not tariff_helper.is_booking_available(tariff, selected_date):
@@ -342,7 +356,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = start_booking_date.date() - timedelta(days=1)
+    min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH")
     if selected:
         global finish_booking_date
@@ -525,7 +539,8 @@ async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     message = (f"📸 <b>Хотите заказать фотосессию?</b>\n"
         "✨ Она уже включена в стоимость выбранного тарифа!\n"
         "Фотосессия длится 2 часа.\n"
-        "Instagram фотографа: https://www.instagram.com/eugenechulitskyphoto/")
+        "Instagram фотографа: https://www.instagram.com/eugenechulitskyphoto/\n\n"
+        f"💰 <b>Стоимость:</b> {rental_rate.photoshoot_price} руб.\n")
     if update.message == None:
         await update.callback_query.answer()
         await safe_edit_message_text(
@@ -629,7 +644,7 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = today - timedelta(days=1)
+    min_date_booking = today
     await update.callback_query.answer()
     await safe_edit_message_text(
         callback_query=update.callback_query,
@@ -658,7 +673,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = start_booking_date.date() - timedelta(days=1)
+    min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     await update.callback_query.answer()
     await safe_edit_message_text(
         callback_query=update.callback_query,
@@ -666,12 +681,12 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"Вы выбрали дату и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "Теперь укажите день, когда планируете выехать.\n"
             "📌 Выезд должен быть позже времени заезда.",
-        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
+        reply_markup=calendar_picker.create_calendar(min_date_booking, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
     return BOOKING
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking = database_service.get_booking_by_day(finish_booking_date.date())
-    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
+    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.answer()
     await safe_edit_message_text(
@@ -786,9 +801,9 @@ async def navigate_next_step_for_gift(update: Update, context: ContextTypes.DEFA
     if not gift:
         return
 
-    if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
+    if tariff == Tariff.DAY_FOR_COUPLE or tariff == Tariff.INCOGNITA_DAY:
         return await photoshoot_message(update, context)
-    elif tariff == Tariff.INCOGNITA_HOURS:
+    elif tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.DAY:
         return await count_of_people_message(update, context)
 
     if is_white_room_included == False and is_green_room_included == False and gift.has_additional_bedroom == False:

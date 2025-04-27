@@ -29,7 +29,7 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     for week in my_calendar:
         row = []
         for day in week:
-            if day == 0 or (min_date is not None and date(selected_date.year, selected_date.month, day) <= min_date):
+            if day == 0 or (min_date is not None and date(selected_date.year, selected_date.month, day) < min_date):
                 row.append(InlineKeyboardButton(" ",callback_data = data_ignore))
             else:
                 row.append(InlineKeyboardButton(str(day), callback_data = create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))

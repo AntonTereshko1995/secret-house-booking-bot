@@ -43,31 +43,6 @@ def get_handler():
         CallbackQueryHandler(confirm_gift, pattern=f"^GIFT-CONFIRM_({CONFIRM}|{END})$"),
         CallbackQueryHandler(back_navigation, pattern=f"^GIFT-CONFIRM_{END}$")]
 
-# def get_handler() -> ConversationHandler:
-#     handler = ConversationHandler(
-#         entry_points=[CallbackQueryHandler(generate_tariff_menu, pattern=f"^{GIFT_CERTIFICATE}$")],
-#         states={
-#             SET_USER: [CallbackQueryHandler(enter_user_contact, pattern=f"^GIFT-USER_({SET_USER}|{END})$")],
-#             VALIDATE_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_user_contact)],
-#             SELECT_TARIFF: [CallbackQueryHandler(select_tariff, pattern=f"^GIFT-TARIFF_(\d+|{END})$")],
-#             INCLUDE_SECRET_ROOM: [CallbackQueryHandler(include_secret_room, pattern=f"^GIFT-SECRET_(?i:true|false|{END})$")],
-#             INCLUDE_SAUNA: [CallbackQueryHandler(include_sauna, pattern=f"^GIFT-SAUNA_(?i:true|false|{END})$")],
-#             ADDITIONAL_BEDROOM: [CallbackQueryHandler(select_additional_bedroom, pattern=f"^GIFT-ADD-BEDROOM_(?i:true|false|{END})$")],
-#             CONFIRM_PAY: [CallbackQueryHandler(confirm_pay, pattern=f"^GIFT-CONFIRM-PAY_({END}|{SET_USER})$")],
-#             PAY: [CallbackQueryHandler(pay, pattern=f"^GIFT-PAY_({END})$")],
-#             CONFIRM: [CallbackQueryHandler(confirm_gift, pattern=f"^GIFT-CONFIRM_({CONFIRM}|{END})$")],
-#             BACK: [CallbackQueryHandler(back_navigation, pattern=f"^{BACK}$")],
-#             PHOTO_UPLOAD: [
-#                 MessageHandler(filters.PHOTO, handle_photo),
-#                 CallbackQueryHandler(back_navigation, pattern=f"^GIFT-PAY_{END}$")],
-#         },
-#         fallbacks=[CallbackQueryHandler(back_navigation, pattern=f"^{END}$")],
-#         map_to_parent={
-#             END: MENU,
-#             STOPPING: END,
-#         })
-#     return handler
-
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Back to menu", update)
     await menu_handler.show_menu(update, context)
@@ -97,21 +72,24 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
-            f"{tariff_helper.get_name(Tariff.INCOGNITA_DAY)}. Сумма {rate_service.get_price(Tariff.INCOGNITA_DAY)} руб", 
+            f"🔹 {tariff_helper.get_name(Tariff.INCOGNITA_DAY)} — {rate_service.get_price(Tariff.INCOGNITA_DAY)} руб", 
             callback_data=f"GIFT-TARIFF_{Tariff.INCOGNITA_DAY.value}")],
         [InlineKeyboardButton(
-            f"{tariff_helper.get_name(Tariff.INCOGNITA_HOURS)}. Сумма {rate_service.get_price(Tariff.INCOGNITA_HOURS)} руб",
+            f"🔹 {tariff_helper.get_name(Tariff.INCOGNITA_HOURS)} — {rate_service.get_price(Tariff.INCOGNITA_HOURS)} руб",
             callback_data=f"GIFT-TARIFF_{Tariff.INCOGNITA_HOURS.value}")],
         [InlineKeyboardButton(
-            f"{tariff_helper.get_name(Tariff.DAY)}. Сумма {rate_service.get_price(Tariff.DAY)} руб",
+            f"🔹 {tariff_helper.get_name(Tariff.DAY)} — {rate_service.get_price(Tariff.DAY)} руб",
             callback_data=f"GIFT-TARIFF_{Tariff.DAY.value}")],
         [InlineKeyboardButton(
-            f"{tariff_helper.get_name(Tariff.HOURS_12)}. Сумма от {rate_service.get_price(Tariff.HOURS_12)} руб",
+            f"🔹 {tariff_helper.get_name(Tariff.DAY_FOR_COUPLE)} — {rate_service.get_price(Tariff.DAY_FOR_COUPLE)} руб",
+            callback_data=f"GIFT-TARIFF_{Tariff.DAY_FOR_COUPLE.value}")],
+        [InlineKeyboardButton(
+            f"🔹 {tariff_helper.get_name(Tariff.HOURS_12)} — от {rate_service.get_price(Tariff.HOURS_12)} руб",
             callback_data=f"GIFT-TARIFF_{Tariff.HOURS_12.value}")],
         [InlineKeyboardButton(
-            f"{tariff_helper.get_name(Tariff.WORKER)}. Сумма от {rate_service.get_price(Tariff.WORKER)} руб",
+            f"🔹 {tariff_helper.get_name(Tariff.WORKER)} — от {rate_service.get_price(Tariff.WORKER)} руб",
             callback_data=f"GIFT-TARIFF_{Tariff.WORKER.value}")],
-        [InlineKeyboardButton("Назад в меню", callback_data=f"GIFT-TARIFF_{END}")]]
+        [InlineKeyboardButton("Назад в меню", callback_data=f"GIFT-CONFIRM_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await safe_edit_message_text(
@@ -143,17 +121,20 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (data == str(END)):
         return await back_navigation(update, context)
 
-    global tariff, rental_rate
+    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included
     tariff = tariff_helper.get_by_str(data)
     rental_rate = rate_service.get_tariff(tariff)
     LoggerService.info(__name__, f"select tariff", update, kwargs={'tariff': tariff})
 
-    if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
-        global is_sauna_included, is_secret_room_included, is_additional_bedroom_included
+    if tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
         is_sauna_included = True
         is_secret_room_included = True
         is_additional_bedroom_included = True
         return await confirm_pay(update, context)
+    elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
+        is_secret_room_included = True
+        is_additional_bedroom_included = True
+        return await sauna_message(update, context)
     elif tariff == Tariff.HOURS_12 or tariff == Tariff.WORKER:
         return await additional_bedroom_message(update, context)
 

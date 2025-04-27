@@ -67,13 +67,13 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
-            f"{subscription_helper.get_name(SubscriptionType.VISITS_3)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_3)} руб", 
+            f"🔹 {subscription_helper.get_name(SubscriptionType.VISITS_3)} - {rate_service.get_price(subscription_type = SubscriptionType.VISITS_3)} руб", 
             callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_3.value}")],
         [InlineKeyboardButton(
-            f"{subscription_helper.get_name(SubscriptionType.VISITS_5)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_5)} руб", 
+            f"🔹 {subscription_helper.get_name(SubscriptionType.VISITS_5)} - {rate_service.get_price(subscription_type = SubscriptionType.VISITS_5)} руб", 
             callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_5.value}")],
         [InlineKeyboardButton(
-            f"{subscription_helper.get_name(SubscriptionType.VISITS_8)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_8)} руб", 
+            f"🔹 {subscription_helper.get_name(SubscriptionType.VISITS_8)} - {rate_service.get_price(subscription_type = SubscriptionType.VISITS_8)} руб", 
             callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_8.value}")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"SUBSCRIPTION-TYPE_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)

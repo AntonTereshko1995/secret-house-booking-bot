@@ -357,7 +357,7 @@ class DatabaseService:
                                 BookingBase.is_done == False,
                                 BookingBase.is_prepaymented == True
                             )
-                        )
+                        ).order_by(BookingBase.start_date)
                     ).all()
                 else:
                     bookings = session.scalars(
@@ -366,7 +366,7 @@ class DatabaseService:
                                     BookingBase.start_date >= from_date,
                                     BookingBase.start_date <= to_date,
                                 )
-                            )
+                            ).order_by(BookingBase.start_date)
                         ).all() 
                     
                 return bookings
