@@ -128,7 +128,7 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=message)
     return END
 
-async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo, is_payment_by_cash = False):
+async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo, document, is_payment_by_cash = False):
     user = database_service.get_user_by_id(booking.user_id)
     message = string_helper.generate_booking_info_message(booking, user, is_payment_by_cash)
     keyboard = [
@@ -142,10 +142,10 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if not photo:
-        photo = file_service.get_image("logo.png")
-
-    await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
+    if photo:
+        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
+    elif document:
+        await context.bot.send_document(chat_id=ADMIN_CHAT_ID, document=document, caption=message, reply_markup=reply_markup)
 
 async def edit_accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: int, user_chat_id: int, is_payment_by_cash):
     booking = database_service.get_booking_by_id(booking_id)
@@ -163,15 +163,18 @@ async def edit_accept_booking_payment(update: Update, context: ContextTypes.DEFA
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_caption(caption=message, reply_markup=reply_markup)
 
-async def accept_gift_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, gift: GiftBase, user_chat_id: int, photo):
+async def accept_gift_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, gift: GiftBase, user_chat_id: int, photo, document):
     message = string_helper.generate_gift_info_message(gift)
     keyboard = [
         [InlineKeyboardButton("Подтвердить оплату", callback_data=f"gift_1_chatid_{user_chat_id}_giftid_{gift.id}")],
         [InlineKeyboardButton("Отмена", callback_data=f"gift_2_chatid_{user_chat_id}_giftid_{gift.id}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
+    if photo:
+        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
+    elif document:
+        await context.bot.send_document(chat_id=ADMIN_CHAT_ID, document=document, caption=message, reply_markup=reply_markup)
 
-async def accept_subscription_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, subscription: SubscriptionBase, user_chat_id: int, photo):
+async def accept_subscription_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, subscription: SubscriptionBase, user_chat_id: int, photo, document):
     user = database_service.get_user_by_id(subscription.user_id)
     message = string_helper.generate_subscription_info_message(subscription, user)
     keyboard = [
@@ -179,7 +182,10 @@ async def accept_subscription_payment(update: Update, context: ContextTypes.DEFA
         [InlineKeyboardButton("Отмена", callback_data=f"subscription_2_chatid_{user_chat_id}_subscriptionid_{subscription.id}")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
+    if photo:
+        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
+    elif document:
+        await context.bot.send_document(chat_id=ADMIN_CHAT_ID, document=document, caption=message, reply_markup=reply_markup)
 
 async def inform_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
     user = database_service.get_user_by_id(booking.user_id)

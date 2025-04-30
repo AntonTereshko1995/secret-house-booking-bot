@@ -14,7 +14,7 @@ from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, PREPAYMENT, C
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from datetime import date, datetime, time, timedelta
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, Update)
+from telegram import (Document, InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
@@ -467,7 +467,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n"
             "💵 Наличными при заселении.\n\n"
             "❗️ <b>Важно!</b>\n"
-            "После оплаты отправьте скриншот с чеком.\n"
+            "После оплаты отправьте скриншот или PDF документ с чеком.\n"
             "📩 Только так мы сможем подтвердить получение предоплаты.\n\n"
             "🙏 Спасибо за понимание!")
     else:
@@ -481,7 +481,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
             "❗ <b>Важно!</b>\n"
-            "После оплаты отправьте скриншот с чеком.\n"
+            "После оплаты отправьте скриншот или PDF документ с чеком.\n"
             "📩 Это необходимо для подтверждения вашей предоплаты.\n\n"
             "🙏 Спасибо за понимание!")
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -962,17 +962,23 @@ def save_booking_information(chat_id: int):
             gift_id=gift.id if gift else None,
             subscription_id=subscription.id if subscription else None)
     return booking != None
-    
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global photo
-    photo = update.message.photo[-1].file_id
-    LoggerService.info(__name__, f"Handle photo", update)
-    return await send_approving_to_admin(update, context, photo)
+    document: Document = None
+    photo: str = None
+    chat_id = update.message.chat.id
+    if update.message.document != None and update.message.document.mime_type == 'application/pdf':
+        document = update.message.document
+    else:
+        photo = update.message.photo[-1].file_id
+
+    LoggerService.info(__name__, f"handle photo", update)
+    return await send_approving_to_admin(update, context, photo, document)
 
 async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await send_approving_to_admin(update, context, is_cash=True)
 
-async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, photo = None, is_cash = False):
+async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, photo = None, document = None, is_cash = False):
     if update.message:
         chat_id = update.message.chat.id
     else:
@@ -988,5 +994,5 @@ async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_
             parse_mode='HTML')
         return BOOKING
     
-    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, is_cash)
+    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, document, is_cash)
     return await confirm_booking(update, context)

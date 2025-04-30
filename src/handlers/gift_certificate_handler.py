@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.rental_price import RentalPrice
 from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.services.calculation_rate_service import CalculationRateService
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
+from telegram import (Document, InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import admin_handler, menu_handler
 from src.helpers import string_helper, tariff_helper
@@ -187,7 +187,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
             "или\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
-            "❗️ <b>После оплаты отправьте скриншот с чеком об оплате.</b>\n"
+            "❗️ <b>После оплаты отправьте скриншот или PDF документ с чеком об оплате.</b>\n"
             "К сожалению, только так мы можем подтвердить, что именно вы отправили предоплату.\n"
             "🙏 Спасибо за понимание.\n\n"
             "✅ Как только мы получим оплату, администратор свяжется с вами и отправит ваш <b>электронный подарочный сертификат</b>.",
@@ -296,10 +296,15 @@ def reset_variables():
     price = None
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global photo
-    photo = update.message.photo[-1].file_id
+    document: Document = None
+    photo: str = None
     chat_id = update.message.chat.id
+    if update.message.document != None and update.message.document.mime_type == 'application/pdf':
+        document = update.message.document
+    else:
+        photo = update.message.photo[-1].file_id
+
     gift = save_gift_information()
     LoggerService.info(__name__, f"handle photo", update)
-    await admin_handler.accept_gift_payment(update, context, gift, chat_id, photo)
+    await admin_handler.accept_gift_payment(update, context, gift, chat_id, photo, document)
     return await confirm_gift(update, context)
