@@ -15,7 +15,23 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
-        "subscription_type": 0
+        "subscription_type": 0,
+        "multi_day_prices": {
+          "1": 700,
+          "2": 1300,
+          "3": 1850,
+          "4": 2400,
+          "5": 2950,
+          "6": 3500,
+          "7": 4050,
+          "8": 4600,  
+          "9": 5150,
+          "10": 5700,
+          "11": 6250,
+          "12": 6800,
+          "13": 7350,
+          "14": 7900
+        }
       },
       {
         "tariff": 7,
@@ -32,7 +48,23 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
-        "subscription_type": 0
+        "subscription_type": 0,
+        "multi_day_prices": {
+          "1": 500,
+          "2": 900,
+          "3": 1300,
+          "4": 1700,
+          "5": 2050,
+          "6": 2400,
+          "7": 2800,
+          "8": 2200,  
+          "9": 2600,
+          "10": 3000,
+          "11": 3450,
+          "12": 4000,
+          "13": 4350,
+          "14": 4800
+        }
       },
       {
         "tariff": 0,
@@ -49,7 +81,8 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": false,
-        "subscription_type": 0
+        "subscription_type": 0,
+        "multi_day_prices": {}
       },
       {
         "tariff": 2,
@@ -66,7 +99,8 @@
         "is_check_in_time_limit": true,
         "is_photoshoot": false,
         "is_transfer": false,
-        "subscription_type": 0
+        "subscription_type": 0,
+        "multi_day_prices": {}
       },
       {
         "tariff": 3,
@@ -83,7 +117,8 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": true,
-        "subscription_type": 0
+        "subscription_type": 0,
+        "multi_day_prices": {}
       },
       {
         "tariff": 4,
@@ -100,7 +135,8 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": true,
-        "subscription_type": 0
+        "subscription_type": 0,
+        "multi_day_prices": {}
       },
       {
         "tariff": 5,
@@ -117,7 +153,8 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": false,
-        "subscription_type": 3
+        "subscription_type": 3,
+        "multi_day_prices": {}
       },
       {
         "tariff": 5,
@@ -134,7 +171,8 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": false,
-        "subscription_type": 5
+        "subscription_type": 5,
+        "multi_day_prices": {}
       },
       {
         "tariff": 5,
@@ -151,7 +189,8 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": false,
-        "subscription_type": 8
+        "subscription_type": 8,
+        "multi_day_prices": {}
       }
     ]
   }

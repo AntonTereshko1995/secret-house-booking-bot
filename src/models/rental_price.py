@@ -23,3 +23,4 @@ class RentalPrice:
     is_photoshoot: bool
     is_transfer: bool
     subscription_type: SubscriptionType
+    multi_day_prices: dict

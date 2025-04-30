@@ -41,7 +41,7 @@ def get_handler():
         CallbackQueryHandler(confirm_pay, pattern=f"^GIFT-CONFIRM-PAY_({END}|{SET_USER})$"),
         CallbackQueryHandler(pay, pattern=f"^GIFT-PAY_({END})$"),
         CallbackQueryHandler(confirm_gift, pattern=f"^GIFT-CONFIRM_({CONFIRM}|{END})$"),
-        CallbackQueryHandler(back_navigation, pattern=f"^GIFT-CONFIRM_{END}$")]
+        CallbackQueryHandler(back_navigation, pattern=f"^GIFT_{END}$")]
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, f"Back to menu", update)
@@ -89,7 +89,7 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.WORKER)} — от {rate_service.get_price(Tariff.WORKER)} руб",
             callback_data=f"GIFT-TARIFF_{Tariff.WORKER.value}")],
-        [InlineKeyboardButton("Назад в меню", callback_data=f"GIFT-CONFIRM_{END}")]]
+        [InlineKeyboardButton("Назад в меню", callback_data=f"GIFT_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
     await safe_edit_message_text(

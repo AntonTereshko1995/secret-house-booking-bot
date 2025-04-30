@@ -413,9 +413,9 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global price, sale
     selected_duration = finish_booking_date - start_booking_date
-    duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
+    duration_booking_hours = round(date_time_helper.seconds_to_hours(selected_duration.total_seconds()))
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, duration_booking_hours, sale)
     extra_hours = duration_booking_hours - rental_rate.duration_hours
-    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours, sale)
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours)
     photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
 
