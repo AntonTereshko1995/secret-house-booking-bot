@@ -20,7 +20,7 @@
         "tariff": 1,
         "name": "тариф 'Суточно'",
         "duration_hours": 24,
-        "price": 450,
+        "price": 480,
         "sauna_price": 0,
         "secret_room_price": 0,
         "second_bedroom_price": 0,
