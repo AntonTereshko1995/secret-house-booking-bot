@@ -3,7 +3,9 @@ from src.models.enum.tariff import Tariff
 
 def get_name(tariff: Tariff) -> str:
     if (tariff == Tariff.DAY):
-        return "Суточно"
+        return "Суточно от 3 человек"
+    elif (tariff == Tariff.DAY_FOR_COUPLE):
+        return "Суточно для двоих"
     elif (tariff == Tariff.HOURS_12):
         return "12 часов"
     elif (tariff == Tariff.WORKER):
@@ -20,6 +22,8 @@ def get_name(tariff: Tariff) -> str:
 def get_by_value(value: int) -> Tariff:
     if (value == Tariff.DAY.value):
         return Tariff.DAY
+    elif (value == Tariff.DAY_FOR_COUPLE.value):
+        return Tariff.DAY_FOR_COUPLE
     elif (value == Tariff.HOURS_12.value):
         return Tariff.HOURS_12
     elif (value == Tariff.WORKER.value):

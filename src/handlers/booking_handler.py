@@ -10,11 +10,11 @@ from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
-from src.config.config import PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS, BANK_PHONE_NUMBER, BANK_CARD_NUMBER
+from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS, BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from datetime import date, datetime, time, timedelta
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, Update)
+from telegram import (Document, InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper, string_helper, tariff_helper, sale_halper, bedroom_halper
@@ -102,6 +102,9 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
             f"🔹 {tariff_helper.get_name(Tariff.DAY)} — {rate_service.get_price(Tariff.DAY)} руб",
             callback_data=f"BOOKING-TARIFF_{Tariff.DAY.value}")],
         [InlineKeyboardButton(
+            f"🔹 {tariff_helper.get_name(Tariff.DAY_FOR_COUPLE)} — {rate_service.get_price(Tariff.DAY_FOR_COUPLE)} руб",
+            callback_data=f"BOOKING-TARIFF_{Tariff.DAY_FOR_COUPLE.value}")],
+        [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.HOURS_12)} — от {rate_service.get_price(Tariff.HOURS_12)} руб",
             callback_data=f"BOOKING-TARIFF_{Tariff.HOURS_12.value}")],
         [InlineKeyboardButton(
@@ -128,18 +131,27 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (data == str(END)):
         return await back_navigation(update, context)
 
-    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included, is_additional_bedroom_included
+    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included, is_additional_bedroom_included, is_photoshoot_included
     tariff = tariff_helper.get_by_str(data)
     rental_rate  = rate_service.get_tariff(tariff)
     LoggerService.info(__name__, f"Select tariff", update, kwargs={'tariff': tariff})
 
-    if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
+    if tariff == Tariff.INCOGNITA_DAY or tariff == Tariff.INCOGNITA_HOURS:
+        is_photoshoot_included = True
         is_sauna_included = True
         is_secret_room_included = True
         is_white_room_included = True
         is_green_room_included = True
         is_additional_bedroom_included = True
         return await photoshoot_message(update, context)
+    elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
+        is_photoshoot_included = False
+        is_sauna_included = False
+        is_secret_room_included = True
+        is_white_room_included = True
+        is_green_room_included = True
+        is_additional_bedroom_included = True
+        return await sauna_message(update, context)
     elif tariff == Tariff.HOURS_12 or tariff == Tariff.WORKER:
         return await bedroom_message(update, context)
     elif tariff == Tariff.GIFT or tariff == Tariff.SUBSCRIPTION:
@@ -217,9 +229,11 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if gift:
         return await navigate_next_step_for_gift(update, context)
-    
-    if subscription:
+    elif subscription:
         return await navigate_next_step_for_subscription(update, context)
+    elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
+        return await photoshoot_message(update, context)
+
     return await count_of_people_message(update, context)
 
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -306,7 +320,7 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = date.today() - timedelta(days=1)
+    min_date_booking = date.today()
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START")
     if selected:
         if not tariff_helper.is_booking_available(tariff, selected_date):
@@ -342,7 +356,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = start_booking_date.date() - timedelta(days=1)
+    min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH")
     if selected:
         global finish_booking_date
@@ -359,7 +373,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected, time, is_action = await hours_picker.process_hours_selection(update, context)
     if selected:
         global finish_booking_date
-        finish_booking_date = finish_booking_date.replace(hour=time.hour)
+        finish_booking_date = finish_booking_date.replace(hour=time.hour, minute=time.minute)
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
@@ -399,9 +413,9 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global price, sale
     selected_duration = finish_booking_date - start_booking_date
-    duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
+    duration_booking_hours = round(date_time_helper.seconds_to_hours(selected_duration.total_seconds()))
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, duration_booking_hours, sale)
     extra_hours = duration_booking_hours - rental_rate.duration_hours
-    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours, sale)
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours)
     photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
 
@@ -453,7 +467,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n"
             "💵 Наличными при заселении.\n\n"
             "❗️ <b>Важно!</b>\n"
-            "После оплаты отправьте скриншот с чеком.\n"
+            "После оплаты отправьте скриншот или PDF документ с чеком.\n"
             "📩 Только так мы сможем подтвердить получение предоплаты.\n\n"
             "🙏 Спасибо за понимание!")
     else:
@@ -467,7 +481,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
             "❗ <b>Важно!</b>\n"
-            "После оплаты отправьте скриншот с чеком.\n"
+            "После оплаты отправьте скриншот или PDF документ с чеком.\n"
             "📩 Это необходимо для подтверждения вашей предоплаты.\n\n"
             "🙏 Спасибо за понимание!")
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -525,7 +539,8 @@ async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     message = (f"📸 <b>Хотите заказать фотосессию?</b>\n"
         "✨ Она уже включена в стоимость выбранного тарифа!\n"
         "Фотосессия длится 2 часа.\n"
-        "Instagram фотографа: https://www.instagram.com/eugenechulitskyphoto/")
+        "Instagram фотографа: https://www.instagram.com/eugenechulitskyphoto/\n\n"
+        f"💰 <b>Стоимость:</b> {rental_rate.photoshoot_price} руб.\n")
     if update.message == None:
         await update.callback_query.answer()
         await safe_edit_message_text(
@@ -629,7 +644,7 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = today - timedelta(days=1)
+    min_date_booking = today
     await update.callback_query.answer()
     await safe_edit_message_text(
         callback_query=update.callback_query,
@@ -638,8 +653,8 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
     return BOOKING
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    booking = database_service.get_booking_by_day(start_booking_date.date())
-    available_slots = date_time_helper.get_free_time_slots(booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
+    feature_booking = database_service.get_booking_by_day(start_booking_date.date())
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
     message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
                 f"Вы выбрали дату заезда: {start_booking_date.strftime('%d.%m.%Y')}.\n"
                 "Теперь укажите удобное время заезда.\n")
@@ -658,7 +673,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
-    min_date_booking = start_booking_date.date() - timedelta(days=1)
+    min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     await update.callback_query.answer()
     await safe_edit_message_text(
         callback_query=update.callback_query,
@@ -666,13 +681,13 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"Вы выбрали дату и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "Теперь укажите день, когда планируете выехать.\n"
             "📌 Выезд должен быть позже времени заезда.",
-        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
+        reply_markup=calendar_picker.create_calendar(min_date_booking, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
     return BOOKING
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    booking = database_service.get_booking_by_day(finish_booking_date.date())
-    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else start_booking_date.time()
-    available_slots = date_time_helper.get_free_time_slots(booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
+    feature_booking = database_service.get_booking_by_day(finish_booking_date.date())
+    start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
     await update.callback_query.answer()
     await safe_edit_message_text(
         callback_query=update.callback_query,
@@ -786,9 +801,9 @@ async def navigate_next_step_for_gift(update: Update, context: ContextTypes.DEFA
     if not gift:
         return
 
-    if tariff == Tariff.DAY or tariff == Tariff.INCOGNITA_DAY:
+    if tariff == Tariff.DAY_FOR_COUPLE or tariff == Tariff.INCOGNITA_DAY:
         return await photoshoot_message(update, context)
-    elif tariff == Tariff.INCOGNITA_HOURS:
+    elif tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.DAY:
         return await count_of_people_message(update, context)
 
     if is_white_room_included == False and is_green_room_included == False and gift.has_additional_bedroom == False:
@@ -947,17 +962,23 @@ def save_booking_information(chat_id: int):
             gift_id=gift.id if gift else None,
             subscription_id=subscription.id if subscription else None)
     return booking != None
-    
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global photo
-    photo = update.message.photo[-1].file_id
-    LoggerService.info(__name__, f"Handle photo", update)
-    return await send_approving_to_admin(update, context, photo)
+    document: Document = None
+    photo: str = None
+    chat_id = update.message.chat.id
+    if update.message.document != None and update.message.document.mime_type == 'application/pdf':
+        document = update.message.document
+    else:
+        photo = update.message.photo[-1].file_id
+
+    LoggerService.info(__name__, f"handle photo", update)
+    return await send_approving_to_admin(update, context, photo, document)
 
 async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await send_approving_to_admin(update, context, is_cash=True)
 
-async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, photo = None, is_cash = False):
+async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, photo = None, document = None, is_cash = False):
     if update.message:
         chat_id = update.message.chat.id
     else:
@@ -973,5 +994,5 @@ async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_
             parse_mode='HTML')
         return BOOKING
     
-    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, is_cash)
+    await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, document, is_cash)
     return await confirm_booking(update, context)

@@ -7,11 +7,12 @@ from src.services.secret_manager_service import SecretManagerService
 secret_manager_service = SecretManagerService()
 
 TELEGRAM_CONTACT = "https://t.me/the_secret_house"
-PERIOD_IN_MONTHS = 2
+PERIOD_IN_MONTHS = 4
 MAX_PERIOD_FOR_GIFT_IN_MONTHS = 3
 MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS = 3
 PREPAYMENT = 80
 CLEANING_HOURS = 2
+MIN_BOOKING_HOURS = 1
 
 if "secrets-production" in os.environ:
     secrets = secret_manager_service.get_secret_by_dict("the-secret-house-secret")
