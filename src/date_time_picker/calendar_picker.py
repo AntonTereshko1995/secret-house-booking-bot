@@ -1,3 +1,4 @@
+from matplotlib.dates import relativedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup,ReplyKeyboardRemove
 from datetime import datetime, date, timedelta
 from src.helpers import string_helper, date_time_helper
@@ -29,7 +30,7 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     for week in my_calendar:
         row = []
         for day in week:
-            if day == 0 or (min_date is not None and date(selected_date.year, selected_date.month, day) <= min_date):
+            if day == 0 or (min_date is not None and date(selected_date.year, selected_date.month, day) < min_date):
                 row.append(InlineKeyboardButton(" ",callback_data = data_ignore))
             else:
                 row.append(InlineKeyboardButton(str(day), callback_data = create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
@@ -38,14 +39,16 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     #Last row - Buttons
     row=[]
     if selected_date.month != min_date.month:
-        row.append(InlineKeyboardButton("<", callback_data = create_callback_data("PREV-MONTH", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
+        month_name = date_time_helper.get_month_name((selected_date - relativedelta(months=1)).month)
+        row.append(InlineKeyboardButton(f"⬅️ {month_name}", callback_data = create_callback_data("PREV-MONTH", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
     else:
        row.append(InlineKeyboardButton(" ", callback_data = data_ignore))
 
     row.append(InlineKeyboardButton(action_text, callback_data = data_action))
 
     if selected_date.month != max_date.month:
-        row.append(InlineKeyboardButton(">", callback_data = create_callback_data("NEXT-MONTH", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
+        month_name = date_time_helper.get_month_name((selected_date + relativedelta(months=1)).month)
+        row.append(InlineKeyboardButton(f"{month_name} ➡️", callback_data = create_callback_data("NEXT-MONTH", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
     else:
        row.append(InlineKeyboardButton(" ", callback_data = data_ignore))
 

@@ -47,7 +47,7 @@ def get_handler() -> ConversationHandler:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, subscription_handler.check_user_contact),
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
             SUBSCRIPTION_PHOTO_UPLOAD: [
-                MessageHandler(filters.PHOTO & ~filters.COMMAND, subscription_handler.handle_photo),
+                MessageHandler(filters.PHOTO | filters.Document.PDF, subscription_handler.handle_photo),
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
 
             # GIFT navigation flow
@@ -56,7 +56,7 @@ def get_handler() -> ConversationHandler:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, gift_certificate_handler.check_user_contact),
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
             GIFT_PHOTO_UPLOAD: [
-                MessageHandler(filters.PHOTO, gift_certificate_handler.handle_photo),
+                MessageHandler(filters.PHOTO | filters.Document.PDF & filters.Document.PDF, gift_certificate_handler.handle_photo),
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
 
             # CANCEL_BOOKING navigation flow
@@ -92,7 +92,7 @@ def get_handler() -> ConversationHandler:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.check_user_contact),
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
             BOOKING_PHOTO_UPLOAD: [
-                MessageHandler(filters.PHOTO & ~filters.COMMAND, booking_handler.handle_photo),
+                MessageHandler(filters.PHOTO | filters.Document.PDF, booking_handler.handle_photo),
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
             BOOKING_WRITE_CODE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.write_secret_code),

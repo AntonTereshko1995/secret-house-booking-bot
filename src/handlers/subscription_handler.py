@@ -5,7 +5,7 @@ from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
+from telegram import (Document, InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, CallbackQueryHandler)
 from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.handlers import admin_handler, menu_handler
@@ -67,13 +67,13 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
     reset_variables()
     keyboard = [
         [InlineKeyboardButton(
-            f"{subscription_helper.get_name(SubscriptionType.VISITS_3)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_3)} руб", 
+            f"🔹 {subscription_helper.get_name(SubscriptionType.VISITS_3)} - {rate_service.get_price(subscription_type = SubscriptionType.VISITS_3)} руб", 
             callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_3.value}")],
         [InlineKeyboardButton(
-            f"{subscription_helper.get_name(SubscriptionType.VISITS_5)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_5)} руб", 
+            f"🔹 {subscription_helper.get_name(SubscriptionType.VISITS_5)} - {rate_service.get_price(subscription_type = SubscriptionType.VISITS_5)} руб", 
             callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_5.value}")],
         [InlineKeyboardButton(
-            f"{subscription_helper.get_name(SubscriptionType.VISITS_8)}. Сумма {rate_service.get_price(subscription_type = SubscriptionType.VISITS_8)} руб", 
+            f"🔹 {subscription_helper.get_name(SubscriptionType.VISITS_8)} - {rate_service.get_price(subscription_type = SubscriptionType.VISITS_8)} руб", 
             callback_data=f"SUBSCRIPTION-TYPE_{SubscriptionType.VISITS_8.value}")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"SUBSCRIPTION-TYPE_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -161,7 +161,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
             "или\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
-            "⚠️ <b>После оплаты отправьте скриншот с чеком об оплате.</b>\n"
+            "⚠️ <b>После оплаты отправьте скриншот или PDF документ с чеком об оплате.</b>\n"
             "К сожалению, только так мы можем подтвердить, что именно Вы отправили предоплату.\n\n"
             "✅ Как только мы получим средства, администратор свяжется с вами и отправит электронный код.\n"
             "🔑 Код можно ввести в разделе <b>«Забронировать»</b> – бронирования будут списываться автоматически.\n\n"
@@ -195,10 +195,15 @@ def reset_variables():
     price = None
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global photo
-    photo = update.message.photo[-1].file_id
+    document: Document = None
+    photo: str = None
     chat_id = update.message.chat.id
+    if update.message.document != None and update.message.document.mime_type == 'application/pdf':
+        document = update.message.document
+    else:
+        photo = update.message.photo[-1].file_id
+
     subscription = save_subscription_information()
     LoggerService.info(__name__, f"handle photo", update)
-    await admin_handler.accept_subscription_payment(update, context, subscription, chat_id, photo)
+    await admin_handler.accept_subscription_payment(update, context, subscription, chat_id, photo, document)
     return await confirm_subscription(update, context)

@@ -1,6 +1,5 @@
 import sys
 import os
-
 from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
@@ -31,7 +30,8 @@ async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
     await safe_edit_message_text(
         callback_query=update.callback_query,
-        text="Напишите любой вопрос, который Вы бы хотели узнать про The Secret House.\n",
+        text="Напишите любой вопрос, который Вы бы хотели узнать про The Secret House.\n\n"
+            "Вам будет отвечать искусственный интеллект ChatGPT.\n",
         reply_markup=reply_markup)
     return QUESTIONS
 

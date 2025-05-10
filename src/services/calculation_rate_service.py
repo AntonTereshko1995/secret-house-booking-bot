@@ -44,9 +44,31 @@ class CalculationRateService:
             is_secret_room: bool, 
             is_second_room: bool,
             count_people: int = 0,
-            extra_hours: int = 0,
+            duration_hours: int = 0,
             sale: Sale = Sale.NONE) -> int:
-        price = rental_price.price
+        price = 0
+        if duration_hours != 0:
+            extra_hours = duration_hours - rental_price.duration_hours
+            if extra_hours > 0:
+                if rental_price.tariff in [Tariff.DAY.value, Tariff.DAY_FOR_COUPLE.value, Tariff.INCOGNITA_DAY.value]:
+                    total_days = duration_hours // 24
+                    remainder_hours = duration_hours % 24
+
+                    if remainder_hours > 15 and remainder_hours < 24:
+                        total_days += 1
+                        remainder_hours = 0
+
+                    if str(total_days) in rental_price.multi_day_prices:
+                        price += rental_price.multi_day_prices[str(total_days)]
+
+                    if remainder_hours > 0:
+                        price += remainder_hours * rental_price.extra_hour_price
+                else:
+                    price = rental_price.price
+                    price += extra_hours * rental_price.extra_hour_price
+        else:
+            price = rental_price.price
+
         if is_sauna:
             price += rental_price.sauna_price
         if is_secret_room:
@@ -55,8 +77,6 @@ class CalculationRateService:
             price += rental_price.second_bedroom_price
         if count_people > rental_price.max_people:
             price += (count_people - rental_price.max_people) * rental_price.extra_people_price
-        if extra_hours > 0:
-            price += extra_hours * rental_price.extra_hour_price
 
         if sale != None and sale != Sale.NONE:
             percentage = sale_halper.get_percentage_sale(sale)

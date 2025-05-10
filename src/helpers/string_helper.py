@@ -62,7 +62,7 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
 
     grouped_slots = {}
     for slot in available_slots:
-        date_str = slot.strftime("%Y-%m-%d")
+        date_str = slot.strftime("%d-%m")
         if date_str not in grouped_slots:
             grouped_slots[date_str] = []
         grouped_slots[date_str].append(slot)
