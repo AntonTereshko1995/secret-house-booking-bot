@@ -15,7 +15,7 @@ def create_hours_picker(date=None, free_slots=None, action_text="", callback_pre
     hour = 0
     now = datetime.now()
     if date == now.date():
-        hour = now.hour
+        hour = now.hour + 1
 
     keyboard = []
     row = []
