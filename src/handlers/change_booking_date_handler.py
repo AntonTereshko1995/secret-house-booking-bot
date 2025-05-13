@@ -131,10 +131,10 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
-    selected, time, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-FINISH")
+    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-FINISH")
     if selected:
         global finish_booking_date
-        finish_booking_date = finish_booking_date.replace(hour=time.hour, minute=time.minute)
+        finish_booking_date = selected_date
         LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': finish_booking_date.date()})
         return await finish_time_message(update, context)
     elif is_action:
