@@ -375,12 +375,21 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         global finish_booking_date
         finish_booking_date = finish_booking_date.replace(hour=time.hour, minute=time.minute)
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
+
+        if tariff == Tariff.WORKER and tariff_helper.is_interval_in_allowed_ranges(start_booking_date.time(), finish_booking_date.time()) == False:
+            error_message = ("❌ <b>Ошибка!</b>\n\n"
+                "⏳ <b>Выбранные дата и время не соответствуют условиям тарифа 'Рабочий'.</b>\n"
+                "⚠️ В рамках этого тарифа бронирование возможно только с 11:00 до 20:00 или с 22:00 до 9:00.\n\n"
+                "🔄 Пожалуйста, выберите другое время начала бронирования.\n\n"
+                "ℹ️ Если вы планируете забронировать в другое время — выберите, пожалуйста, тариф '12 часов', 'Суточно' или 'Инкогнито'.")
+            LoggerService.warning(__name__, f"incorect time for tariff Worker", update)
+            return await start_date_message(update, context, error_message=error_message)
+
         is_any_booking = database_service.is_booking_between_dates(start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
             error_message = ("❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Выбранные дата и время недоступны.</b>\n"
                 "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
-                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования.")
             LoggerService.warning(__name__, f"there are bookings between the selected dates", update)
             return await start_date_message(update, context, error_message=error_message)
@@ -966,7 +975,6 @@ def save_booking_information(chat_id: int):
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     document: Document = None
     photo: str = None
-    chat_id = update.message.chat.id
     if update.message.document != None and update.message.document.mime_type == 'application/pdf':
         document = update.message.document
     else:

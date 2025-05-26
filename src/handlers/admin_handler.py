@@ -130,7 +130,8 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user_chat_id: int, photo, document, is_payment_by_cash = False):
     user = database_service.get_user_by_id(booking.user_id)
-    message = string_helper.generate_booking_info_message(booking, user, is_payment_by_cash)
+    count_booking = database_service.get_done_booking_count(booking.user_id)
+    message = string_helper.generate_booking_info_message(booking, user, is_payment_by_cash, count_of_booking=count_booking)
     keyboard = [
         [InlineKeyboardButton("Подтвердить оплату", callback_data=f"booking_1_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
         [InlineKeyboardButton("Отмена бронирования", callback_data=f"booking_2_chatid_{user_chat_id}_bookingid_{booking.id}_cash_{is_payment_by_cash}")],
@@ -150,7 +151,8 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
 async def edit_accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: int, user_chat_id: int, is_payment_by_cash):
     booking = database_service.get_booking_by_id(booking_id)
     user = database_service.get_user_by_id(booking.user_id)
-    message = string_helper.generate_booking_info_message(booking, user, is_payment_by_cash)
+    count_booking = database_service.get_done_booking_count(booking.user_id)
+    message = string_helper.generate_booking_info_message(booking, user, is_payment_by_cash, count_of_booking=count_booking)
     keyboard = [
         [InlineKeyboardButton("Подтвердить оплату", callback_data=f"booking_1_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
         [InlineKeyboardButton("Отмена бронирования", callback_data=f"booking_2_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
@@ -425,7 +427,7 @@ async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, boo
         f"Белая спальня: {string_helper.bool_to_str(booking.has_white_bedroom)}\n"
         f"Зеленая спальня: {string_helper.bool_to_str(booking.has_green_bedroom)}\n"
         f"Секретная комната: {string_helper.bool_to_str(booking.has_secret_room)}\n"
-        f"Колличество гостей: {booking.number_of_guests}\n"
+        f"Количество гостей: {booking.number_of_guests}\n"
         f"Комментарий: {booking.comment if booking.comment else ''}\n")
 
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)

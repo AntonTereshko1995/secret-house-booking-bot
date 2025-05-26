@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 from src.models.enum.tariff import Tariff
 
 def get_name(tariff: Tariff) -> str:
@@ -45,8 +45,27 @@ def get_by_str(value_str: str) -> Tariff:
 def is_booking_available(tariff: Tariff, start_date: date) -> bool:
     if tariff != Tariff.WORKER:
         return True
-    lol = start_date.weekday()
+    
     if start_date.weekday() == 4 or start_date.weekday() == 5 or start_date.weekday() == 6:
         return False
     
     return True
+
+def is_interval_in_allowed_ranges(check_start: time, check_end: time) -> bool:
+    daytime_start = time(11, 0)
+    daytime_end = time(20, 0)
+
+    night_start = time(22, 0)
+    night_end = time(9, 0)
+
+    def is_in_range(start: time, end: time, range_start: time, range_end: time) -> bool:
+        if range_start <= range_end:
+            return range_start <= start and end <= range_end
+        else:
+            return (start >= range_start or start <= range_end) and (end >= range_start or end <= range_end)
+
+    return (
+        is_in_range(check_start, check_end, daytime_start, daytime_end)
+        or
+        is_in_range(check_start, check_end, night_start, night_end)
+    )

@@ -286,8 +286,7 @@ class DatabaseService:
             except Exception as e:
                 print(f"Error adding booking: {e}")
                 session.rollback()
-                LoggerService.error(__name__, f"add_booking", e)
-                
+                LoggerService.error(__name__, f"add_booking", e)        
 
     def get_booking_by_start_date_user(
             self, 
@@ -466,6 +465,21 @@ class DatabaseService:
                         BookingBase.is_canceled == False,
                         BookingBase.is_done == False,
                         BookingBase.is_prepaymented == True))).all()
+                return bookings  
+        except Exception as e:
+            print(f"Error in get_booking_by_user_contact: {e}")
+            LoggerService.error(__name__, f"get_booking_by_user_contact", e)
+
+    def get_done_booking_count(
+            self, 
+            user_id: int) -> BookingBase:
+        try:
+            with self.Session() as session:
+                bookings = session.scalars(
+                    select(func.count()).select_from(BookingBase).where(and_(
+                        BookingBase.user_id == user_id,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == True))).all()
                 return bookings  
         except Exception as e:
             print(f"Error in get_booking_by_user_contact: {e}")
