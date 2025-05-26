@@ -92,7 +92,7 @@ def generate_available_slots(bookings, from_datetime, to_datetime, cleaning_time
 
     return message
 
-def generate_booking_info_message(booking: BookingBase, user: UserBase, is_additional_payment_by_cash = False) -> str:
+def generate_booking_info_message(booking: BookingBase, user: UserBase, is_additional_payment_by_cash = False, count_of_booking: int = None) -> str:
     message = (
         f"Пользователь: {user.contact}\n"
         f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -104,11 +104,14 @@ def generate_booking_info_message(booking: BookingBase, user: UserBase, is_addit
         f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
         f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
         f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
-        f"Колличество гостей: {booking.number_of_guests}\n"
+        f"Количество гостей: {booking.number_of_guests}\n"
         f"Комментарий: {booking.comment if booking.comment else ''}\n"
         f"Скидка: {sale_halper.get_name(booking.sale)}\n"
         f"Скидка коммент: {booking.sale_comment if booking.sale_comment else ''}\n")
     
+    if count_of_booking:
+        message += f"Количество броней: {count_of_booking}\n"
+
     if booking.gift_id:
         message += (
             f"Подарочный сертификат: {booking.gift_id}\n"

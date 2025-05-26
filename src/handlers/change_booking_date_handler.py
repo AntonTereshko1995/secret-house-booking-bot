@@ -1,6 +1,5 @@
 import sys
 import os
-
 from src.services.navigation_service import safe_edit_message_text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
@@ -14,7 +13,7 @@ from datetime import datetime, date, time, timedelta
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
 from src.handlers import admin_handler, menu_handler
-from src.helpers import date_time_helper, string_helper
+from src.helpers import date_time_helper, string_helper, tariff_helper
 from src.date_time_picker import calendar_picker, hours_picker
 from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
 from dateutil.relativedelta import relativedelta
@@ -150,8 +149,17 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         finish_booking_date = finish_booking_date.replace(hour=time.hour)
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
         created_bookings = database_service.get_booking_by_period(start_booking_date, finish_booking_date)
-        is_any_booking = any(b.id != booking.id for b in created_bookings)
 
+        if booking.tariff == Tariff.WORKER and tariff_helper.is_interval_in_allowed_ranges(start_booking_date.time(), finish_booking_date.time()) == False:
+            error_message = ("❌ <b>Ошибка!</b>\n\n"
+                "⏳ <b>Выбранные дата и время не соответствуют условиям тарифа 'Рабочий'.</b>\n"
+                "⚠️ В рамках этого тарифа бронирование возможно только с 11:00 до 20:00 или с 22:00 до 9:00.\n\n"
+                "🔄 Пожалуйста, выберите другое время начала бронирования.\n\n"
+                "ℹ️ Если вы планируете забронировать в другое время — выберите, пожалуйста, тариф '12 часов', 'Суточно' или 'Инкогнито'.")
+            LoggerService.warning(__name__, f"incorect time for tariff Worker", update)
+            return await start_date_message(update, context, error_message=error_message)
+
+        is_any_booking = any(b.id != booking.id for b in created_bookings)
         if is_any_booking:
             LoggerService.info(__name__, f"there are bookings between the selected dates", update)
             return await start_date_message(update, context, is_error=True)
@@ -160,7 +168,8 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
         global rental_price
         rental_price = calculation_rate_service.get_tariff(booking.tariff)
-        if duration_booking_hours > rental_price.duration_hours:
+        duration_hours = (booking.end_date - booking.start_date).total_seconds() / 3600;
+        if duration_booking_hours > duration_hours:
             return await start_date_message(update, context, incorrect_duration=True)
 
         return await confirm_message(update, context)
