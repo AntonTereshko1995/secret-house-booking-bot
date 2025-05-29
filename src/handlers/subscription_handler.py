@@ -132,7 +132,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     global price
-    price = rate_service.calculate_price(rental_rate, False, True, True)
+    price = rate_service.calculate_price(rental_rate, False, True, True, False)
     categories = rate_service.get_price_categories(rental_rate, False, True, True)
 
     await safe_edit_message_text(

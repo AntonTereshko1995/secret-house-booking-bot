@@ -208,7 +208,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     global price
-    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
+    price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, False, is_additional_bedroom_included)
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included)
     LoggerService.info(__name__, f"confirm pay", update, kwargs={'price': price})
     await safe_edit_message_text(
