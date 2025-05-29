@@ -43,6 +43,7 @@ class CalculationRateService:
             is_sauna: bool, 
             is_secret_room: bool, 
             is_second_room: bool,
+            is_photoshoot: bool,
             count_people: int = 0,
             duration_hours: int = 0,
             sale: Sale = Sale.NONE) -> int:
@@ -74,6 +75,8 @@ class CalculationRateService:
             price += rental_price.secret_room_price
         if is_second_room:
             price += rental_price.second_bedroom_price
+        if is_photoshoot:
+            price += rental_price.photoshoot_price
         if count_people > rental_price.max_people:
             price += (count_people - rental_price.max_people) * rental_price.extra_people_price
 
