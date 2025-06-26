@@ -190,6 +190,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
+            LoggerService.warning(__name__, f"User name is valid", update, kwargs={'user_name': user_contact})
             if gift or subscription:
                 if is_any_additional_payment():
                     return await pay(update, context)
@@ -414,7 +415,6 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await confirm_pay(update, context)
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(__name__, f"Confirm pay", update)
     keyboard = [
         [InlineKeyboardButton("Перейти к оплате.", callback_data=SET_USER)],
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-BACK_{BACK}")]]
@@ -427,6 +427,8 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     extra_hours = duration_booking_hours - rental_rate.duration_hours
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours)
     photoshoot_text = ", фото сессия" if is_photoshoot_included else ""
+
+    LoggerService.info(__name__, f"Confirm pay", update, kwargs={'price': price})
 
     if gift or subscription:
         payed_price = gift.price if gift else rental_rate.price
