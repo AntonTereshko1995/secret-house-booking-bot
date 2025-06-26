@@ -29,7 +29,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU
 
 async def select_month(update: Update, context: CallbackContext):
-    LoggerService.info(__name__, f"Select month", update)
+    LoggerService.info(__name__, f"Available months", update)
     months = date_time_helper.get_future_months(PERIOD_IN_MONTHS) 
     keyboard = [[InlineKeyboardButton(text=value, callback_data=f"month_{str(key)}")] for key, value in months.items()]
     keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
@@ -48,7 +48,7 @@ async def get_available_dates(update: Update, context: CallbackContext):
         return await back_navigation(update, context)
 
     month, year = parse_callback_data(update)
-    LoggerService.info(__name__, f"Available dates", update)
+    LoggerService.info(__name__, f"Select month", update, kwargs={'month': month})
     keyboard = [
         [InlineKeyboardButton("Выбрать другой месяц", callback_data=BACK)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)]]

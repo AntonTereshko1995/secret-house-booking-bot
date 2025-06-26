@@ -514,13 +514,13 @@ class DatabaseService:
                     booking.is_data_changed = is_data_changed
                 if is_prepaymented:
                     booking.is_prepaymented = is_prepaymented
-                if price:
+                if price is not None and price >= 0:
                     booking.price = price
                 if calendar_event_id:
                     booking.calendar_event_id = calendar_event_id
                 if is_done:
                     booking.is_done = is_done
-                if prepayment:
+                if prepayment is not None and prepayment >= 0:
                     booking.prepayment_price = prepayment
 
                 session.commit()
