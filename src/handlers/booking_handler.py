@@ -190,7 +190,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = user_input
-            LoggerService.warning(__name__, f"User name is valid", update, kwargs={'user_name': user_contact})
+            LoggerService.info(__name__, f"User name is valid", update, kwargs={'user_name': user_contact})
             if gift or subscription:
                 if is_any_additional_payment():
                     return await pay(update, context)
@@ -203,7 +203,10 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
-                "🔄 Пожалуйста, попробуйте еще раз.",
+                "🔄 Пожалуйста, попробуйте еще раз.\n\n"
+                "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
+                "или\n"
+                "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n",
                 parse_mode='HTML')
     return BOOKING_VALIDATE_USER
 

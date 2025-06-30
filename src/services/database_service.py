@@ -480,7 +480,7 @@ class DatabaseService:
                         BookingBase.user_id == user_id,
                         BookingBase.is_canceled == False,
                         BookingBase.is_done == True))).all()
-                return bookings  
+                return bookings.__len__()
         except Exception as e:
             print(f"Error in get_booking_by_user_contact: {e}")
             LoggerService.error(__name__, f"get_booking_by_user_contact", e)
