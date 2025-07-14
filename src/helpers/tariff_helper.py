@@ -58,14 +58,15 @@ def is_interval_in_allowed_ranges(check_start: time, check_end: time) -> bool:
     night_start = time(22, 0)
     night_end = time(9, 0)
 
-    def is_in_range(start: time, end: time, range_start: time, range_end: time) -> bool:
-        if range_start <= range_end:
-            return range_start <= start and end <= range_end
-        else:
-            return (start >= range_start or start <= range_end) and (end >= range_start or end <= range_end)
+    def is_in_daytime_range(start: time, end: time) -> bool:
+        return daytime_start <= start < end <= daytime_end
 
-    return (
-        is_in_range(check_start, check_end, daytime_start, daytime_end)
-        or
-        is_in_range(check_start, check_end, night_start, night_end)
-    )
+    def is_in_night_range(start: time, end: time) -> bool:
+        if start >= night_start or start < night_end:
+            if start >= night_start:
+                return end >= night_start or end <= night_end
+            else:
+                return end <= night_end
+        return False
+
+    return is_in_daytime_range(check_start, check_end) or is_in_night_range(check_start, check_end)

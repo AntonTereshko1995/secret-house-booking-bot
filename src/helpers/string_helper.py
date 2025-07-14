@@ -13,13 +13,15 @@ from string import ascii_uppercase
 from src.config.config import CLEANING_HOURS, PREPAYMENT
 
 def is_valid_user_contact(user_name: str) -> bool:
-    if user_name.count(" ") >= 1 or user_name.count("\n") >= 1:
+    user_name = user_name.replace(" ", "")
+    if "\n" in user_name:
         return False
     
     if user_name.startswith("@"):
         pattern = r"^@[A-Za-z0-9_]{5,32}$"
         return bool(re.match(pattern, user_name))
 
+    user_name = user_name.replace("-", "")
     return (user_name.startswith("+375") and len(user_name) == 13)
 
 def separate_callback_data(data):

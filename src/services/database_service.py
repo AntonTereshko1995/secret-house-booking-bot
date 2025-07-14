@@ -16,7 +16,7 @@ from src.models.enum.tariff import Tariff
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import cast, Sequence, and_, func, or_, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
 
 @singleton
@@ -343,7 +343,7 @@ class DatabaseService:
             print(f"Error in get_booking_by_finish_date: {e}")
             LoggerService.error(__name__, f"get_booking_by_finish_date", e)
             
-    def get_booking_by_period(self, from_date: date, to_date: date, is_admin: bool = False):
+    def get_booking_by_period(self, from_date: date, to_date: date, is_admin: bool = False) -> Sequence[BookingBase]:
         try:
             with self.Session() as session:
                 if not is_admin:
@@ -452,10 +452,10 @@ class DatabaseService:
 
     def get_booking_by_user_contact(
             self, 
-            user_contact: str) -> BookingBase:
+            user_contact: str) -> list[BookingBase]:
         user = self.get_user_by_contact(user_contact)
         if not user:
-            return None
+            return []
         
         try:
             with self.Session() as session:
@@ -491,7 +491,7 @@ class DatabaseService:
             start_date: datetime = None,
             end_date: datetime = None,
             is_canceled: bool = None,
-            is_data_changed: bool = None,
+            is_date_changed: bool = None,
             price: float = None,
             is_prepaymented: bool = None,
             calendar_event_id: str = None,
@@ -510,8 +510,8 @@ class DatabaseService:
                     booking.end_date = end_date
                 if is_canceled:
                     booking.is_canceled = is_canceled
-                if is_data_changed:
-                    booking.is_data_changed = is_data_changed
+                if is_date_changed:
+                    booking.is_date_changed = is_date_changed
                 if is_prepaymented:
                     booking.is_prepaymented = is_prepaymented
                 if price is not None and price >= 0:

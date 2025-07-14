@@ -17,6 +17,7 @@ from src.helpers import date_time_helper, string_helper, tariff_helper
 from src.date_time_picker import calendar_picker, hours_picker
 from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
 from dateutil.relativedelta import relativedelta
+from typing import Optional
 from src.constants import (
     CHANGE_BOOKING_DATE_VALIDATE_USER, 
     END,
@@ -94,6 +95,14 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global booking, old_booking_date
     booking = next((b for b in selected_bookings if str(b.id) == data), None)
+
+    if booking.is_date_changed:
+        error_message = ("❌ <b>Ошибка!</b>\n\n"
+            "⏳ <b>Вы превысили лимит переносов бронирования.</b>\n"
+            "🔄 Пожалуйста, обратитесь к администратору для решения этой проблемы.")
+        LoggerService.warning(__name__, f"reschedule count is more than 1", update)
+        return await choose_booking_message(update, context, error_message=error_message)
+
     LoggerService.info(__name__, "Choose booking", update)
     old_booking_date = booking.start_date
     return await start_date_message(update, context)
@@ -104,6 +113,14 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     min_date_booking = date.today()
     selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START")
     if selected:
+        if not tariff_helper.is_booking_available(booking.tariff, selected_date):
+            LoggerService.warning(__name__, f"start date is incorrect for {booking.tariff}", update)
+            error_message = ("❌ <b>Ошибка!</b>\n\n"
+                "⏳ <b>Тариф 'Рабочий' доступен только с понедельника по четверг.</b>\n"
+                "🔄 Пожалуйста, выберите новую дату начала бронирования.")
+            LoggerService.warning(__name__, f"there are bookings between the selected dates", update)
+            return await start_date_message(update, context, error_message=error_message)
+
         global start_booking_date
         start_booking_date = selected_date
         LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': start_booking_date.date()})
@@ -161,16 +178,26 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         is_any_booking = any(b.id != booking.id for b in created_bookings)
         if is_any_booking:
+            error_message = ("❌ <b>Ошибка!</b>\n\n"
+                "⏳ <b>Выбранные дата и время недоступны.</b>\n"
+                "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
+                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
+                "🔄 Пожалуйста, выберите новую дату начала бронирования.")
             LoggerService.info(__name__, f"there are bookings between the selected dates", update)
-            return await start_date_message(update, context, is_error=True)
+            return await start_date_message(update, context, error_message=error_message)
         
         selected_duration = finish_booking_date - start_booking_date
         duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
         global rental_price
         rental_price = calculation_rate_service.get_tariff(booking.tariff)
-        duration_hours = (booking.end_date - booking.start_date).total_seconds() / 3600;
-        if duration_booking_hours > duration_hours:
-            return await start_date_message(update, context, incorrect_duration=True)
+        booking_duration_hours = max((booking.end_date - booking.start_date).total_seconds() / 3600, rental_price.duration_hours);
+        if duration_booking_hours > booking_duration_hours:
+            error_message = ("❌ <b>Ошибка!</b>\n\n"
+                "⏳ <b>Максимальная продолжительность тарифа превышена.</b>\n"
+                f"🕒 Длительность <b>{rental_price.name}</b>: {rental_price.duration_hours} ч.\n\n"
+                "🔄 Пожалуйста, повторите попытку и выберите доступный вариант.\n\n"
+                "📅 Выберите новую дату начала бронирования.")
+            return await start_date_message(update, context, error_message=error_message)
 
         return await confirm_message(update, context)
     elif is_action:
@@ -185,7 +212,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     LoggerService.info(__name__, f"Confirm booking", update)
-    updated_booking = database_service.update_booking(booking.id, start_date=start_booking_date, end_date=finish_booking_date)
+    updated_booking = database_service.update_booking(booking.id, start_date=start_booking_date, end_date=finish_booking_date, is_date_changed=True)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await admin_handler.inform_changing_booking_date(update, context, updated_booking, old_booking_date)
@@ -197,7 +224,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📅 <b>До:</b> {finish_booking_date.strftime('%d.%m.%Y %H:%M')}.\n",
         reply_markup=reply_markup)
 
-async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE, error_message: Optional[str] = None):
     global selected_bookings
     booking_list = database_service.get_booking_by_user_contact(user_contact)
     selected_bookings = list(filter(lambda x: x.start_date.date() >= date.today(), booking_list))
@@ -212,31 +239,36 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard.append([InlineKeyboardButton("Назад в меню", callback_data=END)])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        text="📅 <b>Выберите бронирование, которое хотите изменить.</b>\n",
-        parse_mode='HTML',
-        reply_markup=reply_markup)
+
+    message = "📅 <b>Выберите бронирование, которое хотите изменить.</b>\n"
+    if error_message:
+        message = message + "\n\n" + error_message
+
+    if update.message == None:
+        await update.callback_query.answer()
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
+            reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(
+            text=message,
+            parse_mode='HTML',
+            reply_markup=reply_markup)
+
     return CHANGE_BOOKING_DATE
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False, incorrect_duration: bool = False):
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, error_message: Optional[str] = None):
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = today
-    if is_error:
-        message = ("❌ <b>Ошибка!</b>\n\n"
-            "⏳ <b>Выбранные дата и время недоступны.</b>\n"
-            "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
-            f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
-            "🔄 Пожалуйста, выберите новую дату начала бронирования.")
-    elif incorrect_duration:
-        message = ("❌ <b>Ошибка!</b>\n\n"
-            "⏳ <b>Максимальная продолжительность тарифа превышена.</b>\n"
-            f"🕒 Длительность <b>{rental_price.name}</b>: {rental_price.duration_hours} ч.\n\n"
-            "🔄 Пожалуйста, повторите попытку и выберите доступный вариант.\n\n"
-            "📅 Выберите новую дату начала бронирования.")
+ 
+    if error_message:
+        message = error_message
     else:
         message = ("✅ <b>Ваше бронирование найдено!</b>\n\n"
             "📅 <b>Введите новую дату, на которую хотите перенести бронирование.</b>")
+        
     await safe_edit_message_text(
         callback_query=update.callback_query,
         text=message, 
@@ -319,7 +351,7 @@ async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❗️ Пожалуйста, вводите данные строго в указанном формате.",
         parse_mode='HTML',
         reply_markup=reply_markup)
-    return CHANGE_BOOKING_DATE
+    return CHANGE_BOOKING_DATE_VALIDATE_USER
 
 def reset_variables():
     global user_contact, old_booking_date, start_booking_date, finish_booking_date, max_date_booking, min_date_booking, booking, rental_price, selected_bookings
