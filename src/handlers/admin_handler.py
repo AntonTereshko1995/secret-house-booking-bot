@@ -1,6 +1,7 @@
 from datetime import date, datetime, time, timedelta
 import sys
 import os
+from typing import Sequence
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.navigation_service import safe_edit_message_text
 from src.services.settings_service import SettingsService
@@ -110,6 +111,8 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
     else:
         bookings = get_future_bookings()
+        lol = list(filter(lambda i: i.price > 400, bookings))
+
         if not bookings:
             await update.message.reply_text("🔍 Не найдено бронирований.")
             return END
@@ -201,11 +204,9 @@ async def inform_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TY
 async def inform_changing_booking_date(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, old_start_date: date):
     user = database_service.get_user_by_id(booking.user_id)
     message = (
-        f"Перенос даты бронирования бронирования!\n"
-        f"Контакт клиента: {user.contact}\n"
-        f"Старая дата начала: {old_start_date.strftime('%d.%m.%Y')}\n"
-        f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
-        f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n")
+        f"Перенос даты бронирования!\n"
+        f"Старая дата начала: {old_start_date.strftime('%d.%m.%Y')}\n\n"
+        f"{string_helper.generate_booking_info_message(booking, user)}")
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
 async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -361,7 +362,7 @@ async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, c
     await update.callback_query.edit_message_caption(f"Подтверждено \n\n Скидка: {sale_percentage}% \n\n{string_helper.generate_booking_info_message(booking, user)}")
     return END
 
-def get_future_bookings():
+def get_future_bookings() -> Sequence[BookingBase]:
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     booking_list = database_service.get_booking_by_period(today, max_date_booking, True)
@@ -439,9 +440,9 @@ async def send_booking_details(context: ContextTypes.DEFAULT_TYPE, booking: Book
             "Через 500 метров после ж/д переезда по левую сторону будет оранжевый магазин. После магазина нужно повернуть налево. Это Вам ориентир нужного поворота, далее навигатор Вас привезет правильно.\n"
             "Когда будете ехать вдоль леса, то Вам нужно будет повернуть на садовое товарищество 'Юбилейное-68' (будет вывеска).\n" 
             "ст. Юбилейное-68, ул. Сосновая, д. 2\n\n"
-            "Yandex map:\n"
+            "Маршрут в Yandex map:\n"
             "https://yandex.com.ge/maps/157/minsk/?l=stv%2Csta&ll=27.297381%2C53.932145&mode=routes&rtext=53.939763%2C27.333107~53.938194%2C27.324665~53.932431%2C27.315410~53.930789%2C27.299320~53.934190%2C27.300387&rtt=auto&ruri=~~~~ymapsbm1%3A%2F%2Fgeo%3Fdata%3DCgo0Mzk0MjMwMTgwErMB0JHQtdC70LDRgNGD0YHRjCwg0JzRltC90YHQutGWINGA0LDRkdC9LCDQltC00LDQvdC-0LLRltGG0LrRliDRgdC10LvRjNGB0LDQstC10YIsINGB0LDQtNCw0LLQvtC00YfQsNC1INGC0LDQstCw0YDRi9GB0YLQstCwINCu0LHRltC70LXQudC90LDQtS02OCwg0KHQsNGB0L3QvtCy0LDRjyDQstGD0LvRltGG0LAsIDIiCg0sZ9pBFZ28V0I%2C&z=16.06 \n\n"
-            "Google map:\n"
+            "Маршрут Google map:\n"
             "https://maps.app.goo.gl/Hsf9Xw69N8tqHyqt5")
     await context.bot.send_message(
         chat_id=booking.chat_id, 

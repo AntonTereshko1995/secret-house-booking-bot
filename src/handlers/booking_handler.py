@@ -22,6 +22,7 @@ from src.handlers import admin_handler
 from src.models.enum.sale import Sale
 from src.models.enum.bedroom import Bedroom
 from src.models.enum.tariff import Tariff
+from typing import Optional
 from src.constants import (
     BACK,
     BOOKING_COMMENT,
@@ -38,28 +39,28 @@ from src.constants import (
 
 MAX_PEOPLE = 6
 
-user_contact: str
-tariff: Tariff
-is_sauna_included: bool = None
-is_secret_room_included: bool = None
-is_photoshoot_included: bool = None
-is_additional_bedroom_included: bool = None
+user_contact: Optional[str] = None
+tariff: Optional[Tariff] = None
+is_sauna_included: Optional[bool] = None
+is_secret_room_included: Optional[bool] = None
+is_photoshoot_included: Optional[bool] = None
+is_additional_bedroom_included: Optional[bool] = None
 is_white_room_included = False
 is_green_room_included = False
-booking_comment: str
+booking_comment: Optional[str] = None
 sale = Sale.NONE
-customer_sale_comment: str
-number_of_guests: int
-start_booking_date: datetime
-finish_booking_date: datetime
+customer_sale_comment: Optional[str] = None
+number_of_guests: Optional[int] = None
+start_booking_date: Optional[datetime] = None
+finish_booking_date: Optional[datetime] = None
 rate_service = CalculationRateService()
 database_service = DatabaseService()
-rental_rate: RentalPrice
-price: int
-gift: GiftBase
-subscription: SubscriptionBase
-photo: PhotoSize
-booking: BookingBase
+rental_rate: Optional[RentalPrice] = None
+price: Optional[int] = None
+gift: Optional[GiftBase] = None
+subscription: Optional[SubscriptionBase] = None
+photo: Optional[PhotoSize] = None
+booking: Optional[BookingBase] = None
 
 def get_handler():
     return [
@@ -118,18 +119,20 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
             callback_data=f"BOOKING-TARIFF_{Tariff.GIFT.value}")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-TARIFF_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.answer()
-    await safe_edit_message_text(
-        callback_query=update.callback_query,
-        text="<b>Выберите тариф для бронирования:</b>",
-        reply_markup=reply_markup)
+    if update.callback_query:
+        await update.callback_query.answer()
+        await safe_edit_message_text(
+            callback_query=update.callback_query,
+            text="<b>Выберите тариф для бронирования:</b>",
+            reply_markup=reply_markup)
     return BOOKING
 
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    data = string_helper.get_callback_data(update.callback_query.data)
-    if (data == str(END)):
-        return await back_navigation(update, context)
+    if update.callback_query:
+        await update.callback_query.answer()
+        data = string_helper.get_callback_data(update.callback_query.data)
+        if (data == str(END)):
+            return await back_navigation(update, context)
 
     global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_secret_room_included, is_white_room_included, is_green_room_included, is_additional_bedroom_included, is_photoshoot_included
     tariff = tariff_helper.get_by_str(data)
@@ -170,11 +173,12 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "🔹 <b>Телефон:</b> +375XXXXXXXXX (обязательно с +375)\n"
             "❗️ Пожалуйста, вводите данные строго в указанном формате.")
     if (update.message == None):
-        await update.callback_query.answer()
-        await safe_edit_message_text(
-            callback_query=update.callback_query,
-            text=message,
-            reply_markup=reply_markup)
+        if update.callback_query:
+            await update.callback_query.answer()
+            await safe_edit_message_text(
+                callback_query=update.callback_query,
+                text=message,
+                reply_markup=reply_markup)
     else:
         await update.message.reply_text(
             text=message,
@@ -406,10 +410,11 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message == None:
-        await update.callback_query.answer()
-        data = string_helper.get_callback_data(update.callback_query.data)
-        if (data == str(END)):
-            return await back_navigation(update, context)
+        if update.callback_query:
+            await update.callback_query.answer()
+            data = string_helper.get_callback_data(update.callback_query.data)
+            if (data == str(END)):
+                return await back_navigation(update, context)
     else:
         global booking_comment
         booking_comment = update.message.text
@@ -424,8 +429,10 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     global price, sale
+    if not start_booking_date or not finish_booking_date or not rental_rate or not number_of_guests:
+        return BOOKING
     selected_duration = finish_booking_date - start_booking_date
-    duration_booking_hours = round(date_time_helper.seconds_to_hours(selected_duration.total_seconds()))
+    duration_booking_hours = round(date_time_helper.seconds_to_hours(int(selected_duration.total_seconds())))
     price = rate_service.calculate_price(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, is_photoshoot_included, number_of_guests, duration_booking_hours, sale)
     extra_hours = duration_booking_hours - rental_rate.duration_hours
     categories = rate_service.get_price_categories(rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, number_of_guests, extra_hours)
@@ -435,7 +442,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if gift or subscription:
         payed_price = gift.price if gift else rental_rate.price
-        price = price - payed_price
+        price = int(price - payed_price)
         message = (
             f"💰 <b>Доплата: {price} руб.</b>\n\n"
             f"📌 <b>Что включено:</b> {categories}{photoshoot_text}\n"
@@ -649,7 +656,7 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=reply_markup) 
     return BOOKING
 
-async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, error_message: str = None):
+async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, error_message: Optional[str] = None):
     if error_message:
         message = error_message
     else:
@@ -881,6 +888,8 @@ def reset_variables():
 
 async def initi_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global tariff, rental_rate, gift
+    if not update.message or not update.message.text:
+        return await write_code_message(update, context, True)
     gift = database_service.get_gift_by_code(update.message.text)
     if not gift:
         return await write_code_message(update, context, True)
@@ -897,6 +906,8 @@ async def initi_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def initi_subscription_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global tariff, rental_rate, subscription, is_secret_room_included, is_additional_bedroom_included, is_white_room_included, is_green_room_included
+    if not update.message or not update.message.text:
+        return await write_code_message(update, context, True)
     subscription = database_service.get_subscription_by_code(update.message.text)
     if not subscription:
         return await write_code_message(update, context, True)
@@ -978,11 +989,11 @@ def save_booking_information(chat_id: int):
     return booking != None
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    document: Document = None
-    photo: str = None
-    if update.message.document != None and update.message.document.mime_type == 'application/pdf':
+    document: Optional[Document] = None
+    photo: Optional[str] = None
+    if update.message and update.message.document and update.message.document.mime_type == 'application/pdf':
         document = update.message.document
-    else:
+    elif update.message and update.message.photo:
         photo = update.message.photo[-1].file_id
 
     LoggerService.info(__name__, f"handle photo", update)
@@ -994,17 +1005,20 @@ async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_approving_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, photo = None, document = None, is_cash = False):
     if update.message:
         chat_id = update.message.chat.id
-    else:
+    elif update.callback_query and update.callback_query.message:
         chat_id = update.callback_query.message.chat.id
+    else:
+        return BOOKING
     is_done = save_booking_information(chat_id)
     if not is_done:
-        await update.message.reply_text(
-            text="❌ <b>Ошибка!</b>\n\n"
-                "Не удалось сохранить информацию о бронировании.\n"
-                "Пожалуйста, попробуйте ещё раз или свяжитесь с администратором.\n"
-                "Нажмите на синюю кнопку 'Меню' и выберите 'Открыть Главное меню'.\n\n"
-                "🙏 Спасибо за понимание!",
-            parse_mode='HTML')
+        if update.message:
+            await update.message.reply_text(
+                text="❌ <b>Ошибка!</b>\n\n"
+                    "Не удалось сохранить информацию о бронировании.\n"
+                    "Пожалуйста, попробуйте ещё раз или свяжитесь с администратором.\n"
+                    "Нажмите на синюю кнопку 'Меню' и выберите 'Открыть Главное меню'.\n\n"
+                    "🙏 Спасибо за понимание!",
+                parse_mode='HTML')
         return BOOKING
     
     await admin_handler.accept_booking_payment(update, context, booking, chat_id, photo, document, is_cash)
