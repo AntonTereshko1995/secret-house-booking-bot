@@ -1,5 +1,6 @@
 import sys
 import os
+from dataclasses_json import dataclass_json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.decorator.type_decorator import IntEnumType
 from src.models.enum.tariff import Tariff
@@ -11,6 +12,7 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy import String
 from sqlalchemy.orm import relationship
 
+@dataclass_json
 class GiftBase(Base):
     __tablename__ = 'gift'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

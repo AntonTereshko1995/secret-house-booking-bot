@@ -1,7 +1,7 @@
 import sys
 import os
 
-from src.services.navigation_service import safe_edit_message_text
+from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
@@ -26,6 +26,7 @@ user_contact: str
 subscription_type: SubscriptionType
 rate_service = CalculationRateService()
 database_service = DatabaseService()
+navigation_service = NavigatonService()
 rental_rate: RentalPrice
 price: int
 
@@ -53,7 +54,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
@@ -78,7 +79,7 @@ async def generate_subscription_menu(update: Update, context: ContextTypes.DEFAU
         [InlineKeyboardButton("Назад в меню", callback_data=f"SUBSCRIPTION-TYPE_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="📌 <b>Выберите удобный абонемент</b>.\n\n"
             "Каждый абонемент включает:\n"
@@ -114,7 +115,7 @@ async def select_subscription_type(update: Update, context: ContextTypes.DEFAULT
     global subscription_type, rental_rate
     subscription_type = subscription_helper.get_by_str(data)
     LoggerService.info(__name__, f"select subscription type", update, kwargs={'subscription_type': subscription_type})
-    rental_rate = rate_service.get_subscription(subscription_type)
+    rental_rate = rate_service.get_by_subscription(subscription_type)
 
     return await confirm_pay(update, context)
 
@@ -135,7 +136,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     price = rate_service.calculate_price(rental_rate, False, True, True, False)
     categories = rate_service.get_price_categories(rental_rate, False, True, True)
 
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
             f"📌 <b>В стоимость входит:</b> {categories}.\n\n"

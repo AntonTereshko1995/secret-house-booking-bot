@@ -2,5 +2,9 @@
     "python.analysis.extraPaths": [
         "./db",
         "./alembic"
+    ],
+    "cursorpyright.analysis.extraPaths": [
+        "./db",
+        "./alembic"
     ]
 }

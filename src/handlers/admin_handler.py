@@ -3,7 +3,7 @@ import sys
 import os
 from typing import Sequence
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.services.navigation_service import safe_edit_message_text
+from src.services.navigation_service import NavigatonService
 from src.services.settings_service import SettingsService
 from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
@@ -25,6 +25,7 @@ calendar_service = CalendarService()
 calculation_rate_service = CalculationRateService()
 file_service = FileService()
 settings_service = SettingsService()
+navigation_service = NavigatonService()
 writing_password = ''
 new_price: str = ''
 new_prepayment_price: str = ''
@@ -77,7 +78,7 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message, 
             reply_markup=InlineKeyboardMarkup(keyboard))
     elif update.callback_query:
-        await safe_edit_message_text(
+        await navigation_service.safe_edit_message_text(
             callback_query=update.callback_query,
             text=message,
             reply_markup=InlineKeyboardMarkup(keyboard))
@@ -150,6 +151,8 @@ async def accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_T
         await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
     elif document:
         await context.bot.send_document(chat_id=ADMIN_CHAT_ID, document=document, caption=message, reply_markup=reply_markup)
+    else:
+        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=message, reply_markup=reply_markup)
 
 async def edit_accept_booking_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: int, user_chat_id: int, is_payment_by_cash):
     booking = database_service.get_booking_by_id(booking_id)
@@ -274,7 +277,13 @@ async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, ch
             f"Предоплата: {booking.prepayment_price} руб.\n",
         parse_mode='HTML')
     
-    await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_booking_info_message(booking, user)}")
+    text = f"Подтверждено ✅\n\n{string_helper.generate_booking_info_message(booking, user)}"
+    message = update.callback_query.message
+    if message.caption:
+        await message.edit_caption(text)
+    else:
+        await message.edit_text(text)
+        
     return END
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int):
@@ -286,7 +295,13 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, cha
             "📞 Администратор свяжется с вами для уточнения деталей.",
         parse_mode='HTML')
     user = database_service.get_user_by_id(booking.user_id)
-    await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_booking_info_message(booking, user)}")
+
+    text = f"Отмена.\n\n {string_helper.generate_booking_info_message(booking, user)}"
+    message = update.callback_query.message
+    if message.caption:
+        await message.edit_caption(text)
+    else:
+        await message.edit_text(text)
     return END
 
 async def approve_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int):

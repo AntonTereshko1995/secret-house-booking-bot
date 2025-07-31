@@ -1,6 +1,6 @@
 import sys
 import os
-from src.services.navigation_service import safe_edit_message_text
+from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.gpt_service import GptService
@@ -11,6 +11,7 @@ from src.handlers import menu_handler
 from src.constants import END, MENU, QUESTIONS
 
 gpt_service = GptService()
+navigation_service = NavigatonService()
 
 def get_handler():
     return [
@@ -28,7 +29,7 @@ async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     LoggerService.info(__name__, f"start conversation", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="Напишите любой вопрос, который Вы бы хотели узнать про The Secret House.\n\n"
             "Вам будет отвечать искусственный интеллект ChatGPT.\n",

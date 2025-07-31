@@ -2,8 +2,7 @@ import calendar
 from datetime import datetime, timedelta
 import sys
 import os
-
-from src.services.navigation_service import safe_edit_message_text
+from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
@@ -15,6 +14,7 @@ from src.constants import END, MENU, AVAILABLE_DATES, BACK
 from src.config.config import PERIOD_IN_MONTHS
 
 database_service = DatabaseService()
+navigation_service = NavigatonService()
 
 def get_handler():
     return [
@@ -36,7 +36,7 @@ async def select_month(update: Update, context: CallbackContext):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="📅 <b>Выберите доступный месяц для бронирования.</b>",
         reply_markup=reply_markup)
@@ -56,7 +56,7 @@ async def get_available_dates(update: Update, context: CallbackContext):
     from_date, to_date, booking = get_booking(month, year)
     available_date_message = string_helper.generate_available_slots(booking, from_date, to_date)
 
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text=f"📅 Доступные даты и время на {date_time_helper.get_month_name(month)}:\n\n"
             f"{available_date_message}",

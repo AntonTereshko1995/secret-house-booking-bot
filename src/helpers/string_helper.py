@@ -6,7 +6,7 @@ from db.models.gift import GiftBase
 from db.models.subscription import SubscriptionBase
 from db.models.booking import BookingBase
 from db.models.user import UserBase
-from src.helpers import sale_halper, subscription_helper, tariff_helper
+from src.helpers import subscription_helper, tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
@@ -107,9 +107,7 @@ def generate_booking_info_message(booking: BookingBase, user: UserBase, is_addit
         f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
         f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
         f"Количество гостей: {booking.number_of_guests}\n"
-        f"Комментарий: {booking.comment if booking.comment else ''}\n"
-        f"Скидка: {sale_halper.get_name(booking.sale)}\n"
-        f"Скидка коммент: {booking.sale_comment if booking.sale_comment else ''}\n")
+        f"Комментарий: {booking.comment if booking.comment else ''}\n")
     
     if count_of_booking:
         message += f"Количество броней: {count_of_booking}\n"

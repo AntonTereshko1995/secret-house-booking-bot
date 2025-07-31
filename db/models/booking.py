@@ -2,7 +2,6 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.decorator.type_decorator import IntEnumType
-from src.models.enum.sale import Sale
 from src.models.enum.tariff import Tariff
 from datetime import datetime
 from db.models.base import Base
@@ -33,8 +32,6 @@ class BookingBase(Base):
     price: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     prepayment_price: Mapped[float] = mapped_column(Float, nullable=False, default=PREPAYMENT)
     comment: Mapped[str] = mapped_column(String, nullable=True)
-    sale: Mapped[Sale] = mapped_column(IntEnumType(Sale), nullable=True)
-    sale_comment: Mapped[str] = mapped_column(String, nullable=True)
     calendar_event_id: Mapped[str] = mapped_column(String, nullable=True)
     gift_id: Mapped[int] = mapped_column(ForeignKey("gift.id"), nullable=True)
     subscription_id: Mapped[int] = mapped_column(ForeignKey("subscription.id"), nullable=True)

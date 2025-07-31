@@ -1,7 +1,5 @@
 import sys
 import os
-from src.helpers import sale_halper
-from src.models.enum.sale import Sale
 from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
 from src.models.rental_price import RentalPrice
@@ -14,23 +12,30 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 class CalculationRateService:
     _rates = List[RentalPrice]
 
-    def get_tariff(self, tariff: Tariff) -> RentalPrice:
-        if tariff == Tariff.SUBSCRIPTION:
+    def get_by_tariff(self, tariff: Tariff) -> RentalPrice:
+        if tariff == Tariff.SUBSCRIPTION or tariff == Tariff.GIFT:
             return None
         
         tariffs = self._try_load_tariffs()
         selected_tariff = next((rate for rate in tariffs if rate.tariff == tariff.value), None)
+        if selected_tariff is None:
+            raise ValueError(f"No RentalPrice found for tariff: {tariff}")
         return selected_tariff
     
-    def get_subscription(self, subscription_type: SubscriptionType) -> RentalPrice:
+    def get_by_subscription(self, subscription_type: SubscriptionType) -> RentalPrice:
         tariffs = self._try_load_tariffs()
         selected_subscription = next((tariff for tariff in tariffs if tariff.subscription_type == subscription_type.value), None)
+        if selected_subscription is None:
+            raise ValueError(f"No RentalPrice found for subscription type: {subscription_type}")
         return selected_subscription
 
     def get_price(self, tariff: Tariff = None, subscription_type: SubscriptionType = None) -> int:
         tariffs = self._try_load_tariffs()
-        if tariff != None:
-            return next((rate.price for rate in tariffs if rate.tariff == tariff.value), None)
+        if tariff is not None:
+            price = next((rate.price for rate in tariffs if rate.tariff == tariff.value), None)
+            if price is None:
+                raise ValueError(f"No price found for tariff: {tariff}")
+            return price
 
         if subscription_type != None:
             return next((tariff.price for tariff in tariffs if tariff.subscription_type == subscription_type.value), None)
@@ -43,10 +48,9 @@ class CalculationRateService:
             is_sauna: bool, 
             is_secret_room: bool, 
             is_second_room: bool,
-            is_photoshoot: bool,
+            is_photoshoot: bool = False,
             count_people: int = 0,
-            duration_hours: int = 0,
-            sale: Sale = Sale.NONE) -> int:
+            duration_hours: int = 0) -> int:
         price = 0
         extra_hours = duration_hours - rental_price.duration_hours
         if extra_hours > 0:
@@ -69,20 +73,17 @@ class CalculationRateService:
         else:
             price = rental_price.price
 
-        if is_sauna:
+        if is_sauna and rental_price.sauna_price > 0:
             price += rental_price.sauna_price
-        if is_secret_room:
+        if is_secret_room and rental_price.secret_room_price > 0:
             price += rental_price.secret_room_price
-        if is_second_room:
+        if is_second_room and rental_price.second_bedroom_price > 0:
             price += rental_price.second_bedroom_price
         if is_photoshoot:
             price += rental_price.photoshoot_price
         if count_people > rental_price.max_people:
             price += (count_people - rental_price.max_people) * rental_price.extra_people_price
 
-        if sale != None and sale != Sale.NONE:
-            percentage = sale_halper.get_percentage_sale(sale)
-            price = price - price * (percentage / 100)
         
         return price
     
@@ -116,7 +117,3 @@ class CalculationRateService:
         file_service = FileService()
         self._rates = file_service.get_tariff_rates()
         return self._rates
-    
-    def calculate_discounted_price(self, original_price, discount_percent):
-        discounted_price = original_price * (1 - discount_percent / 100)
-        return round(discounted_price / 10) * 10

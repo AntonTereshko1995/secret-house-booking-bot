@@ -4,7 +4,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db import database
 from src.services.logger_service import LoggerService
-from src.models.enum.sale import Sale
 from db.models.base import Base
 from db.models.user import UserBase
 from db.models.gift import GiftBase
@@ -249,8 +248,6 @@ class DatabaseService:
             number_of_guests: int, 
             price: float, 
             comment: str,
-            sale: Sale,
-            sale_comment: str,
             chat_id: int,
             gift_id: int = None, 
             subscription_id: int = None) -> BookingBase:
@@ -269,8 +266,6 @@ class DatabaseService:
                     has_secret_room = has_secret_room,
                     number_of_guests = number_of_guests,
                     comment = comment,
-                    sale = sale,
-                    sale_comment = sale_comment,
                     chat_id=chat_id,
                     price = price)
                 

@@ -1,7 +1,7 @@
 import sys
 import os
 from src.services.logger_service import LoggerService
-from src.services.navigation_service import safe_edit_message_text
+from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, Update)
@@ -16,6 +16,7 @@ from src.constants import (
 
 user_contact: str
 database_service = DatabaseService()
+navigation_service = NavigatonService()
 
 def get_handler():
     return [
@@ -32,7 +33,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"

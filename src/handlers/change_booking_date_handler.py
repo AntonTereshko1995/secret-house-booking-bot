@@ -1,6 +1,7 @@
 import sys
 import os
-from src.services.navigation_service import safe_edit_message_text
+
+from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.models.enum.tariff import Tariff
@@ -25,15 +26,17 @@ from src.constants import (
     CHANGE_BOOKING_DATE, 
     CONFIRM)
 
+database_service = DatabaseService()
+calculation_rate_service = CalculationRateService()
+calendar_service = CalendarService()
+navigation_service = NavigatonService()
+
 user_contact = ''
 old_booking_date = date.today()
 start_booking_date = datetime.today()
 finish_booking_date = datetime.today()
 max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
 min_date_booking = date.today() - relativedelta(day=1)
-database_service = DatabaseService()
-calculation_rate_service = CalculationRateService()
-calendar_service = CalendarService()
 booking: BookingBase = None
 rental_price: RentalPrice = None
 selected_bookings = []

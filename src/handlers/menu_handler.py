@@ -1,7 +1,7 @@
 import sys
 import os
 
-from src.services.navigation_service import safe_edit_message_text
+from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services import job_service
@@ -15,7 +15,8 @@ from src.constants import (
     BOOKING_VALIDATE_USER,
     BOOKING_WRITE_CODE,
     CANCEL_BOOKING,
-    CANCEL_BOOKING_VALIDATE_USER, 
+    CANCEL_BOOKING_VALIDATE_USER,
+    CASH_PAY, 
     CHANGE_BOOKING_DATE,
     CHANGE_BOOKING_DATE_VALIDATE_USER, 
     GIFT_PHOTO_UPLOAD, 
@@ -34,6 +35,7 @@ from src.constants import (
 from src.handlers import booking_handler, change_booking_date_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler, subscription_handler, user_booking 
 
 job = job_service.JobService()
+navigation_service = NavigatonService()
 
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
@@ -93,7 +95,7 @@ def get_handler() -> ConversationHandler:
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
             BOOKING_PHOTO_UPLOAD: [
                 MessageHandler(filters.PHOTO | filters.Document.PDF, booking_handler.handle_photo),
-                CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
+                CallbackQueryHandler(booking_handler.cash_pay_booking, pattern=f"^BOOKING-PAY_({CASH_PAY})$")],
             BOOKING_WRITE_CODE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, booking_handler.write_secret_code),
                 CallbackQueryHandler(show_menu, pattern=f"^BOOKING-CODE_({END})$")],
@@ -148,7 +150,7 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await update.callback_query.answer()
         except:
             pass
-        await safe_edit_message_text(
+        await navigation_service.safe_edit_message_text(
             callback_query=update.callback_query,
             text=text,
             reply_markup=InlineKeyboardMarkup(buttons))
