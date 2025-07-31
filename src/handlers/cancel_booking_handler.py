@@ -1,7 +1,7 @@
 import sys
 import os
 from src.services.logger_service import LoggerService
-from src.services.navigation_service import safe_edit_message_text
+from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.calendar_service import CalendarService
 from datetime import date
@@ -15,6 +15,7 @@ from src.constants import CANCEL_BOOKING_VALIDATE_USER, END, MENU, CANCEL_BOOKIN
 user_contact = ''
 database_service = DatabaseService()
 calendar_service = CalendarService()
+navigation_service = NavigatonService()
 selected_bookings = []
 
 def get_handler():
@@ -36,7 +37,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.answer()
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="📲 Укажите ваш <b>Telegram</b> или номер телефона:\n\n"
             "🔹 <b>Telegram:</b> @username (начинайте с @)\n"
@@ -87,7 +88,7 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text=f"❌ <b>Бронирование отменено</b> на <b>{booking_date.strftime('%d.%m.%Y')}</b>.\n\n"
             "📌 Если у вас возникли вопросы, свяжитесь с администратором.",
@@ -120,7 +121,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Назад в меню", callback_data=f"CANCEL-CONFIRM_{END}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.answer()
-    await safe_edit_message_text(
+    await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text=f"❌ <b>Подтвердите отмену бронирования</b>.\n\n"
             "🔄 Для продолжения выберите соответствующую опцию.",

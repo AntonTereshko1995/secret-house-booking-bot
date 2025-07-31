@@ -1,5 +1,6 @@
 import sys
 import os
+from dataclasses_json import dataclass_json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.decorator.type_decorator import IntEnumType
 from datetime import datetime
@@ -11,6 +12,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import relationship
 from src.models.enum.subscription_type import SubscriptionType
 
+@dataclass_json
 class SubscriptionBase(Base):
     __tablename__ = 'subscription'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
