@@ -13,7 +13,7 @@ T = TypeVar('T')  # Generic type for model classes
 
 @singleton
 class RedisService:
-    def __init__(self, host='localhost', port=6379, db=0, ttl_hours=24):
+    def __init__(self, host='data/', port=6379, db=0, ttl_hours=24):
         self.__client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
         self.__ttl = timedelta(hours=ttl_hours)
         self.__navigaton_service = NavigatonService()
