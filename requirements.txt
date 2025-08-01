@@ -19,3 +19,4 @@ flask
 requests
 alembic
 driver
+dataclasses_json
