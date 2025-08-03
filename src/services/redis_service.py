@@ -9,11 +9,11 @@ from src.services.navigation_service import NavigatonService
 
 @singleton
 class RedisService:
-    def __init__(self, host='amvera-the-secret-house-run-redis', port=6379, db=0, ttl_hours=24):
+    def __init__(self, host='tsh-bot-the-secret-house.db-msk0.amvera.tech', port=6379, db=0, ttl_hours=24):
         self.__client = redis.Redis(
             host=host,
             port=port, 
-            password="1234567890", 
+            # password="1234567890", 
             db=db, 
             decode_responses=True,
             ssl=True,  # Включаем SSL
