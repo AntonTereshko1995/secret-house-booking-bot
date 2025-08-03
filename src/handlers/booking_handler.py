@@ -1,6 +1,5 @@
 import sys
 import os
-from src.models.booking_draft import BookingDraft
 from src.models.enum.booking_step import BookingStep
 from src.services.navigation_service import NavigatonService
 from src.services.redis_service import RedisService
@@ -8,16 +7,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from matplotlib.dates import relativedelta
 from db.models.booking import BookingBase
-from db.models.subscription import SubscriptionBase
-from db.models.gift import GiftBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
 from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS, BANK_PHONE_NUMBER, BANK_CARD_NUMBER
-from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
-from datetime import date, datetime, time, timedelta
-from telegram import (Document, InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, Update)
-from telegram.ext import (ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters)
+from datetime import date, time, timedelta
+from telegram import (Document, InlineKeyboardButton, InlineKeyboardMarkup, Update)
+from telegram.ext import (ContextTypes, CallbackQueryHandler)
 from src.handlers import menu_handler
 from src.helpers import date_time_helper, string_helper, string_helper, tariff_helper, bedroom_halper
 from src.handlers import admin_handler

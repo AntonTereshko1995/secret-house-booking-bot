@@ -1,19 +1,15 @@
 import redis
-import json
 from datetime import datetime, timedelta
-from typing import Optional, Type, TypeVar
+from typing import Optional
 from singleton_decorator import singleton
 from telegram import Update
 from src.models.booking_draft import BookingDraft
 from src.models.enum.tariff import Tariff
-from src.models.rental_price import RentalPrice
 from src.services.navigation_service import NavigatonService
-
-T = TypeVar('T')  # Generic type for model classes
 
 @singleton
 class RedisService:
-    def __init__(self, host='data/', port=6379, db=0, ttl_hours=24):
+    def __init__(self, host='amvera-the-secret-house-run-tsh-bot', port=6379, db=0, ttl_hours=24):
         self.__client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
         self.__ttl = timedelta(hours=ttl_hours)
         self.__navigaton_service = NavigatonService()
