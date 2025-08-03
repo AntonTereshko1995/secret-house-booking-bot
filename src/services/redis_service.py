@@ -9,15 +9,14 @@ from src.services.navigation_service import NavigatonService
 
 @singleton
 class RedisService:
-    def __init__(self, host='tsh-bot-the-secret-house.db-msk0.amvera.tech', port=6379, db=0, ttl_hours=24):
+    def __init__(self, host='redis-the-secret-house.db-msk0.amvera.tech', port=6379, ttl_hours=24):
         self.__client = redis.Redis(
             host=host,
             port=port, 
             # password="1234567890", 
-            db=db, 
             decode_responses=True,
             ssl=True,  # Включаем SSL
-            ssl_cert_reqs=None)  # Отключаем проверку сертификата, если нужно
+            ssl_cert_reqs=None)
         self.__ttl = timedelta(hours=ttl_hours)
         self.__navigaton_service = NavigatonService()
 
