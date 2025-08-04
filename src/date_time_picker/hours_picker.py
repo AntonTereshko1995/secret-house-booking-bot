@@ -28,7 +28,7 @@ def create_hours_picker(date=None, free_slots=None, action_text="", callback_pre
         for slot in free_slots:
             start_time, end_time = slot
             current_time = start_time
-            while current_time < end_time:
+            while current_time <= end_time:
                 if current_time.hour >= hour:
                     time_slots.append(current_time)
                 next_time = (datetime.combine(now.date(), current_time) + timedelta(hours=1)).time()

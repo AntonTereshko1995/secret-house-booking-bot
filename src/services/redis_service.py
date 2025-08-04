@@ -6,16 +6,16 @@ from telegram import Update
 from src.models.booking_draft import BookingDraft
 from src.models.enum.tariff import Tariff
 from src.services.navigation_service import NavigatonService
+from src.config.config import REDIS_URL, REDIS_PORT, REDIS_SSL
 
 @singleton
 class RedisService:
-    def __init__(self, host='redis-the-secret-house.db-msk0.amvera.tech', port=6379, ttl_hours=24):
+    def __init__(self, ttl_hours=24):
         self.__client = redis.Redis(
-            host=host,
-            port=port, 
-            # password="1234567890", 
+            host=REDIS_URL,
+            port=REDIS_PORT, 
             decode_responses=True,
-            ssl=True,  # Включаем SSL
+            ssl=REDIS_SSL,
             ssl_cert_reqs=None)
         self.__ttl = timedelta(hours=ttl_hours)
         self.__navigaton_service = NavigatonService()
