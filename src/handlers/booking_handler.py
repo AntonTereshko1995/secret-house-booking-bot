@@ -699,14 +699,18 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     feature_booking = database_service.get_booking_by_day(booking.start_booking_date.date())
     available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
-    message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
-                f"Вы выбрали дату заезда: {booking.start_booking_date.strftime('%d.%m.%Y')}.\n"
-                "Теперь укажите удобное время заезда.\n")
-    if booking.tariff == Tariff.WORKER:
-        message += (
-            "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
-            "🕚 11:00 – 20:00\n"
-            "🌙 22:00 – 09:00")
+    if len(available_slots) == 0:
+        message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.start_booking_date.strftime('%d.%m.%Y')}.</b>\n")
+    else:
+        message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
+                    f"Вы выбрали дату заезда: {booking.start_booking_date.strftime('%d.%m.%Y')}.\n"
+                    "Теперь укажите удобное время заезда.\n")
+        if booking.tariff == Tariff.WORKER:
+            message += (
+                "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
+                "🕚 11:00 – 20:00\n"
+                "🌙 22:00 – 09:00")
+            
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
@@ -738,16 +742,20 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     feature_booking = database_service.get_booking_by_day(booking.finish_booking_date.date())
     start_time = time(0, 0) if booking.start_booking_date.date() != booking.finish_booking_date.date() else (booking.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
-    await update.callback_query.answer()
-    await navigation_service.safe_edit_message_text(
-        callback_query=update.callback_query,
-        text="⏳ <b>Выберите времня завершения бронирования.</b>\n"
+    if len(available_slots) == 0:
+        message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.finish_booking_date.strftime('%d.%m.%Y')}.</b>\n")
+    else:
+        message = ("⏳ <b>Выберите времня завершения бронирования.</b>\n"
             f"Вы выбрали заезд: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             f"Вы выбрали дату выезда: {booking.finish_booking_date.strftime('%d.%m.%Y')}.\n"
             "Теперь укажите время, когда хотите освободить дом.\n\n"
             "📌 Обратите внимание:\n"
             "🔹 Выезд должен быть позже времени заезда.\n"
-            f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n",
+            f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n")
+    await update.callback_query.answer()
+    await navigation_service.safe_edit_message_text(
+        callback_query=update.callback_query,
+        text=message,
         reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=booking.finish_booking_date.date(), callback_prefix="-FINISH"))
     return BOOKING
 
