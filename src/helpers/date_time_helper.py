@@ -45,19 +45,21 @@ def parse_date(date_string: str, date_format="%d.%m.%Y") -> datetime:
         return None
     
 def get_free_time_slots(
-    bookings,
-    day: date,
-    start_time: time = time(0, 0),
-    cleaning_time: timedelta = timedelta(hours=CLEANING_HOURS),
-    minus_time_from_start: bool = False,
-    add_time_to_end: bool = False,
-):
-    def floor_to_hour(dt: datetime) -> datetime:
+        bookings,
+        day: date,
+        start_time: time = time(0, 0),
+        cleaning_time: timedelta = timedelta(hours=CLEANING_HOURS),
+        minus_time_from_start: bool = False,
+        add_time_to_end: bool = False):
+    def floor_hour(dt: datetime) -> datetime:
         return dt.replace(minute=0, second=0, microsecond=0)
 
-    def ceil_to_hour(dt: datetime) -> datetime:
-        return dt if dt.minute == 0 and dt.second == 0 and dt.microsecond == 0 \
-                 else dt.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    def ceil_hour(dt: datetime) -> datetime:
+        return dt if dt.minute == dt.second == dt.microsecond == 0 \
+               else dt.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+
+    def t00(dt: datetime) -> time:        # HH:00
+        return time(dt.hour, 0)
 
     now = datetime.now()
     is_today = day == now.date()
@@ -65,41 +67,43 @@ def get_free_time_slots(
     if is_today:
         base_dt = datetime.combine(day, start_time)
         base_dt = base_dt if now.time() < start_time else now
-        day_start_dt = ceil_to_hour(base_dt)
+        day_start = ceil_hour(base_dt)
     else:
-        day_start_dt = datetime.combine(day, start_time)
+        day_start = datetime.combine(day, start_time)
 
-    day_end_dt = datetime.combine(day, time(23, 59))
+    day_end_real = datetime.combine(day, time(23, 59)) 
     free_slots = []
 
     if not bookings:
-        if day_start_dt < day_end_dt:
-            free_slots.append((day_start_dt.time().replace(minute=0), floor_to_hour(day_end_dt).time()))
+        if day_start < day_end_real:
+            free_slots.append((t00(day_start), time(23, 59)))
         return free_slots
 
-    previous_end = day_start_dt
+    prev_end = day_start
 
     for b in sorted(bookings, key=lambda x: x.start_date):
-        b_start = datetime.combine(day, b.start_date.time()) if b.start_date.date() == day else day_start_dt
-        b_end   = datetime.combine(day, b.end_date.time())   if b.end_date.date()   == day else day_end_dt
+        b_start = datetime.combine(day, b.start_date.time()) \
+            if b.start_date.date() == day else day_start
+        b_end = datetime.combine(day, b.end_date.time()) \
+            if b.end_date.date() == day else day_end_real
 
         if minus_time_from_start:
             b_start -= cleaning_time
         if add_time_to_end:
             b_end += cleaning_time
 
-        free_start_dt = ceil_to_hour(previous_end)
-        free_end_dt   = floor_to_hour(b_start)
-        if free_start_dt < free_end_dt:  # есть место хотя бы в 1 час
-            free_slots.append((free_start_dt.time(), free_end_dt.time()))
+        free_start = ceil_hour(prev_end)
+        free_end = floor_hour(b_start)
 
-        if b_end > previous_end:
-            previous_end = b_end
+        if free_start < free_end:
+            free_slots.append((t00(free_start), t00(free_end)))
 
-    free_start_dt = ceil_to_hour(previous_end if not is_today else max(previous_end, now))
-    free_end_dt   = floor_to_hour(day_end_dt)
-    if free_start_dt < free_end_dt:
-        free_slots.append((free_start_dt.time(), free_end_dt.time()))
+        if b_end > prev_end:
+            prev_end = b_end
+
+    tail_start = ceil_hour(prev_end if not is_today else max(prev_end, now))
+    if tail_start < day_end_real:
+        free_slots.append((t00(tail_start), time(23, 59)))
 
     return free_slots
 
