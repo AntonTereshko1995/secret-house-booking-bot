@@ -7,7 +7,7 @@ from src.services.secret_manager_service import SecretManagerService
 secret_manager_service = SecretManagerService()
 
 TELEGRAM_CONTACT = "https://t.me/the_secret_house"
-PERIOD_IN_MONTHS = 4
+PERIOD_IN_MONTHS = 6
 MAX_PERIOD_FOR_GIFT_IN_MONTHS = 3
 MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS = 3
 PREPAYMENT = 80
