@@ -281,13 +281,14 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_day(start_booking_date.date(), booking.id)
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, start_booking_date.date())
     if len(available_slots) == 0:
          message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.start_booking_date.strftime('%d.%m.%Y')}.</b>\n")    
     else:
         message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
             f"Вы выбрали дату заезда: {start_booking_date.strftime('%d.%m.%Y')}.\n"
-            "Теперь укажите удобное время заезда.\n")
+            "Теперь укажите удобное время заезда.\n"
+            "⛔ - время уже забронировано\n")
         if booking.tariff == Tariff.WORKER:
             message += (
                 "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
@@ -319,18 +320,15 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_day(finish_booking_date.date(), booking.id)
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time)
     if len(available_slots) == 0:
         message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.finish_booking_date.strftime('%d.%m.%Y')}.</b>\n")
     else:
         message = ("⏳ <b>Выберите времня завершения бронирования.</b>\n"
-            f"Вы выбрали заезд: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
-            f"Вы выбрали дату выезда: {finish_booking_date.strftime('%d.%m.%Y')}.\n"
-            "Теперь укажите время, когда хотите освободить дом.\n\n"
-            "📌 Обратите внимание:\n"
-            "🔹 Выезд должен быть позже времени заезда.\n"
-            f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n")
-        
+            f"Вы выбрали заезд: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
+            f"Вы выбрали дату выезда: {booking.finish_booking_date.strftime('%d.%m.%Y')}.\n"
+            "Теперь укажите время, когда хотите освободить дом.\n"
+            "⛔ - время уже забронировано\n")
     await update.callback_query.answer()    
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,

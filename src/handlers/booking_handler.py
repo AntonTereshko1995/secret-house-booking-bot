@@ -686,25 +686,30 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = today
+
+    feature_booking = database_service.get_booking_by_period(min_date_booking, max_date_booking)
+    available_days = date_time_helper.get_free_dayes_slots(feature_booking)
+
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text=message,
-        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START"))
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START", available_days=available_days))
     return BOOKING
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_booking_field(update, "navigation_step", BookingStep.START_TIME)
     booking = redis_service.get_booking(update)
 
-    feature_booking = database_service.get_booking_by_day(booking.start_booking_date.date())
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.start_booking_date.date(), minus_time_from_start=True, add_time_to_end=True)
+    feature_booking = database_service.get_booking_by_period(booking.start_booking_date.date() - timedelta(days=2), booking.start_booking_date.date() + timedelta(days=2))
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.start_booking_date.date())
     if len(available_slots) == 0:
         message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.start_booking_date.strftime('%d.%m.%Y')}.</b>\n")
     else:
         message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
                     f"Вы выбрали дату заезда: {booking.start_booking_date.strftime('%d.%m.%Y')}.\n"
-                    "Теперь укажите удобное время заезда.\n")
+                    "Теперь укажите удобное время заезда.\n"
+                    "⛔ - время уже забронировано\n")
         if booking.tariff == Tariff.WORKER:
             message += (
                 "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
@@ -725,6 +730,10 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (booking.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
+
+    feature_booking = database_service.get_booking_by_period(min_date_booking, max_date_booking)
+    available_days = date_time_helper.get_free_dayes_slots(feature_booking)
+    
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
@@ -732,26 +741,24 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"Вы выбрали дату и время заезда: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "Теперь укажите день, когда планируете выехать.\n"
             "📌 Выезд должен быть позже времени заезда.",
-        reply_markup=calendar_picker.create_calendar(min_date_booking, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
+        reply_markup=calendar_picker.create_calendar(min_date_booking, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH", available_days=available_days))
     return BOOKING
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_booking_field(update, "navigation_step", BookingStep.FINISH_TIME)
     booking = redis_service.get_booking(update)
 
-    feature_booking = database_service.get_booking_by_day(booking.finish_booking_date.date())
+    feature_booking = database_service.get_booking_by_period(booking.finish_booking_date.date() - timedelta(days=2), booking.finish_booking_date.date() + timedelta(days=2))
     start_time = time(0, 0) if booking.start_booking_date.date() != booking.finish_booking_date.date() else (booking.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.finish_booking_date.date(), start_time=start_time, minus_time_from_start=True, add_time_to_end=True)
+    available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.finish_booking_date.date(), start_time=start_time)
     if len(available_slots) == 0:
         message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.finish_booking_date.strftime('%d.%m.%Y')}.</b>\n")
     else:
         message = ("⏳ <b>Выберите времня завершения бронирования.</b>\n"
             f"Вы выбрали заезд: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             f"Вы выбрали дату выезда: {booking.finish_booking_date.strftime('%d.%m.%Y')}.\n"
-            "Теперь укажите время, когда хотите освободить дом.\n\n"
-            "📌 Обратите внимание:\n"
-            "🔹 Выезд должен быть позже времени заезда.\n"
-            f"🔹 После каждого бронирования требуется {CLEANING_HOURS} часа на уборку.\n")
+            "Теперь укажите время, когда хотите освободить дом.\n"
+            "⛔ - время уже забронировано\n")
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,

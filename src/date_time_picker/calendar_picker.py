@@ -8,7 +8,7 @@ import calendar
 def create_callback_data(action, year, month, day, prefix: str):
     return CALENDAR_CALLBACK + prefix + "_" + "_".join([action, str(year), str(month), str(day)])
 
-def create_calendar(selected_date: date = None, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = ""):
+def create_calendar(selected_date: date = None, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = "", available_days: list = None):
     if selected_date == None: 
         selected_date = date.now() 
 
@@ -30,10 +30,23 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     for week in my_calendar:
         row = []
         for day in week:
-            if day == 0 or (min_date is not None and date(selected_date.year, selected_date.month, day) < min_date):
-                row.append(InlineKeyboardButton(" ",callback_data = data_ignore))
+            if day == 0:
+                # Empty day (outside month)
+                row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
+            elif min_date is not None and date(selected_date.year, selected_date.month, day) < min_date:
+                # Day is before minimum date
+                row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
+            elif available_days is not None:
+                # Check if day is in available days list
+                current_date = date(selected_date.year, selected_date.month, day)
+                if current_date in available_days:
+                    row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
+                else:
+                    # Day is not available - show as disabled
+                    row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
             else:
-                row.append(InlineKeyboardButton(str(day), callback_data = create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
+                # No available_days list provided - show all days
+                row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
         keyboard.append(row)
 
     #Last row - Buttons
