@@ -68,9 +68,10 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     keyboard.append(row)
     return InlineKeyboardMarkup(keyboard)
 
-async def process_calendar_selection(update, context, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = ""):
-    # Selected, Time, Is_action
-    return_data = (False, None, False)
+# async def process_calendar_selection(update, context, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = "", available_days: list = None):
+async def process_calendar_selection(update, context):
+    # Selected, Date, Is_action, Is_next_month, Is_prev_month
+    return_data = (False, None, False, False, False)
     query = update.callback_query
     try:
         (_, action, year, month, day) = string_helper.separate_callback_data(query.data)
@@ -78,27 +79,19 @@ async def process_calendar_selection(update, context, min_date: date = None, max
         if action == str(IGNORE):
             await context.bot.answer_callback_query(callback_query_id=query.id)
         if action == str(ACTION):
-            return_data = (False, None, True)
+            return_data = (False, None, True, False, False)
         elif action == "DAY":
             await context.bot.edit_message_text(
                 text=query.message.text,
                 chat_id=query.message.chat_id,
                 message_id=query.message.message_id)
-            return_data = (True, datetime(int(year), int(month), int(day)), False)
+            return_data = (True, datetime(int(year), int(month), int(day)), False, False, False)
         elif action == "PREV-MONTH":
             prev_month = selected_date - timedelta(days = 1)
-            await context.bot.edit_message_text(
-                text=query.message.text,
-                chat_id=query.message.chat_id,
-                message_id=query.message.message_id,
-                reply_markup = create_calendar(prev_month.date(), min_date, max_date, action_text, callback_prefix))
+            return_data = (False, prev_month, False, False, True)
         elif action == "NEXT-MONTH":
             next_month = selected_date + timedelta(days = 31)
-            await context.bot.edit_message_text(
-                text=query.message.text,
-                chat_id=query.message.chat_id,
-                message_id=query.message.message_id,
-                reply_markup = create_calendar(next_month.date(), min_date, max_date, action_text, callback_prefix))
+            return_data = (False, next_month, False, True, False)
         else:
             await context.bot.answer_callback_query(callback_query_id = query.id, text = "Something went wrong!")
         return return_data

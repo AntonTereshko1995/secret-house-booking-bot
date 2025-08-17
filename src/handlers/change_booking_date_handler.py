@@ -114,7 +114,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = date.today()
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START")
+    selected, selected_date, is_action, is_next_month, is_prev_month = await calendar_picker.process_calendar_selection(update, context)
     if selected:
         if not tariff_helper.is_booking_available(booking.tariff, selected_date):
             LoggerService.warning(__name__, f"start date is incorrect for {booking.tariff}", update)
@@ -131,6 +131,15 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif is_action:
         LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': 'cancel'})
         return await back_navigation(update, context)
+    elif is_next_month or is_prev_month:
+        query = update.callback_query
+        start_period, end_period = date_time_helper.month_bounds(selected_date)
+        feature_booking = database_service.get_booking_by_period(start_period, end_period)
+        available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=start_period.month, target_year=start_period.year)
+        await navigation_service.safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=query.message.text,
+            reply_markup=calendar_picker.create_calendar(selected_date, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START", available_days=available_days))
     return CHANGE_BOOKING_DATE
 
 async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,7 +159,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
-    selected, selected_date, is_action = await calendar_picker.process_calendar_selection(update, context, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-FINISH")
+    selected, selected_date, is_action, is_next_month, is_prev_month = await calendar_picker.process_calendar_selection(update, context)
     if selected:
         global finish_booking_date
         finish_booking_date = selected_date
@@ -159,6 +168,15 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif is_action:
         LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': 'back'})
         return await start_time_message(update, context)
+    elif is_next_month or is_prev_month:
+            query = update.callback_query
+            start_period, end_period = date_time_helper.month_bounds(selected_date)
+            feature_booking = database_service.get_booking_by_period(start_period, end_period)
+            available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=start_period.month, target_year=start_period.year)
+            await navigation_service.safe_edit_message_text(
+                callback_query=update.callback_query,
+                text=query.message.text,
+                reply_markup=calendar_picker.create_calendar(selected_date, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH", available_days=available_days))
     return CHANGE_BOOKING_DATE
 
 async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -265,25 +283,29 @@ async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = today
- 
+    start_period, end_period = date_time_helper.month_bounds(today)
+    feature_booking = database_service.get_booking_by_period(start_period, end_period)
+    available_days = date_time_helper.get_free_dayes_slots(feature_booking)
+
     if error_message:
         message = error_message
     else:
         message = ("✅ <b>Ваше бронирование найдено!</b>\n\n"
             "📅 <b>Введите новую дату, на которую хотите перенести бронирование.</b>")
 
-    await update.callback_query.answer()    
+    await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
-        text=message, 
-        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START"))
+        text=message,
+        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START", available_days=available_days))
     return CHANGE_BOOKING_DATE
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    feature_booking = database_service.get_booking_by_day(start_booking_date.date(), booking.id)
+    feature_booking = database_service.get_booking_by_period(start_booking_date.date() - timedelta(days=2), start_booking_date.date() + timedelta(days=2))
     available_slots = date_time_helper.get_free_time_slots(feature_booking, start_booking_date.date())
+
     if len(available_slots) == 0:
-         message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.start_booking_date.strftime('%d.%m.%Y')}.</b>\n")    
+         message = (f"⏳ <b>К сожалению, все слоты заняты для {start_booking_date.strftime('%d.%m.%Y')}.</b>\n")    
     else:
         message = ("⏳ <b>Выберите время начала бронирования.</b>\n"
             f"Вы выбрали дату заезда: {start_booking_date.strftime('%d.%m.%Y')}.\n"
@@ -298,8 +320,8 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.answer()        
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
-        text=message, 
-        reply_markup = hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date(), callback_prefix="-START"))
+        text=message,
+        reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=start_booking_date.date(), callback_prefix="-START"))
     return CHANGE_BOOKING_DATE
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -307,32 +329,37 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     
+    start_period, end_period = date_time_helper.month_bounds(start_booking_date.date())
+    feature_booking = database_service.get_booking_by_period(start_period, end_period)
+    available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=start_period.month, target_year=start_period.year)
+
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="📅 <b>Выберите дату завершения бронирования.</b>\n"
             f"Вы выбрали дату и время заезда: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
             "Теперь укажите день, когда планируете выехать.\n"
-            "📌 Выезд должен быть позже времени заезда.", 
-        reply_markup=calendar_picker.create_calendar(min_date_booking, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH"))
+            "📌 Выезд должен быть позже времени заезда.",
+        reply_markup=calendar_picker.create_calendar(start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH", available_days=available_days))
     return CHANGE_BOOKING_DATE
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    feature_booking = database_service.get_booking_by_day(finish_booking_date.date(), booking.id)
+    feature_booking = database_service.get_booking_by_period(finish_booking_date.date() - timedelta(days=2), finish_booking_date.date() + timedelta(days=2))
     start_time = time(0, 0) if start_booking_date.date() != finish_booking_date.date() else (start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_booking_date.date(), start_time=start_time)
+
     if len(available_slots) == 0:
-        message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.finish_booking_date.strftime('%d.%m.%Y')}.</b>\n")
+        message = (f"⏳ <b>К сожалению, все слоты заняты для {finish_booking_date.strftime('%d.%m.%Y')}.</b>\n")
     else:
         message = ("⏳ <b>Выберите времня завершения бронирования.</b>\n"
-            f"Вы выбрали заезд: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
-            f"Вы выбрали дату выезда: {booking.finish_booking_date.strftime('%d.%m.%Y')}.\n"
+            f"Вы выбрали заезд: {start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
+            f"Вы выбрали дату выезда: {finish_booking_date.strftime('%d.%m.%Y')}.\n"
             "Теперь укажите время, когда хотите освободить дом.\n"
             "⛔ - время уже забронировано\n")
     await update.callback_query.answer()    
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
-        text=message, 
+        text=message,
         reply_markup=hours_picker.create_hours_picker(action_text="Назад", free_slots=available_slots, date=finish_booking_date.date(), callback_prefix="-FINISH"))
     return CHANGE_BOOKING_DATE
 

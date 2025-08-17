@@ -1,5 +1,6 @@
 from datetime import datetime, time, date, timedelta
 from typing import Iterable, List, Tuple
+from matplotlib.dates import relativedelta
 from src.config.config import CLEANING_HOURS
 
 def get_month_name(month: int):
@@ -169,6 +170,11 @@ def get_free_dayes_slots(
     available_days = _update_availability_with_bookings(available_days, date_bookings, today, now)
     
     return available_days
+
+def month_bounds(base: date) -> tuple[date, date]:
+    first = base.replace(day=1)
+    last = first + relativedelta(months=1) - timedelta(days=1)
+    return first, last
 
 def _get_month_end_date(year: int, month: int) -> date:
     """Get the last day of the specified month"""
