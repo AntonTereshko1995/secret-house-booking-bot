@@ -8,7 +8,7 @@ import calendar
 def create_callback_data(action, year, month, day, prefix: str):
     return CALENDAR_CALLBACK + prefix + "_" + "_".join([action, str(year), str(month), str(day)])
 
-def create_calendar(selected_date: date = None, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = ""):
+def create_calendar(selected_date: date = None, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = "", available_days: list = None):
     if selected_date == None: 
         selected_date = date.now() 
 
@@ -30,10 +30,23 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     for week in my_calendar:
         row = []
         for day in week:
-            if day == 0 or (min_date is not None and date(selected_date.year, selected_date.month, day) < min_date):
-                row.append(InlineKeyboardButton(" ",callback_data = data_ignore))
+            if day == 0:
+                # Empty day (outside month)
+                row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
+            elif min_date is not None and date(selected_date.year, selected_date.month, day) < min_date:
+                # Day is before minimum date
+                row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
+            elif available_days is not None:
+                # Check if day is in available days list
+                current_date = date(selected_date.year, selected_date.month, day)
+                if current_date in available_days:
+                    row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
+                else:
+                    # Day is not available - show as disabled
+                    row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
             else:
-                row.append(InlineKeyboardButton(str(day), callback_data = create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
+                # No available_days list provided - show all days
+                row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
         keyboard.append(row)
 
     #Last row - Buttons
@@ -55,9 +68,10 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
     keyboard.append(row)
     return InlineKeyboardMarkup(keyboard)
 
-async def process_calendar_selection(update, context, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = ""):
-    # Selected, Time, Is_action
-    return_data = (False, None, False)
+# async def process_calendar_selection(update, context, min_date: date = None, max_date: date = None, action_text: str = " ", callback_prefix: str = "", available_days: list = None):
+async def process_calendar_selection(update, context):
+    # Selected, Date, Is_action, Is_next_month, Is_prev_month
+    return_data = (False, None, False, False, False)
     query = update.callback_query
     try:
         (_, action, year, month, day) = string_helper.separate_callback_data(query.data)
@@ -65,27 +79,19 @@ async def process_calendar_selection(update, context, min_date: date = None, max
         if action == str(IGNORE):
             await context.bot.answer_callback_query(callback_query_id=query.id)
         if action == str(ACTION):
-            return_data = (False, None, True)
+            return_data = (False, None, True, False, False)
         elif action == "DAY":
             await context.bot.edit_message_text(
                 text=query.message.text,
                 chat_id=query.message.chat_id,
                 message_id=query.message.message_id)
-            return_data = (True, datetime(int(year), int(month), int(day)), False)
+            return_data = (True, datetime(int(year), int(month), int(day)), False, False, False)
         elif action == "PREV-MONTH":
             prev_month = selected_date - timedelta(days = 1)
-            await context.bot.edit_message_text(
-                text=query.message.text,
-                chat_id=query.message.chat_id,
-                message_id=query.message.message_id,
-                reply_markup = create_calendar(prev_month.date(), min_date, max_date, action_text, callback_prefix))
+            return_data = (False, prev_month, False, False, True)
         elif action == "NEXT-MONTH":
             next_month = selected_date + timedelta(days = 31)
-            await context.bot.edit_message_text(
-                text=query.message.text,
-                chat_id=query.message.chat_id,
-                message_id=query.message.message_id,
-                reply_markup = create_calendar(next_month.date(), min_date, max_date, action_text, callback_prefix))
+            return_data = (False, next_month, False, True, False)
         else:
             await context.bot.answer_callback_query(callback_query_id = query.id, text = "Something went wrong!")
         return return_data

@@ -21,16 +21,6 @@ secret_manager_service = SecretManagerService()
 @singleton
 class CalendarService:
     def __init__(self):
-
-        # Local file
-        # credentials = service_account.Credentials.from_service_account_file(
-        #     SERVICE_ACCOUNT_FILE, 
-        #     scopes=SCOPES)
-        
-        # Google cloud
-        # credentials_json = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
-
-        # Getenv
         credentials_base64 = os.getenv("GOOGLE_CREDENTIALS")
         credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
         credentials_dict = json.loads(credentials_json)

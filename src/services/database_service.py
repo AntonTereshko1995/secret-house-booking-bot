@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -368,7 +368,7 @@ class DatabaseService:
             print(f"Error in get_booking_by_period: {e}")
             LoggerService.error(__name__, f"get_booking_by_period", e)
 
-    def get_booking_by_day(self, target_date: date, except_booking_id: int = None):
+    def get_booking_by_day(self, target_date: date, except_booking_id: int = None) -> Sequence[BookingBase]:
         try:
             with self.Session() as session:
                 start_of_day = datetime.combine(target_date, datetime.min.time())
@@ -401,6 +401,55 @@ class DatabaseService:
         except Exception as e:
             print(f"Error in get_booking_by_day: {e}")
             LoggerService.error(__name__, f"get_booking_by_day", e)
+
+    def get_bookings_by_month(self, target_month: int, target_year: int) -> Sequence[BookingBase]:
+        """
+        Returns a list of bookings for a specific month
+        """
+        try:
+            if target_year is None:
+                target_year = datetime.now().year
+                
+            with self.Session() as session:
+                # Get start and end of the month
+                start_of_month = datetime(target_year, target_month, 1)
+                if target_month == 12:
+                    end_of_month = datetime(target_year + 1, 1, 1) - timedelta(days=1)
+                else:
+                    end_of_month = datetime(target_year, target_month + 1, 1) - timedelta(days=1)
+                
+                # Get all bookings that overlap with the month
+                query = select(BookingBase).where(
+                    and_(
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True,
+                        or_(
+                            and_(
+                                BookingBase.start_date >= start_of_month,
+                                BookingBase.start_date <= end_of_month
+                            ),
+                            and_(
+                                BookingBase.end_date >= start_of_month,
+                                BookingBase.end_date <= end_of_month
+                            ),
+                            and_(
+                                BookingBase.start_date <= start_of_month,
+                                BookingBase.end_date >= end_of_month
+                            )
+                        )
+                    )
+                )
+                
+                # Order by start date
+                query = query.order_by(BookingBase.start_date)
+                bookings = session.scalars(query).all()
+                return bookings
+                
+        except Exception as e:
+            print(f"Error in get_available_dayes_by_month: {e}")
+            LoggerService.error(__name__, f"get_available_dayes_by_month", e)
+            return []
 
     def is_booking_between_dates(self, start: datetime, end: datetime) -> bool:
         try:

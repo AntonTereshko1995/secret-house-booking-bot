@@ -5,7 +5,7 @@ from src.services.logger_service import LoggerService
 
 @singleton
 class SettingsService:
-    FILE_PATH = "settings.json"
+    FILE_PATH = "data/settings.json"
 
     def __init__(self):
         self._data = self._load_from_json()
@@ -22,8 +22,9 @@ class SettingsService:
         return {}
 
     def _save_to_json(self):
+        os.makedirs(os.path.dirname(self.FILE_PATH), exist_ok=True)
         with open(self.FILE_PATH, "w", encoding="utf-8") as file:
-            json.dump(self._data, file, indent=4, ensure_ascii=False)
+            json.dump(self._data, file, indent=4, ensure_ascii=False)   
 
     @property
     def password(self):
