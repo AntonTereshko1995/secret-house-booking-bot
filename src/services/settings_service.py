@@ -1,19 +1,18 @@
 import json
 import os
 from singleton_decorator import singleton
+from src.config.config import SETTINGS_PATH
 from src.services.logger_service import LoggerService
 
 @singleton
 class SettingsService:
-    FILE_PATH = "data/settings.json"
-
     def __init__(self):
         self._data = self._load_from_json()
 
     def _load_from_json(self):
-        if os.path.exists(self.FILE_PATH):
+        if os.path.exists(SETTINGS_PATH):
             try:
-                with open(self.FILE_PATH, "r", encoding="utf-8") as file:
+                with open(SETTINGS_PATH, "r", encoding="utf-8") as file:
                     return json.load(file)
             except json.JSONDecodeError as e:
                 LoggerService.error(__name__, f"_load_from_json", e)
@@ -22,9 +21,12 @@ class SettingsService:
         return {}
 
     def _save_to_json(self):
-        os.makedirs(os.path.dirname(self.FILE_PATH), exist_ok=True)
-        with open(self.FILE_PATH, "w", encoding="utf-8") as file:
-            json.dump(self._data, file, indent=4, ensure_ascii=False)   
+        try:
+            with open(SETTINGS_PATH, "w", encoding="utf-8") as file:
+                json.dump(self._data, file, indent=4, ensure_ascii=False)  
+        except json.JSONDecodeError as e:
+            LoggerService.error(__name__, f"_save_to_json", e)
+            return {}
 
     @property
     def password(self):
