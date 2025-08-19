@@ -33,6 +33,7 @@ if "secrets-production" in os.environ:
     REDIS_URL = secret_manager_service.get_secret("REDIS_URL")
     REDIS_PORT = secret_manager_service.get_secret("REDIS_PORT")
     REDIS_SSL = secret_manager_service.get_secret("REDIS_SSL")
+    SETTINGS_PATH = secret_manager_service.get_secret("SETTINGS_PATH")
 else:
     if os.environ.get("AMVERA") != 1:
         file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
@@ -55,3 +56,4 @@ else:
     REDIS_URL = os.getenv("REDIS_URL")
     REDIS_PORT = os.getenv("REDIS_PORT")
     REDIS_SSL = os.getenv("REDIS_SSL")
+    SETTINGS_PATH = os.getenv("SETTINGS_PATH")
