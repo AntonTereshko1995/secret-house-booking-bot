@@ -43,7 +43,7 @@ def create_calendar(selected_date: date = None, min_date: date = None, max_date:
                     row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
                 else:
                     # Day is not available - show as disabled
-                    row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
+                    row.append(InlineKeyboardButton("⛔", callback_data=data_ignore))
             else:
                 # No available_days list provided - show all days
                 row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", selected_date.year, selected_date.month, day, prefix=callback_prefix)))
