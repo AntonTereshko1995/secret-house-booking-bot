@@ -11,11 +11,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 @dataclass
 class DatePricingRule:
     rule_id: str
-    name: str
     start_date: str  # Format: "YYYY-MM-DD"
     end_date: str    # Format: "YYYY-MM-DD"
     price_override: Optional[int] = None  # Fixed price in rubles
     is_active: bool = True
+    name: Optional[str] = None
     description: Optional[str] = None
     start_time: Optional[str] = None  # Format: "HH:MM" (24-hour format)
     end_time: Optional[str] = None    # Format: "HH:MM" (24-hour format)

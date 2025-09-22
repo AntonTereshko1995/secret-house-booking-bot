@@ -13,7 +13,7 @@
     {
       "rule_id": "new_year_2025",
       "start_date": "2025-11-07",
-      "end_date": "2026-11-09",
+      "end_date": "2025-11-09",
       "price_override": 650,
       "is_active": true,
       "description": "День Октябрьской революции (длинные выходные)",
