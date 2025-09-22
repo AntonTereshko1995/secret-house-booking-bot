@@ -5,12 +5,14 @@ from telegram import InputMediaPhoto
 from typing import List
 from singleton_decorator import singleton
 from src.models.rental_price import RentalPrice
+from src.models.date_pricing_rule import DatePricingRule
 
 @singleton
 class FileService:
     _IMAGE_FOLDER = "assets/images/"
     # _TARIFF_JSON = "src/config/tariff_rate.json"
     _TARIFF_JSON = "src/config/tariff_rate_sale.json"
+    _DATE_PRICING_RULES_JSON = "src/config/date_pricing_rules.json"
 
     def get_price_media(self) -> List[InputMediaPhoto]:
         if not os.path.exists(self._IMAGE_FOLDER):
@@ -45,5 +47,15 @@ class FileService:
 
         with open(image_path, "rb") as image_file:
             image_bytes = BytesIO(image_file.read())
-            image_bytes.seek(0) 
+            image_bytes.seek(0)
             return image_bytes
+
+    def get_date_pricing_rules(self) -> List[DatePricingRule]:
+        if not os.path.exists(self._DATE_PRICING_RULES_JSON):
+            raise FileNotFoundError(f"Файл {self._DATE_PRICING_RULES_JSON} не существует.")
+
+        rules_list = []
+        with open(self._DATE_PRICING_RULES_JSON, "r") as file:
+            data = json.load(file)
+            rules_list = [DatePricingRule(**item) for item in data["pricing_rules"]]
+        return rules_list
