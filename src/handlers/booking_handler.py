@@ -11,11 +11,12 @@ from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
 from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, PREPAYMENT, CLEANING_HOURS, BANK_PHONE_NUMBER, BANK_CARD_NUMBER
 from src.services.calculation_rate_service import CalculationRateService
-from datetime import date, time, timedelta
+from src.services.date_pricing_service import DatePricingService
+from datetime import date, time, timedelta, datetime
 from telegram import (Document, InlineKeyboardButton, InlineKeyboardMarkup, Update)
 from telegram.ext import (ContextTypes, CallbackQueryHandler)
 from src.handlers import menu_handler
-from src.helpers import date_time_helper, string_helper, string_helper, tariff_helper, bedroom_halper
+from src.helpers import date_time_helper, string_helper, tariff_helper, bedroom_halper
 from src.handlers import admin_handler
 from src.models.enum.bedroom import Bedroom
 from src.models.enum.tariff import Tariff
@@ -37,6 +38,7 @@ from src.constants import (
 MAX_PEOPLE = 6
 
 rate_service = CalculationRateService()
+date_pricing_service = DatePricingService()
 database_service = DatabaseService()
 redis_service = RedisService()
 navigation_service = NavigatonService()
@@ -63,14 +65,14 @@ def get_handler():
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
-    LoggerService.info(__name__, f"Back to menu", update)
+    LoggerService.info(__name__, "Back to menu", update)
     redis_service.clear_booking(update)
     return MENU
 
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # await update.callback_query.answer()
     # return await send_approving_to_admin(update, context, None, is_cash=True)
-    LoggerService.info(__name__, f"Generate tariff", update)
+    LoggerService.info(__name__, "Generate tariff", update)
 
     redis_service.init_booking(update)
     redis_service.update_booking_field(update, "navigation_step", BookingStep.TARIFF)
@@ -120,7 +122,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     tariff = tariff_helper.get_by_str(data)
     redis_service.update_booking_field(update, "tariff", tariff)
-    LoggerService.info(__name__, f"Select tariff", update, kwargs={'tariff': tariff})
+    LoggerService.info(__name__, "Select tariff", update, kwargs={'tariff': tariff})
 
     if tariff != Tariff.GIFT or tariff != Tariff.SUBSCRIPTION:
         rental_rate = rate_service.get_by_tariff(tariff)
@@ -150,7 +152,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await count_of_people_message(update, context)
 
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(__name__, f"Enter user contact", update)
+    LoggerService.info(__name__, "Enter user contact", update)
     redis_service.update_booking_field(update, "navigation_step", BookingStep.CONTACT)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -182,7 +184,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             booking = redis_service.get_booking(update)
             redis_service.update_booking_field(update, "user_contact", user_input)
-            LoggerService.info(__name__, f"User name is valid", update, kwargs={'user_name': user_input})
+            LoggerService.info(__name__, "User name is valid", update, kwargs={'user_name': user_input})
             if booking.gift_id or booking.subscription_id:
                 if is_any_additional_payment(update):
                     return await pay(update, context)
@@ -191,7 +193,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             else:
                 return await pay(update, context)
         else:
-            LoggerService.warning(__name__, f"User name is invalid", update)
+            LoggerService.warning(__name__, "User name is invalid", update)
             await update.message.reply_text(
                 "❌ <b>Ошибка!</b>\n"
                 "Имя пользователя в Telegram или номер телефона введены некорректно.\n\n"
@@ -210,7 +212,7 @@ async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     is_photoshoot_included = eval(data)
     redis_service.update_booking_field(update, "is_photoshoot_included", is_photoshoot_included)
-    LoggerService.info(__name__, f"Include photoshoot", update, kwargs={'is_photoshoot_included': is_photoshoot_included})
+    LoggerService.info(__name__, "Include photoshoot", update, kwargs={'is_photoshoot_included': is_photoshoot_included})
     return await count_of_people_message(update, context)
 
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -221,7 +223,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     is_sauna_included = eval(data)
     redis_service.update_booking_field(update, "is_sauna_included", is_sauna_included)
-    LoggerService.info(__name__, f"Include sauna", update, kwargs={'is_sauna_included': is_sauna_included})
+    LoggerService.info(__name__, "Include sauna", update, kwargs={'is_sauna_included': is_sauna_included})
 
     booking = redis_service.get_booking(update)
     if booking.gift_id:
@@ -241,7 +243,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     is_secret_room_included = eval(data)
     redis_service.update_booking_field(update, "is_secret_room_included", is_secret_room_included)
-    LoggerService.info(__name__, f"Include secret room", update, kwargs={'is_secret_room_included': is_secret_room_included})
+    LoggerService.info(__name__, "Include secret room", update, kwargs={'is_secret_room_included': is_secret_room_included})
     booking = redis_service.get_booking(update)
     if booking.gift_id:
         return await navigate_next_step_for_gift(update, context)
@@ -255,7 +257,7 @@ async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     bedroom = bedroom_halper.get_by_str(data)
-    LoggerService.info(__name__, f"Select bedroom", update, kwargs={'bedroom': bedroom})
+    LoggerService.info(__name__, "Select bedroom", update, kwargs={'bedroom': bedroom})
 
     if (bedroom == Bedroom.GREEN):
         redis_service.update_booking_field(update, "is_white_room_included", False)
@@ -277,7 +279,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
         return await back_navigation(update, context)
 
     is_added = eval(data)
-    LoggerService.info(__name__, f"Select additional bedroom", update, kwargs={'is_added': is_added})
+    LoggerService.info(__name__, "Select additional bedroom", update, kwargs={'is_added': is_added})
     if is_added:
         redis_service.update_booking_field(update, "is_additional_bedroom_included", True)
         redis_service.update_booking_field(update, "is_white_room_included", True)
@@ -299,7 +301,7 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
 
     number_of_guests = int(data)
     redis_service.update_booking_field(update, "number_of_guests", number_of_guests)
-    LoggerService.info(__name__, f"Select number of people", update, kwargs={'number_of_guests': number_of_guests})
+    LoggerService.info(__name__, "Select number of people", update, kwargs={'number_of_guests': number_of_guests})
     return await start_date_message(update, context)
 
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -309,7 +311,7 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (data == str(END)):
             return await back_navigation(update, context)
 
-    LoggerService.info(__name__, f"Write secret code", update)
+    LoggerService.info(__name__, "Write secret code", update)
 
     booking = redis_service.get_booking(update)
     if (booking.tariff == Tariff.GIFT):
@@ -330,23 +332,30 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
             error_message = ("❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Тариф 'Рабочий' доступен только с понедельника по четверг.</b>\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования.")
-            LoggerService.warning(__name__, f"there are bookings between the selected dates", update)
+            LoggerService.warning(__name__, "there are bookings between the selected dates", update)
             return await start_date_message(update, context, error_message=error_message)
         
         redis_service.update_booking_field(update, "start_booking_date", selected_date)
-        LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': selected_date.date()})
+        LoggerService.info(__name__, "select start date", update, kwargs={'start_date': selected_date.date()})
         return await start_time_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select start date", update, kwargs={'start_date': 'back'})
+        LoggerService.info(__name__, "select start date", update, kwargs={'start_date': 'back'})
         return await back_navigation(update, context)
     elif is_next_month or is_prev_month:
-        query = update.callback_query
         start_period, end_period = date_time_helper.month_bounds(selected_date)
         feature_booking = database_service.get_booking_by_period(start_period, end_period)
         available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=start_period.month, target_year=start_period.year)
+
+        # Update special dates info for the new month
+        special_dates_info = get_special_dates_info(selected_date.month, selected_date.year)
+        message = ("📅 <b>Выберите дату начала бронирования.</b>\n"
+                   "Укажите день, когда хотите заселиться в дом.")
+        if special_dates_info:
+            message += f"\n\n{special_dates_info}"
+
         await navigation_service.safe_edit_message_text(
             callback_query=update.callback_query,
-            text=query.message.text,
+            text=message,
             reply_markup=calendar_picker.create_calendar(selected_date, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START", available_days=available_days))
     
     return BOOKING
@@ -358,10 +367,10 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         booking = redis_service.get_booking(update)
         start_booking_date = booking.start_booking_date.replace(hour=time.hour, minute=time.minute)
         redis_service.update_booking_field(update, "start_booking_date", start_booking_date)
-        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': start_booking_date.time()})
+        LoggerService.info(__name__, "select start time", update, kwargs={'start_time': start_booking_date.time()})
         return await finish_date_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select start time", update, kwargs={'start_time': 'back'})
+        LoggerService.info(__name__, "select start time", update, kwargs={'start_time': 'back'})
         return await start_date_message(update, context)
     return BOOKING
 
@@ -373,19 +382,28 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected, selected_date, is_action, is_next_month, is_prev_month = await calendar_picker.process_calendar_selection(update, context)
     if selected:
         redis_service.update_booking_field(update, "finish_booking_date", selected_date)
-        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': selected_date.date()})
+        LoggerService.info(__name__, "select finish date", update, kwargs={'finish_date': selected_date.date()})
         return await finish_time_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select finish date", update, kwargs={'finish_date': 'back'})
+        LoggerService.info(__name__, "select finish date", update, kwargs={'finish_date': 'back'})
         return await start_time_message(update, context)
     elif is_next_month or is_prev_month:
-            query = update.callback_query
             start_period, end_period = date_time_helper.month_bounds(selected_date)
             feature_booking = database_service.get_booking_by_period(start_period, end_period)
             available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=start_period.month, target_year=start_period.year)
+
+            # Update special dates info for the new month
+            special_dates_info = get_special_dates_info(selected_date.month, selected_date.year)
+            message = ("📅 <b>Выберите дату завершения бронирования.</b>\n"
+                       f"Вы выбрали дату и время заезда: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
+                       "Теперь укажите день, когда планируете выехать.\n"
+                       "📌 Выезд должен быть позже времени заезда.")
+            if special_dates_info:
+                message += f"\n\n{special_dates_info}"
+
             await navigation_service.safe_edit_message_text(
                 callback_query=update.callback_query,
-                text=query.message.text,
+                text=message,
                 reply_markup=calendar_picker.create_calendar(selected_date, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH", available_days=available_days))
     
     return BOOKING
@@ -397,7 +415,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         booking = redis_service.get_booking(update)
         finish_booking_date = booking.finish_booking_date.replace(hour=time.hour, minute=time.minute)
         redis_service.update_booking_field(update, "finish_booking_date", finish_booking_date)
-        LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
+        LoggerService.info(__name__, "select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
 
         if booking.tariff == Tariff.WORKER and tariff_helper.is_interval_in_allowed_ranges(booking.start_booking_date.time(), finish_booking_date.time()) == False:
             error_message = ("❌ <b>Ошибка!</b>\n\n"
@@ -405,8 +423,9 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "⚠️ В рамках этого тарифа бронирование возможно только с 11:00 до 20:00 или с 22:00 до 9:00.\n\n"
                 "🔄 Пожалуйста, выберите другое время начала бронирования.\n\n"
                 "ℹ️ Если вы планируете забронировать в другое время — выберите, пожалуйста, тариф '12 часов', 'Суточно' или 'Инкогнито'.")
-            LoggerService.warning(__name__, f"incorect time for tariff Worker", update)
+            LoggerService.warning(__name__, "incorect time for tariff Worker", update)
             return await start_date_message(update, context, error_message=error_message)
+
 
         is_any_booking = database_service.is_booking_between_dates(booking.start_booking_date - timedelta(hours=CLEANING_HOURS), finish_booking_date + timedelta(hours=CLEANING_HOURS))
         if is_any_booking:
@@ -414,12 +433,12 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "⏳ <b>Выбранные дата и время недоступны.</b>\n"
                 "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования.")
-            LoggerService.warning(__name__, f"there are bookings between the selected dates", update)
+            LoggerService.warning(__name__, "there are bookings between the selected dates", update)
             return await start_date_message(update, context, error_message=error_message)
 
         return await comment_message(update, context)
     elif is_action:
-        LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': "cancel"})
+        LoggerService.info(__name__, "select finish time", update, kwargs={'finish_time': "cancel"})
         return await finish_date_message(update, context)
     return BOOKING
 
@@ -435,7 +454,7 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         booking_comment = update.message.text
         redis_service.update_booking_field(update, "booking_comment", booking_comment)
-        LoggerService.info(__name__, f"Write comment", update, kwargs={'comment': booking_comment})
+        LoggerService.info(__name__, "Write comment", update, kwargs={'comment': booking_comment})
 
     return await confirm_pay(update, context)
 
@@ -450,19 +469,38 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     selected_duration = booking.finish_booking_date - booking.start_booking_date
     duration_booking_hours = round(date_time_helper.seconds_to_hours(int(selected_duration.total_seconds())))
-    price = rate_service.calculate_price(booking.rental_rate, booking.is_sauna_included, booking.is_secret_room_included, booking.is_additional_bedroom_included, booking.is_photoshoot_included, booking.number_of_guests, duration_booking_hours)
+
+    # Use date-aware pricing calculation
+    booking_start_date = booking.start_booking_date.date()
+    price = rate_service.calculate_price_for_date(
+        booking_date=booking_start_date,
+        tariff=booking.tariff,
+        duration_hours=duration_booking_hours,
+        is_sauna=booking.is_sauna_included,
+        is_secret_room=booking.is_secret_room_included,
+        is_second_room=booking.is_additional_bedroom_included,
+        is_photoshoot=booking.is_photoshoot_included,
+        count_people=booking.number_of_guests
+    )
     extra_hours = duration_booking_hours - booking.rental_rate.duration_hours
     categories = rate_service.get_price_categories(booking.rental_rate, booking.is_sauna_included, booking.is_secret_room_included, booking.is_additional_bedroom_included,booking.number_of_guests, extra_hours)
     photoshoot_text = ", фото сессия" if booking.is_photoshoot_included else ""
 
-    LoggerService.info(__name__, f"Confirm pay", update, kwargs={'price': price})
+    # Check for special pricing information
+    special_pricing_info = ""
+    if date_pricing_service.has_date_override(booking_start_date):
+        pricing_description = date_pricing_service.get_rule_description(booking_start_date)
+        if pricing_description:
+            special_pricing_info = f"\n🎯 <b>Специальная цена:</b> {pricing_description}\n"
+
+    LoggerService.info(__name__, "Confirm pay", update, kwargs={'price': price, 'has_special_pricing': bool(special_pricing_info)})
 
     if booking.gift_id or booking.subscription_id:
         gift = database_service.get_gift_by_id(booking.gift_id)
         payed_price = gift.price if gift else booking.rental_rate.price
         price = int(price - payed_price)
         message = (
-            f"💰 <b>Доплата: {price} руб.</b>\n\n"
+            f"💰 <b>Доплата: {price} руб.</b>\n{special_pricing_info}\n"
             f"📌 <b>Что включено:</b> {categories}{photoshoot_text}\n"
             f"📅 <b>Заезд:</b> {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"📅 <b>Выезд:</b> {booking.finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -470,7 +508,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ <b>Подтвердите бронирование дома</b>")
     else:
         message = (
-            f"💰 <b>Итоговая сумма:</b> {price} руб.\n\n"
+            f"💰 <b>Итоговая сумма:</b> {price} руб.\n{special_pricing_info}\n"
             f"📌 <b>Включено:</b> {categories}{photoshoot_text}.\n"
             f"📅 <b>Заезд:</b> {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"📅 <b>Выезд:</b> {booking.finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -501,7 +539,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if (update.callback_query.data == str(END)):
             return await back_navigation(update, context)
     
-    LoggerService.info(__name__, f"Pay", update)
+    LoggerService.info(__name__, "Pay", update)
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"BOOKING-PAY_{END}")]]
     if booking.gift_id or booking.subscription_id:
         keyboard.append([InlineKeyboardButton("Оплата наличкой", callback_data=f"BOOKING-PAY_{CASH_PAY}")])
@@ -540,7 +578,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return BOOKING_PHOTO_UPLOAD
 
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(__name__, f"Cancel booking", update)
+    LoggerService.info(__name__, "Cancel booking", update)
     await update.callback_query.answer()
 
     booking = redis_service.get_booking(update)
@@ -549,7 +587,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await back_navigation(update, context)
 
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    LoggerService.info(__name__, f"Confirm booking", update)
+    LoggerService.info(__name__, "Confirm booking", update)
 
     redis_service.update_booking_field(update, "navigation_step", BookingStep.FINISH)
     booking = redis_service.get_booking(update)
@@ -694,26 +732,120 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=reply_markup) 
     return BOOKING
 
+def get_special_dates_info(target_month: int = None, target_year: int = None) -> str:
+    """Get formatted information about special pricing dates for a specific month."""
+    rules = date_pricing_service._try_load_rules()
+
+    if not rules:
+        return ""
+
+    active_rules = [rule for rule in rules if rule.is_active and rule.price_override is not None]
+    if not active_rules:
+        return ""
+
+    # Filter rules by month if specified
+    if target_month and target_year:
+        filtered_rules = []
+        for rule in active_rules:
+            start_date_obj = datetime.strptime(rule.start_date, "%Y-%m-%d")
+            end_date_obj = datetime.strptime(rule.end_date, "%Y-%m-%d")
+
+            # Check if rule overlaps with target month
+            target_month_start = date(target_year, target_month, 1)
+            if target_month == 12:
+                target_month_end = date(target_year + 1, 1, 1) - timedelta(days=1)
+            else:
+                target_month_end = date(target_year, target_month + 1, 1) - timedelta(days=1)
+
+            # Rule overlaps if start <= month_end and end >= month_start
+            if start_date_obj.date() <= target_month_end and end_date_obj.date() >= target_month_start:
+                filtered_rules.append(rule)
+
+        active_rules = filtered_rules
+
+    if not active_rules:
+        return ""
+
+    info_lines = []
+    info_lines.append("🎯 <b>Специальные цены:</b>")
+
+    for rule in active_rules:
+        # Format date range with DD.MM format
+        start_date_obj = datetime.strptime(rule.start_date, "%Y-%m-%d")
+        end_date_obj = datetime.strptime(rule.end_date, "%Y-%m-%d")
+
+        if rule.start_date == rule.end_date:
+            date_str = start_date_obj.strftime("%d.%m")
+        else:
+            date_str = f"{start_date_obj.strftime('%d.%m')} - {end_date_obj.strftime('%d.%m')}"
+
+        # Format time range if specified
+        time_str = ""
+        if rule.start_time and rule.end_time:
+            time_str = f" ({rule.start_time}-{rule.end_time})"
+
+        # Format price
+        price_str = f"{rule.price_override} руб."
+
+        info_lines.append(f"• {date_str}{time_str}: {price_str} - {rule.description or rule.name}")
+
+    return "\n".join(info_lines) + "\n"
+
+def get_special_date_info_for_day(target_date: date) -> str:
+    """Get formatted information about special pricing for a specific date."""
+    if not date_pricing_service.has_date_override(target_date):
+        return ""
+
+    effective_rule = date_pricing_service.get_effective_rule(target_date)
+    if not effective_rule or not effective_rule.price_override:
+        return ""
+
+    # Format time range if specified
+    time_str = ""
+    if effective_rule.start_time and effective_rule.end_time:
+        time_str = f" ({effective_rule.start_time}-{effective_rule.end_time})"
+
+    price_str = f"{effective_rule.price_override} руб."
+    description = effective_rule.description or effective_rule.name
+
+    return f"\n🎯 <b>Специальная цена{time_str}:</b> {price_str} - {description}\n"
+
 async def start_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE, error_message: Optional[str] = None):
     redis_service.update_booking_field(update, "navigation_step", BookingStep.START_DATE)
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = today
-    start_period, end_period = date_time_helper.month_bounds(today)
+
+    # Check if user already has a selected date to preserve the month
+    booking = redis_service.get_booking(update)
+    if booking and booking.start_booking_date:
+        # Use the month from the previously selected date
+        reference_date = booking.start_booking_date.date()
+    else:
+        # Use today as reference
+        reference_date = today
+
+    start_period, end_period = date_time_helper.month_bounds(reference_date)
     feature_booking = database_service.get_booking_by_period(start_period, end_period)
-    available_days = date_time_helper.get_free_dayes_slots(feature_booking)
+    available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=reference_date.month, target_year=reference_date.year)
+
+    special_dates_info = get_special_dates_info(reference_date.month, reference_date.year)
 
     if error_message:
         message = error_message
+        if special_dates_info:
+            message += f"\n\n{special_dates_info}"
     else:
         message = ("📅 <b>Выберите дату начала бронирования.</b>\n"
                    "Укажите день, когда хотите заселиться в дом.")
+        if special_dates_info:
+            message += f"\n\n{special_dates_info}"
 
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text=message,
-        reply_markup=calendar_picker.create_calendar(today, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START", available_days=available_days))
+        reply_markup=calendar_picker.create_calendar(reference_date, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад в меню", callback_prefix="-START", available_days=available_days))
     return BOOKING
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -722,6 +854,9 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     feature_booking = database_service.get_booking_by_period(booking.start_booking_date.date() - timedelta(days=2), booking.start_booking_date.date() + timedelta(days=2))
     available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.start_booking_date.date())
+
+    special_date_info = get_special_date_info_for_day(booking.start_booking_date.date())
+
     if len(available_slots) == 0:
         message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.start_booking_date.strftime('%d.%m.%Y')}.</b>\n")
     else:
@@ -734,6 +869,9 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
                 "🕚 11:00 – 20:00\n"
                 "🌙 22:00 – 09:00")
+
+    if special_date_info:
+        message += special_date_info
             
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
@@ -750,18 +888,31 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (booking.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     
-    start_period, end_period = date_time_helper.month_bounds(booking.start_booking_date.date())
+    # Use finish_booking_date if available, otherwise use start_booking_date
+    if booking.finish_booking_date:
+        reference_date = booking.finish_booking_date.date()
+    else:
+        reference_date = booking.start_booking_date.date()
+
+    start_period, end_period = date_time_helper.month_bounds(reference_date)
     feature_booking = database_service.get_booking_by_period(start_period, end_period)
-    available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=start_period.month, target_year=start_period.year)
-    
+    available_days = date_time_helper.get_free_dayes_slots(feature_booking, target_month=reference_date.month, target_year=reference_date.year)
+
+    special_dates_info = get_special_dates_info(reference_date.month, reference_date.year)
+
+    message = ("📅 <b>Выберите дату завершения бронирования.</b>\n"
+               f"Вы выбрали дату и время заезда: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
+               "Теперь укажите день, когда планируете выехать.\n"
+               "📌 Выезд должен быть позже времени заезда.")
+
+    if special_dates_info:
+        message += f"\n\n{special_dates_info}"
+
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
-        text="📅 <b>Выберите дату завершения бронирования.</b>\n"
-            f"Вы выбрали дату и время заезда: {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}.\n"
-            "Теперь укажите день, когда планируете выехать.\n"
-            "📌 Выезд должен быть позже времени заезда.",
-        reply_markup=calendar_picker.create_calendar(booking.start_booking_date.date(), min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH", available_days=available_days))
+        text=message,
+        reply_markup=calendar_picker.create_calendar(reference_date, min_date=min_date_booking, max_date=max_date_booking, action_text="Назад", callback_prefix="-FINISH", available_days=available_days))
     return BOOKING
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -771,6 +922,9 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     feature_booking = database_service.get_booking_by_period(booking.finish_booking_date.date() - timedelta(days=2), booking.finish_booking_date.date() + timedelta(days=2))
     start_time = time(0, 0) if booking.start_booking_date.date() != booking.finish_booking_date.date() else (booking.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     available_slots = date_time_helper.get_free_time_slots(feature_booking, booking.finish_booking_date.date(), start_time=start_time)
+
+    special_date_info = get_special_date_info_for_day(booking.finish_booking_date.date())
+
     if len(available_slots) == 0:
         message = (f"⏳ <b>К сожалению, все слоты заняты для {booking.finish_booking_date.strftime('%d.%m.%Y')}.</b>\n")
     else:
@@ -779,6 +933,9 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"Вы выбрали дату выезда: {booking.finish_booking_date.strftime('%d.%m.%Y')}.\n"
             "Теперь укажите время, когда хотите освободить дом.\n"
             "⛔ - время уже забронировано\n")
+
+    if special_date_info:
+        message += special_date_info
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
@@ -1033,7 +1190,7 @@ def save_booking_information(update: Update, chat_id: int, is_cash = False) -> B
     if booking == None:
         LoggerService.error(
             __name__, 
-            f"Booking is None", 
+            "Booking is None", 
             user_contact=cache_booking.user_contact, 
             start_booking_date=cache_booking.start_booking_date, 
             finish_booking_date=cache_booking.finish_booking_date,
@@ -1060,7 +1217,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.message and update.message.photo:
         photo = update.message.photo[-1].file_id
 
-    LoggerService.info(__name__, f"handle photo", update)
+    LoggerService.info(__name__, "handle photo", update)
     return await send_approving_to_admin(update, context, photo, document)
 
 async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
