@@ -9,16 +9,6 @@
       "description": "Новогодние праздники",
       "start_time": "15:00",
       "end_time": "12:00"
-    },
-    {
-      "rule_id": "new_year_2025",
-      "start_date": "2025-11-07",
-      "end_date": "2025-11-09",
-      "price_override": 650,
-      "is_active": true,
-      "description": "День Октябрьской революции (длинные выходные)",
-      "start_time": "15:00",
-      "end_time": "12:00"
     }
   ]
 }

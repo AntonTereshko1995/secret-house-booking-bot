@@ -209,7 +209,7 @@ async def inform_changing_booking_date(update: Update, context: ContextTypes.DEF
     message = (
         f"Отмена бронирования!\n"
         f"Контакт клиента: {user.contact}\n"
-        f"Дата: {old_start_date.strftime('%d.%m.%Y %H:%M')}\n")
+        f"Дата: {old_start_date.strftime('%d.%m.%Y')}\n")
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
     message = (
