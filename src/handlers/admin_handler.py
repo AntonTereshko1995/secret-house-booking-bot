@@ -205,9 +205,13 @@ async def inform_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TY
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
 async def inform_changing_booking_date(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, old_start_date: date):
-    await inform_cancel_booking(update, context, booking)
-
     user = database_service.get_user_by_id(booking.user_id)
+    message = (
+        f"Отмена бронирования!\n"
+        f"Контакт клиента: {user.contact}\n"
+        f"Дата: {old_start_date.strftime('%d.%m.%Y')}\n")
+    await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
+
     message = (
         f"Перенос даты бронирования!\n"
         f"Старая дата начала: {old_start_date.strftime('%d.%m.%Y')}\n\n"
