@@ -85,6 +85,9 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
             f"🔹 {tariff_helper.get_name(Tariff.INCOGNITA_HOURS)} — {rate_service.get_price(Tariff.INCOGNITA_HOURS)} руб",
             callback_data=f"BOOKING-TARIFF_{Tariff.INCOGNITA_HOURS.value}")],
         [InlineKeyboardButton(
+            f"🔹 {tariff_helper.get_name(Tariff.INCOGNITA_WORKER)} — {rate_service.get_price(Tariff.INCOGNITA_WORKER)} руб",
+            callback_data=f"BOOKING-TARIFF_{Tariff.INCOGNITA_WORKER.value}")],
+        [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.DAY)} — {rate_service.get_price(Tariff.DAY)} руб",
             callback_data=f"BOOKING-TARIFF_{Tariff.DAY.value}")],
         [InlineKeyboardButton(
@@ -125,14 +128,19 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rental_rate = rate_service.get_by_tariff(tariff)
         redis_service.update_booking_field(update, "rental_rate", rental_rate)
 
-    if tariff == Tariff.INCOGNITA_DAY or tariff == Tariff.INCOGNITA_HOURS:
-        redis_service.update_booking_field(update, "is_photoshoot_included", True)
+    if tariff == Tariff.INCOGNITA_DAY or tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_WORKER:
         redis_service.update_booking_field(update, "is_sauna_included", True)
         redis_service.update_booking_field(update, "is_secret_room_included", True)
         redis_service.update_booking_field(update, "is_white_room_included", True)
         redis_service.update_booking_field(update, "is_green_room_included", True)
         redis_service.update_booking_field(update, "is_additional_bedroom_included", True)
-        return await photoshoot_message(update, context)
+        
+        if tariff == Tariff.INCOGNITA_DAY:
+            redis_service.update_booking_field(update, "is_photoshoot_included", True)
+            return await photoshoot_message(update, context)
+        elif tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_WORKER:
+            redis_service.update_booking_field(update, "is_photoshoot_included", False)
+            return await count_of_people_message(update, context)
     elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
         redis_service.update_booking_field(update, "is_photoshoot_included", False)
         redis_service.update_booking_field(update, "is_sauna_included", False)
@@ -407,7 +415,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         redis_service.update_booking_field(update, "finish_booking_date", finish_booking_date)
         LoggerService.info(__name__, "select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
 
-        if booking.tariff == Tariff.WORKER and tariff_helper.is_interval_in_allowed_ranges(booking.start_booking_date.time(), finish_booking_date.time()) == False:
+        if (booking.tariff == Tariff.WORKER or booking.tariff == Tariff.INCOGNITA_WORKER) and tariff_helper.is_interval_in_allowed_ranges(booking.start_booking_date.time(), finish_booking_date.time()) == False:
             error_message = ("❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Выбранные дата и время не соответствуют условиям тарифа 'Рабочий'.</b>\n"
                 "⚠️ В рамках этого тарифа бронирование возможно только с 11:00 до 20:00 или с 22:00 до 9:00.\n\n"
@@ -852,7 +860,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     f"Вы выбрали дату заезда: {booking.start_booking_date.strftime('%d.%m.%Y')}.\n"
                     "Теперь укажите удобное время заезда.\n"
                     "⛔ - время уже забронировано\n")
-        if booking.tariff == Tariff.WORKER:
+        if booking.tariff == Tariff.WORKER or booking.tariff == Tariff.INCOGNITA_WORKER:
             message += (
                 "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
                 "🕚 11:00 – 20:00\n"

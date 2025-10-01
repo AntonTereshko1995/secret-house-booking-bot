@@ -146,6 +146,23 @@
         "is_photoshoot": false,
         "is_transfer": true,
         "multi_day_prices": {}
+      },
+      {
+        "tariff": 5,
+        "name": "тариф 'Инкогнито (Рабочий)'",
+        "duration_hours": 11,
+        "price": 450,
+        "sauna_price": 0,
+        "secret_room_price": 0,
+        "second_bedroom_price": 0,
+        "extra_hour_price": 30,
+        "extra_people_price": 0,
+        "photoshoot_price": 100,
+        "max_people": 6,
+        "is_check_in_time_limit": true,
+        "is_photoshoot": false,
+        "is_transfer": true,
+        "multi_day_prices": {}
       }
     ]
   }

@@ -208,7 +208,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LoggerService.info(__name__, f"select finish time", update, kwargs={'finish_time': finish_booking_date.time()})
         created_bookings = database_service.get_booking_by_period(start_booking_date, finish_booking_date)
 
-        if booking.tariff == Tariff.WORKER and tariff_helper.is_interval_in_allowed_ranges(start_booking_date.time(), finish_booking_date.time()) == False:
+        if (booking.tariff == Tariff or booking.tariff == Tariff.INCOGNITA_WORKER) and tariff_helper.is_interval_in_allowed_ranges(start_booking_date.time(), finish_booking_date.time()) == False:
             error_message = ("❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Выбранные дата и время не соответствуют условиям тарифа 'Рабочий'.</b>\n"
                 "⚠️ В рамках этого тарифа бронирование возможно только с 11:00 до 20:00 или с 22:00 до 9:00.\n\n"
@@ -373,7 +373,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"Вы выбрали дату заезда: {start_booking_date.strftime('%d.%m.%Y')}.\n"
             "Теперь укажите удобное время заезда.\n"
             "⛔ - время уже забронировано\n")
-        if booking.tariff == Tariff.WORKER:
+        if booking.tariff == Tariff.WORKER or booking.tariff == Tariff.INCOGNITA_WORKER:
             message += (
                 "\n📌 <b>Для тарифа 'Рабочий' доступны интервалы:</b>\n"
                 "🕚 11:00 – 20:00\n"

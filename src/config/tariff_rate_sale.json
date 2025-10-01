@@ -100,7 +100,7 @@
       },
       {
         "tariff": 3,
-        "name": "тариф 'Инкогнито на день'",
+        "name": "тариф 'Инкогнито (Суточно)'",
         "duration_hours": 24,
         "price": 700,
         "sauna_price": 0,
@@ -132,7 +132,7 @@
       },
       {
         "tariff": 4,
-        "name": "тариф 'Инкогнито на 12 часов'",
+        "name": "тариф 'Инкогнито (12 часов)'",
         "duration_hours": 12,
         "price": 500,
         "sauna_price": 0,
@@ -143,6 +143,23 @@
         "photoshoot_price": 100,
         "max_people": 6,
         "is_check_in_time_limit": false,
+        "is_photoshoot": false,
+        "is_transfer": true,
+        "multi_day_prices": {}
+      },
+      {
+        "tariff": 5,
+        "name": "тариф 'Инкогнито (Рабочий)'",
+        "duration_hours": 11,
+        "price": 400,
+        "sauna_price": 0,
+        "secret_room_price": 0,
+        "second_bedroom_price": 0,
+        "extra_hour_price": 30,
+        "extra_people_price": 0,
+        "photoshoot_price": 100,
+        "max_people": 6,
+        "is_check_in_time_limit": true,
         "is_photoshoot": false,
         "is_transfer": true,
         "multi_day_prices": {}
