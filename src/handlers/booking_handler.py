@@ -97,9 +97,6 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
             f"🔹 {tariff_helper.get_name(Tariff.WORKER)} — от {rate_service.get_price(Tariff.WORKER)} руб",
             callback_data=f"BOOKING-TARIFF_{Tariff.WORKER.value}")],
         [InlineKeyboardButton(
-            f"🔹 {tariff_helper.get_name(Tariff.SUBSCRIPTION)} 🎟", 
-            callback_data=f"BOOKING-TARIFF_{Tariff.SUBSCRIPTION.value}")],
-        [InlineKeyboardButton(
             f"🔹 {tariff_helper.get_name(Tariff.GIFT)}", 
             callback_data=f"BOOKING-TARIFF_{Tariff.GIFT.value}")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-TARIFF_{END}")]]
@@ -124,7 +121,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_booking_field(update, "tariff", tariff)
     LoggerService.info(__name__, "Select tariff", update, kwargs={'tariff': tariff})
 
-    if tariff != Tariff.GIFT or tariff != Tariff.SUBSCRIPTION:
+    if tariff != Tariff.GIFT:
         rental_rate = rate_service.get_by_tariff(tariff)
         redis_service.update_booking_field(update, "rental_rate", rental_rate)
 
@@ -146,7 +143,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await sauna_message(update, context)
     elif tariff == Tariff.HOURS_12 or tariff == Tariff.WORKER:
         return await bedroom_message(update, context)
-    elif tariff == Tariff.GIFT or tariff == Tariff.SUBSCRIPTION:
+    elif tariff == Tariff.GIFT:
         return await write_code_message(update, context)
     elif tariff == Tariff.INCOGNITA_HOURS:
         return await count_of_people_message(update, context)
@@ -185,7 +182,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             booking = redis_service.get_booking(update)
             redis_service.update_booking_field(update, "user_contact", user_input)
             LoggerService.info(__name__, "User name is valid", update, kwargs={'user_name': user_input})
-            if booking.gift_id or booking.subscription_id:
+            if booking.gift_id:
                 if is_any_additional_payment(update):
                     return await pay(update, context)
                 else:
@@ -228,8 +225,6 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking = redis_service.get_booking(update)
     if booking.gift_id:
         return await navigate_next_step_for_gift(update, context)
-    elif booking.subscription_id:
-        return await navigate_next_step_for_subscription(update, context)
     elif booking.tariff == Tariff.DAY or booking.tariff == Tariff.DAY_FOR_COUPLE:
         return await photoshoot_message(update, context)
 
@@ -312,12 +307,7 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await back_navigation(update, context)
 
     LoggerService.info(__name__, "Write secret code", update)
-
-    booking = redis_service.get_booking(update)
-    if (booking.tariff == Tariff.GIFT):
-        return await init_gift_code(update, context)
-    else:
-        return await init_subscription_code(update, context)
+    return await init_gift_code(update, context)
 
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -495,7 +485,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     LoggerService.info(__name__, "Confirm pay", update, kwargs={'price': price, 'has_special_pricing': bool(special_pricing_info)})
 
-    if booking.gift_id or booking.subscription_id:
+    if booking.gift_id:
         gift = database_service.get_gift_by_id(booking.gift_id)
         payed_price = gift.price if gift else booking.rental_rate.price
         price = int(price - payed_price)
@@ -541,7 +531,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     LoggerService.info(__name__, "Pay", update)
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"BOOKING-PAY_{END}")]]
-    if booking.gift_id or booking.subscription_id:
+    if booking.gift_id:
         keyboard.append([InlineKeyboardButton("Оплата наличкой", callback_data=f"BOOKING-PAY_{CASH_PAY}")])
         message = (f"💰 <b>Сумма доплаты:</b> {booking.price} руб.\n\n"
             "📌 <b>Доступные способы оплаты (Альфа-Банк):</b>\n"
@@ -681,8 +671,6 @@ async def write_code_message(update: Update, context: ContextTypes.DEFAULT_TYPE,
         message = "❌ <b>Ошибка:</b> код введён некорректно или устарел.\n🔄 Пожалуйста, введите код ещё раз."
     elif booking.tariff == Tariff.GIFT:
         message = "🎁 <b>Введите проверочный код подарочного сертификата.</b>\n🔢 Длина кода — 15 символов."
-    elif booking.tariff == Tariff.SUBSCRIPTION:
-        message = "🎟 <b>Введите проверочный код абонемента.</b>\n🔢 Длина кода — 15 символов."
 
     if update.message == None:
         await update.callback_query.answer()
@@ -1042,12 +1030,6 @@ def is_any_additional_payment(update: Update) -> bool:
         else:
             return False
     
-    if booking.subscription_id:
-        if booking.is_sauna_included:
-            return True
-        elif booking.number_of_guests > booking.rental_rate.max_people:
-            return True
-
     return False
     
 async def navigate_next_step_for_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1072,15 +1054,6 @@ async def navigate_next_step_for_gift(update: Update, context: ContextTypes.DEFA
     
     return await count_of_people_message(update, context)
 
-async def navigate_next_step_for_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    booking = redis_service.get_booking(update)
-    if not booking.subscription_id:
-        return
-
-    if booking.is_sauna_included == None:
-        return await sauna_message(update, context)
-    
-    return await count_of_people_message(update, context)
     
 def init_fields_for_gift(update: Update):
     booking = redis_service.get_booking(update)
@@ -1120,28 +1093,6 @@ async def init_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     init_fields_for_gift(update)
     return await navigate_next_step_for_gift(update, context)
 
-async def init_subscription_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
-        return await write_code_message(update, context, True)
-    
-    subscription = database_service.get_subscription_by_code(update.message.text)
-    if not subscription:
-        return await write_code_message(update, context, True)
-
-    redis_service.update_booking_field(update, "subscription_id", subscription.id)
-    rental_rate = rate_service.get_by_subscription(subscription.subscription_type)
-    redis_service.update_booking_field(update, "rental_rate", rental_rate)
-
-    await update.message.reply_text(
-        f"✅ <b>Отличные новости!</b> Мы нашли ваш тариф '<b>{rental_rate.name}</b>'!\n\n"
-        f"📅 <b>Осталось посещений:</b> {subscription.subscription_type.value - subscription.number_of_visits} из {subscription.subscription_type.value}.",
-        parse_mode='HTML')
-    
-    redis_service.update_booking_field(update, "is_secret_room_included", True)
-    redis_service.update_booking_field(update, "is_additional_bedroom_included", True)
-    redis_service.update_booking_field(update, "is_white_room_included", True)
-    redis_service.update_booking_field(update, "is_green_room_included", True)
-    return await navigate_next_step_for_subscription(update, context)
 
 def save_booking_information(update: Update, chat_id: int, is_cash = False) -> BookingBase:
     # booking = database_service.get_booking_by_id(1)
@@ -1164,7 +1115,7 @@ def save_booking_information(update: Update, chat_id: int, is_cash = False) -> B
     #     booking.sale_comment,
     #     chat_id,
     #     booking.gift_id,
-    #     booking.subscription_id)
+    #     )
 
     cache_booking = redis_service.get_booking(update)
     booking = database_service.add_booking(
@@ -1182,7 +1133,7 @@ def save_booking_information(update: Update, chat_id: int, is_cash = False) -> B
         cache_booking.booking_comment,
         chat_id,
         cache_booking.gift_id,
-        cache_booking.subscription_id)
+        )
     
     if is_cash:
         booking = database_service.update_booking(booking.id, prepayment=0)
@@ -1205,7 +1156,7 @@ def save_booking_information(update: Update, chat_id: int, is_cash = False) -> B
             booking_comment=cache_booking.booking_comment,
             chat_id=chat_id,
             gift_id=cache_booking.gift_id,
-            subscription_id=cache_booking.subscription_id)
+            )
         
     return booking
 

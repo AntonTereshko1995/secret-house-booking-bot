@@ -15,7 +15,6 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
-        "subscription_type": 0,
         "multi_day_prices": {
           "1": 500,
           "2": 950,
@@ -48,7 +47,6 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
-        "subscription_type": 0,
         "multi_day_prices": {
           "1": 400,
           "2": 800,
@@ -81,7 +79,6 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": false,
-        "subscription_type": 0,
         "multi_day_prices": {}
       },
       {
@@ -99,7 +96,6 @@
         "is_check_in_time_limit": true,
         "is_photoshoot": false,
         "is_transfer": false,
-        "subscription_type": 0,
         "multi_day_prices": {}
       },
       {
@@ -117,7 +113,6 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": true,
-        "subscription_type": 0,
         "multi_day_prices": {
           "1": 700,
           "2": 1400,
@@ -150,61 +145,6 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": true,
-        "subscription_type": 0,
-        "multi_day_prices": {}
-      },
-      {
-        "tariff": 5,
-        "name": "Абонемент на 3 посещений",
-        "price": 680,
-        "duration_hours": 12,
-        "sauna_price": 100,
-        "secret_room_price": 0,
-        "second_bedroom_price": 0,
-        "extra_hour_price": 30,
-        "extra_people_price": 70,
-        "photoshoot_price": 0,
-        "max_people": 3,
-        "is_check_in_time_limit": false,
-        "is_photoshoot": false,
-        "is_transfer": false,
-        "subscription_type": 3,
-        "multi_day_prices": {}
-      },
-      {
-        "tariff": 5,
-        "name": "Абонемент на 5 посещений",
-        "price": 1000,
-        "duration_hours": 12,
-        "sauna_price": 100,
-        "secret_room_price": 0,
-        "second_bedroom_price": 0,
-        "extra_hour_price": 30,
-        "extra_people_price": 70,
-        "photoshoot_price": 0,
-        "max_people": 3,
-        "is_check_in_time_limit": false,
-        "is_photoshoot": false,
-        "is_transfer": false,
-        "subscription_type": 5,
-        "multi_day_prices": {}
-      },
-      {
-        "tariff": 5,
-        "name": "Абонемент на 8 посещений",
-        "price": 1600,
-        "duration_hours": 12,
-        "sauna_price": 100,
-        "secret_room_price": 0,
-        "second_bedroom_price": 0,
-        "extra_hour_price": 30,
-        "extra_people_price": 70,
-        "photoshoot_price": 0,
-        "max_people": 3,
-        "is_check_in_time_limit": false,
-        "is_photoshoot": false,
-        "is_transfer": false,
-        "subscription_type": 8,
         "multi_day_prices": {}
       }
     ]

@@ -4,7 +4,6 @@ from datetime import datetime
 from enum import Enum
 from telegram import Document, PhotoSize
 from db.models.gift import GiftBase
-from db.models.subscription import SubscriptionBase
 from src.models.enum.booking_step import BookingStep
 from src.models.enum.tariff import Tariff
 from src.models.rental_price import RentalPrice
@@ -27,7 +26,6 @@ class BookingDraft:
     price: Optional[float] = None
     booking_comment: Optional[str] = None
     gift_id: Optional[int] = None
-    subscription_id: Optional[int] = None
     photo: Optional[PhotoSize] = None
     document: Optional[Document] = None
     navigation_step: Optional[BookingStep] = None

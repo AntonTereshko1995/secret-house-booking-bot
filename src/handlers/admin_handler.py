@@ -7,7 +7,6 @@ from src.services.navigation_service import NavigatonService
 from src.services.settings_service import SettingsService
 from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
-from db.models.subscription import SubscriptionBase
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
 from src.constants import CONFIRM, EDIT_BOOKING_PURCHASE, END, BACK, SET_PASSWORD
@@ -35,7 +34,6 @@ def get_purchase_handler() -> ConversationHandler:
         entry_points=[
             CallbackQueryHandler(booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"),
             CallbackQueryHandler(gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"),
-            CallbackQueryHandler(subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$"),
         ],
         states={ 
             EDIT_BOOKING_PURCHASE: [
@@ -45,7 +43,6 @@ def get_purchase_handler() -> ConversationHandler:
         fallbacks=[
             CallbackQueryHandler(booking_callback, pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$"),
             CallbackQueryHandler(gift_callback, pattern=r"^gift_\d+_chatid_(\d+)_giftid_(\d+)$"),
-            CallbackQueryHandler(subscription_callback, pattern=r"^subscription_\d+_chatid_(\d+)_subscriptionid_(\d+)$")
         ])
     return handler
 
@@ -182,18 +179,6 @@ async def accept_gift_payment(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif document:
         await context.bot.send_document(chat_id=ADMIN_CHAT_ID, document=document, caption=message, reply_markup=reply_markup)
 
-async def accept_subscription_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, subscription: SubscriptionBase, user_chat_id: int, photo, document):
-    user = database_service.get_user_by_id(subscription.user_id)
-    message = string_helper.generate_subscription_info_message(subscription, user)
-    keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"subscription_1_chatid_{user_chat_id}_subscriptionid_{subscription.id}")],
-        [InlineKeyboardButton("Отмена", callback_data=f"subscription_2_chatid_{user_chat_id}_subscriptionid_{subscription.id}")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    if photo:
-        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo, caption=message, reply_markup=reply_markup)
-    elif document:
-        await context.bot.send_document(chat_id=ADMIN_CHAT_ID, document=document, caption=message, reply_markup=reply_markup)
 
 async def inform_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
     user = database_service.get_user_by_id(booking.user_id)
@@ -257,19 +242,6 @@ async def gift_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         case "2":
             await cancel_gift(update, context, chat_id, gift_id)
 
-async def subscription_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = string_helper.parse_subscription_callback_data(query.data)
-    chat_id = data["user_chat_id"] 
-    subscription_id = data["subscription_id"]
-    menu_index = data["menu_index"]
-
-    match menu_index:
-        case "1":
-            await approve_subscription(update, context, chat_id, subscription_id)
-        case "2":
-            await cancel_subscription(update, context, chat_id, subscription_id)
     
 async def approve_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int, is_payment_by_cash: bool):
     (booking, user) = await prepare_approve_process(update, context, booking_id, is_payment_by_cash=is_payment_by_cash)
@@ -337,33 +309,7 @@ async def cancel_gift(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_i
     await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_gift_info_message(gift)}")
     return END
 
-async def approve_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, subscription_id: int):
-    subscription = database_service.update_subscription(subscription_id, is_paymented=True)
-    user = database_service.get_user_by_id(subscription.user_id)
-    await context.bot.send_message(
-        chat_id=chat_id, 
-        text=f"{subscription.code}")
 
-    await context.bot.send_message(
-        chat_id=chat_id, 
-        text="🎉 <b>Отличные новости!</b> 🎉\n"
-            "✅ <b>Покупка абонемента подтверждена администратором.</b>\n"
-            "📩 Мы отправили вам код абонемента — укажите его при бронировании.\n",
-        parse_mode='HTML')
-    await update.callback_query.edit_message_caption(f"Подтверждено \n\n{string_helper.generate_subscription_info_message(subscription, user)}")
-    return END
-
-async def cancel_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, subscription_id: int):
-    subscription = database_service.get_subscription_by_id(subscription_id)
-    user = database_service.get_user_by_id(subscription.user_id)
-    await context.bot.send_message(
-        chat_id=chat_id, 
-        text="⚠️ <b>Внимание!</b> ⚠️\n"
-            "❌ <b>Ваша покупка абонемента была отменена.</b>\n"
-            "📞 Администратор свяжется с вами для уточнения деталей.\n",
-        parse_mode='HTML')
-    await update.callback_query.edit_message_caption(f"Отмена.\n\n {string_helper.generate_subscription_info_message(subscription, user)}")
-    return END
 
 async def set_sale_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int, sale_percentage: int, is_payment_by_cash: bool):
     (booking, user) = await prepare_approve_process(update, context, booking_id, sale_percentage, is_payment_by_cash=is_payment_by_cash)
@@ -398,19 +344,10 @@ async def prepare_approve_process(update: Update, context: ContextTypes.DEFAULT_
     else:
         price = booking.price
     booking = database_service.update_booking(booking_id, price=price, is_prepaymented=True, calendar_event_id=calendar_event_id)
-    subscription = check_subscription(booking)
     gift = check_gift(booking, user)
-    await inform_message(update, context, booking, user, gift, subscription)
+    await inform_message(update, context, booking, user, gift)
     return (booking, user)
 
-def check_subscription(booking: BookingBase):
-    if not booking.subscription_id:
-        return
-    
-    subscription = database_service.get_subscription_by_id(booking.subscription_id)
-    subscription.number_of_visits += 1
-    is_done = True if subscription.number_of_visits == subscription.subscription_type.value else False
-    subscription = database_service.update_subscription(subscription.id, is_done=is_done, number_of_visits=subscription.number_of_visits)
 
 def check_gift(booking: BookingBase, user: UserBase):
     if not booking.gift_id:
@@ -419,7 +356,7 @@ def check_gift(booking: BookingBase, user: UserBase):
     gift = database_service.update_gift(booking.gift_id, is_done=True, user_id=user.id)
     return gift
 
-async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user: UserBase, gift: GiftBase, subscription: SubscriptionBase, is_payment_by_cash: bool = None):
+async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase, user: UserBase, gift: GiftBase, is_payment_by_cash: bool = None):
     message = (
         f"Пользователь: {user.contact}\n"
         f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -432,12 +369,6 @@ async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, boo
             f"Предоплата: {gift.price} руб.\n"
             f"Оплата наличкой: {string_helper.bool_to_str(is_payment_by_cash)}\n"
             f"Подарочный сертификат: Да\n")
-    elif subscription:
-        message += (
-            f"Стоимость: {booking.price} руб.\n"
-            f"Предоплата: {subscription.price} руб.\n"
-            f"Оплата наличкой: {string_helper.bool_to_str(is_payment_by_cash)}\n"
-            f"Абонемент кол. визитов: {subscription.number_of_visits}/{subscription.subscription_type.value}\n")
     else:
         message += (
             f"Стоимость: {booking.price} руб.\n"

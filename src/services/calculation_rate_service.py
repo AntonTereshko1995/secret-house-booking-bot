@@ -1,7 +1,6 @@
 import sys
 import os
 from datetime import date
-from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
 from src.models.rental_price import RentalPrice
 from src.services.file_service import FileService
@@ -15,7 +14,7 @@ class CalculationRateService:
     _rates: List[RentalPrice] = []
 
     def get_by_tariff(self, tariff: Tariff) -> RentalPrice:
-        if tariff == Tariff.SUBSCRIPTION or tariff == Tariff.GIFT:
+        if tariff == Tariff.GIFT:
             return None
         
         tariffs = self._try_load_tariffs()
@@ -24,23 +23,14 @@ class CalculationRateService:
             raise ValueError(f"No RentalPrice found for tariff: {tariff}")
         return selected_tariff
     
-    def get_by_subscription(self, subscription_type: SubscriptionType) -> RentalPrice:
-        tariffs = self._try_load_tariffs()
-        selected_subscription = next((tariff for tariff in tariffs if tariff.subscription_type == subscription_type.value), None)
-        if selected_subscription is None:
-            raise ValueError(f"No RentalPrice found for subscription type: {subscription_type}")
-        return selected_subscription
 
-    def get_price(self, tariff: Tariff = None, subscription_type: SubscriptionType = None) -> int:
+    def get_price(self, tariff: Tariff = None) -> int:
         tariffs = self._try_load_tariffs()
         if tariff is not None:
             price = next((rate.price for rate in tariffs if rate.tariff == tariff.value), None)
             if price is None:
                 raise ValueError(f"No price found for tariff: {tariff}")
             return price
-
-        if subscription_type is not None:
-            return next((tariff.price for tariff in tariffs if tariff.subscription_type == subscription_type.value), None)
 
         return 0
 

@@ -6,6 +6,5 @@ class Tariff(Enum):
     WORKER = 2
     INCOGNITA_DAY = 3
     INCOGNITA_HOURS = 4
-    SUBSCRIPTION = 5
     GIFT = 6
     DAY_FOR_COUPLE = 7

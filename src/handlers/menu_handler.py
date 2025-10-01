@@ -26,13 +26,10 @@ from src.constants import (
     PRICE, 
     QUESTIONS,
     SKIP, 
-    SUBSCRIPTION, 
     USER_BOOKING, 
-    SUBSCRIPTION_VALIDATE_USER, 
-    SUBSCRIPTION_PHOTO_UPLOAD, 
     GIFT_VALIDATE_USER,
     USER_BOOKING_VALIDATE_USER)
-from src.handlers import booking_handler, change_booking_date_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler, subscription_handler, user_booking 
+from src.handlers import booking_handler, change_booking_date_handler, cancel_booking_handler, question_handler, price_handler, gift_certificate_handler, available_dates_handler, user_booking 
 
 job = job_service.JobService()
 navigation_service = NavigatonService()
@@ -43,14 +40,6 @@ def get_handler() -> ConversationHandler:
             CommandHandler('start', show_menu),
             ],
         states={ 
-            # SUBSCRIPTION navigation flow
-            SUBSCRIPTION: subscription_handler.get_handler(),
-            SUBSCRIPTION_VALIDATE_USER: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, subscription_handler.check_user_contact),
-                CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
-            SUBSCRIPTION_PHOTO_UPLOAD: [
-                MessageHandler(filters.PHOTO | filters.Document.PDF, subscription_handler.handle_photo),
-                CallbackQueryHandler(show_menu, pattern=f"^{END}$")],
 
             # GIFT navigation flow
             GIFT_CERTIFICATE: gift_certificate_handler.get_handler(),
@@ -108,7 +97,6 @@ def get_handler() -> ConversationHandler:
             MENU: [
                 CallbackQueryHandler(booking_handler.generate_tariff_menu, pattern=f"^{BOOKING}$"),
                 CallbackQueryHandler(cancel_booking_handler.enter_user_contact, pattern=f"^{CANCEL_BOOKING}$"),
-                CallbackQueryHandler(subscription_handler.generate_subscription_menu, pattern=f"^{SUBSCRIPTION}$"),
                 CallbackQueryHandler(change_booking_date_handler.enter_user_contact, pattern=f"^{CHANGE_BOOKING_DATE}$"),
                 CallbackQueryHandler(available_dates_handler.select_month, pattern=f"^{AVAILABLE_DATES}$"),
                 CallbackQueryHandler(price_handler.send_prices, pattern=f"^{PRICE}$"),
@@ -126,7 +114,6 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     buttons = [
         [InlineKeyboardButton("Забронировать дом 🏠", callback_data=BOOKING)],
         [InlineKeyboardButton("Купить подарочный сертификат 🎁", callback_data=GIFT_CERTIFICATE)],
-        [InlineKeyboardButton("Оформить абонемент 🔄", callback_data=SUBSCRIPTION)],
         [InlineKeyboardButton("Мои бронирования 👁️‍🗨️", callback_data=USER_BOOKING)],
         [InlineKeyboardButton("Отменить бронирование ❌", callback_data=CANCEL_BOOKING)],
         [InlineKeyboardButton("Перенести бронирование 🔄", callback_data=CHANGE_BOOKING_DATE)],

@@ -35,7 +35,6 @@ class TestCalculationRateServiceIntegration:
             is_check_in_time_limit=False,
             is_photoshoot=True,
             is_transfer=False,
-            subscription_type=0,
             multi_day_prices={
                 "1": 700,
                 "2": 1300,
