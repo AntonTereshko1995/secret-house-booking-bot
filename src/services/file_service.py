@@ -10,8 +10,8 @@ from src.models.date_pricing_rule import DatePricingRule
 @singleton
 class FileService:
     _IMAGE_FOLDER = "assets/images/"
-    # _TARIFF_JSON = "src/config/tariff_rate.json"
-    _TARIFF_JSON = "src/config/tariff_rate_sale.json"
+    _TARIFF_JSON = "src/config/tariff_rate.json"
+    # _TARIFF_JSON = "src/config/tariff_rate_sale.json"
     _DATE_PRICING_RULES_JSON = "src/config/date_pricing_rules.json"
 
     def get_price_media(self) -> List[InputMediaPhoto]:
