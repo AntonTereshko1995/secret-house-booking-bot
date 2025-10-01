@@ -3,10 +3,9 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.gift import GiftBase
-from db.models.subscription import SubscriptionBase
 from db.models.booking import BookingBase
 from db.models.user import UserBase
-from src.helpers import subscription_helper, tariff_helper
+from src.helpers import tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
@@ -116,10 +115,6 @@ def generate_booking_info_message(booking: BookingBase, user: UserBase, is_addit
         message += (
             f"Подарочный сертификат: {booking.gift_id}\n"
             f"Доплата наличкой: {bool_to_str(is_additional_payment_by_cash)}\n")
-    elif booking.subscription_id:
-        message += (
-            f"Абонемент: {booking.subscription_id}\n"
-            f"Доплата наличкой: {bool_to_str(is_additional_payment_by_cash)}\n")
     else:
         message += f"Предоплата: {booking.prepayment_price}\n" 
     return message
@@ -136,14 +131,6 @@ def generate_gift_info_message(gift: GiftBase) -> str:
         f"Секретная комната: {bool_to_str(gift.has_secret_room)}\n"
         f"Код: {gift.code}\n")
 
-def generate_subscription_info_message(subscription: SubscriptionBase, user: UserBase) -> str:
-    return (
-        f"Абонемент!\n"
-        f"Владелец абонемента: {user.contact}\n"
-        f"Дата окончания: {subscription.date_expired.strftime('%d.%m.%Y %H:%M')}\n"
-        f"Тариф: {subscription_helper.get_name(subscription.subscription_type)}\n"
-        f"Стоимость: {subscription.price} руб.\n"
-        f"Код: {subscription.code}\n")
 
 def parse_booking_callback_data(callback_data: str):
     pattern = r"booking_(\d+)_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)"
@@ -179,13 +166,3 @@ def parse_gift_callback_data(callback_data: str):
     else:
         return None
     
-def parse_subscription_callback_data(callback_data: str):
-    pattern = r"subscription_(\d+)_chatid_(\d+)_subscriptionid_(\d+)"
-    match = re.match(pattern, callback_data)
-    if match:
-        menu_index = match.group(1)
-        user_chat_id = match.group(2)
-        subscription_id = match.group(3)
-        return {"user_chat_id": user_chat_id, "subscription_id": subscription_id, "menu_index": menu_index}
-    else:
-        return None

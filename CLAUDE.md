@@ -63,7 +63,7 @@ docker run -p 8080:8080 secret-house-bot
 
 **Database Layer:**
 - Uses SQLAlchemy ORM with SQLite database
-- Models: UserBase, BookingBase, GiftBase, SubscriptionBase
+- Models: UserBase, BookingBase, GiftBase
 - Singleton DatabaseService pattern for connection management
 
 **Telegram Bot:**
@@ -80,7 +80,6 @@ docker run -p 8080:8080 secret-house-bot
 **Business Logic:**
 - Multi-step booking workflow with tariff calculation
 - Gift certificate system
-- Subscription management
 - Automatic booking reminders via job scheduler
 
 ### Configuration Environments

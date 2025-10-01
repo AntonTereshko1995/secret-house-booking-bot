@@ -7,16 +7,14 @@ from src.services.logger_service import LoggerService
 from db.models.base import Base
 from db.models.user import UserBase
 from db.models.gift import GiftBase
-from db.models.subscription import SubscriptionBase
 from db.models.booking import BookingBase
 from matplotlib.dates import relativedelta
-from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import cast, Sequence, and_, func, or_, select
-from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS, MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS
+from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS
 
 @singleton
 class DatabaseService:
@@ -158,81 +156,9 @@ class DatabaseService:
             print(f"Error in get_gift_by_id: {e}")
             LoggerService.error(__name__, f"get_gift_by_id", e)
 
-    def add_subscription(
-            self, 
-            user_contact: str, 
-            subscription_type: SubscriptionType, 
-            price: float, 
-            code: str):
-        user = self.get_or_create_user(user_contact)
-        with self.Session() as session:
-            try:
-                date_expired = datetime.today() + relativedelta(months=MAX_PERIOD_FOR_SUBSCRIPTION_IN_MONTHS)
-                new_subscription = SubscriptionBase(
-                    user_id = user.id,
-                    subscription_type = subscription_type, 
-                    date_expired = date_expired,
-                    price = price, 
-                    code = code)
-                session.add(new_subscription)
-                session.commit()
-                print(f"Subscription added: {new_subscription}")
-                return new_subscription
-            except Exception as e:
-                session.rollback()
-                print(f"Error adding Subscription: {e}")
-                LoggerService.error(__name__, f"add_subscription", e)
 
-    def update_subscription(
-            self, 
-            subscription_id: int,
-            date_expired: datetime = None,
-            is_paymented: bool = None,
-            is_done: bool = None,
-            number_of_visits: int = None) -> SubscriptionBase:
-        with self.Session() as session:
-            try:
-                subscription = session.scalar(select(SubscriptionBase).where(SubscriptionBase.id == subscription_id))
-                if not subscription:
-                    print(f"Subscription with id {subscription_id} not found.")
-                    return
-
-                if date_expired:
-                    subscription.date_expired = date_expired
-                if is_paymented:
-                    subscription.is_paymented = is_paymented
-                if is_done:
-                    subscription.is_done = is_done
-                if number_of_visits:
-                    subscription.number_of_visits = number_of_visits
-
-                session.commit()
-                print(f"Subscription updated: {subscription}")
-                return subscription
-            except Exception as e:
-                session.rollback()
-                print(f"Error updating Subscription: {e}")
-                LoggerService.error(__name__, f"update_subscription", e)
     
-    def get_subscription_by_code(self, code: str) -> SubscriptionBase:
-        try:
-            with self.Session() as session:
-                subscription = session.scalar(select(SubscriptionBase)
-                    .where((SubscriptionBase.code == code) & (SubscriptionBase.is_paymented == True) & (SubscriptionBase.is_done == False)))
-                return subscription
-        except Exception as e:
-            print(f"Error in get_subscription_by_code: {e}")
-            LoggerService.error(__name__, f"get_subscription_by_code", e)
 
-    def get_subscription_by_id(self, id: int) -> SubscriptionBase: 
-        try:
-            with self.Session() as session:
-                subscription = session.scalar(select(SubscriptionBase)
-                    .where(SubscriptionBase.id == id))
-                return subscription
-        except Exception as e:
-            print(f"Error in get_subscription_by_id: {e}")
-            LoggerService.error(__name__, f"get_subscription_by_id", e)
 
     def add_booking(
             self, 
@@ -250,7 +176,7 @@ class DatabaseService:
             comment: str,
             chat_id: int,
             gift_id: int = None, 
-            subscription_id: int = None) -> BookingBase:
+) -> BookingBase:
         user = self.get_or_create_user(user_contact)
         with self.Session() as session:
             try:
@@ -271,8 +197,6 @@ class DatabaseService:
                 
                 if gift_id:
                     new_booking.gift_id = gift_id
-                if subscription_id:
-                    new_booking.subscription_id = subscription_id
 
                 session.add(new_booking)
                 session.commit()

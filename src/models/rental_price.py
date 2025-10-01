@@ -2,7 +2,6 @@ import sys
 import os
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from src.models.enum.subscription_type import SubscriptionType
 from src.models.enum.tariff import Tariff
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -23,5 +22,4 @@ class RentalPrice:
     is_check_in_time_limit: bool
     is_photoshoot: bool
     is_transfer: bool
-    subscription_type: SubscriptionType
     multi_day_prices: dict
