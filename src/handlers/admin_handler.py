@@ -1,7 +1,9 @@
 from datetime import date, datetime, time, timedelta
 import sys
 import os
+import logging
 from typing import Sequence
+from src.services.logger_service import LoggerService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.navigation_service import NavigatonService
 from src.services.settings_service import SettingsService
@@ -386,52 +388,76 @@ async def inform_message(update: Update, context: ContextTypes.DEFAULT_TYPE, boo
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
 async def send_booking_details(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
-    await context.bot.send_message(
-        chat_id=booking.chat_id, 
-        text="Мы отобразили путь по которому лучше всего доехать до The Secret House.\n"
-            "Через 500 метров после ж/д переезда по левую сторону будет оранжевый магазин. После магазина нужно повернуть налево. Это Вам ориентир нужного поворота, далее навигатор Вас привезет правильно.\n"
-            "Когда будете ехать вдоль леса, то Вам нужно будет повернуть на садовое товарищество 'Юбилейное-68' (будет вывеска).\n" 
-            "ст. Юбилейное-68, ул. Сосновая, д. 2\n\n"
-            "Маршрут в Yandex map:\n"
-            "https://yandex.com.ge/maps/157/minsk/?l=stv%2Csta&ll=27.297381%2C53.932145&mode=routes&rtext=53.939763%2C27.333107~53.938194%2C27.324665~53.932431%2C27.315410~53.930789%2C27.299320~53.934190%2C27.300387&rtt=auto&ruri=~~~~ymapsbm1%3A%2F%2Fgeo%3Fdata%3DCgo0Mzk0MjMwMTgwErMB0JHQtdC70LDRgNGD0YHRjCwg0JzRltC90YHQutGWINGA0LDRkdC9LCDQltC00LDQvdC-0LLRltGG0LrRliDRgdC10LvRjNGB0LDQstC10YIsINGB0LDQtNCw0LLQvtC00YfQsNC1INGC0LDQstCw0YDRi9GB0YLQstCwINCu0LHRltC70LXQudC90LDQtS02OCwg0KHQsNGB0L3QvtCy0LDRjyDQstGD0LvRltGG0LAsIDIiCg0sZ9pBFZ28V0I%2C&z=16.06 \n\n"
-            "Маршрут Google map:\n"
-            "https://maps.app.goo.gl/Hsf9Xw69N8tqHyqt5")
-    await context.bot.send_message(
-        chat_id=booking.chat_id, 
-        text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
-            f"{ADMINISTRATION_CONTACT}")
-    photo = file_service.get_image("key.jpg")
-    await context.bot.send_photo(
-        chat_id=booking.chat_id, 
-        caption="Мы предоставляем самостоятельное заселение.\n"
-            f"1. Слева отображена ключница, которая располагается за территорией дома. В которой лежат ключи от ворот и дома. Пароль: {settings_service.password}\n"
-            "2. Справа отображен ящик, который располагается на территории дома. В ящик нужно положить подписанный договор и оплату за проживание, если вы платите наличкой.\n\n"
-            "Попрошу это сделать в первые 30 мин. Вашего пребывания в The Secret House. Администратор заберет договор и деньги."
-            "Договор и ручка будут лежать в дома на острове на кухне. Вложите деньги и договор с розовый конверт.\n\n"
-            "Информация для оплаты (Альфа-Банк):\n"
-            f"по номеру телефона {BANK_PHONE_NUMBER}\n"
-            "или\n"
-            f"по номеру карты {BANK_CARD_NUMBER}",
-        photo=photo)
-    
-    if booking.has_sauna:
-        await context.bot.send_message(
+    try:
+        # Отправка маршрута
+        message1 = await context.bot.send_message(
             chat_id=booking.chat_id, 
-            text="Инструкция по включению сауны:\n"
-                "1. Подойдите к входной двери.\n"
-                "2. По правую руку находился электрический счетчик.\n"
-                "3. Все рубильники подписаны. Переключите рубильник с надписей «Сауна».\n"
-                "4. Через 1 час сауна нагреется."
-                "5. После использования выключите рубильник.\n")
+            text="Мы отобразили путь по которому лучше всего доехать до The Secret House.\n"
+                "Через 500 метров после ж/д переезда по левую сторону будет оранжевый магазин. После магазина нужно повернуть налево. Это Вам ориентир нужного поворота, далее навигатор Вас привезет правильно.\n"
+                "Когда будете ехать вдоль леса, то Вам нужно будет повернуть на садовое товарищество 'Юбилейное-68' (будет вывеска).\n" 
+                "ст. Юбилейное-68, ул. Сосновая, д. 2\n\n"
+                "Маршрут в Yandex map:\n"
+                "https://yandex.com.ge/maps/157/minsk/?l=stv%2Csta&ll=27.297381%2C53.932145&mode=routes&rtext=53.939763%2C27.333107~53.938194%2C27.324665~53.932431%2C27.315410~53.930789%2C27.299320~53.934190%2C27.300387&rtt=auto&ruri=~~~~ymapsbm1%3A%2F%2Fgeo%3Fdata%3DCgo0Mzk0MjMwMTgwErMB0JHQtdC70LDRgNGD0YHRjCwg0JzRltC90YHQutGWINGA0LDRkdC9LCDQltC00LDQvdC-0LLRltGG0LrRliDRgdC10LvRjNGB0LDQstC10YIsINGB0LDQtNCw0LLQvtC00YfQsNC1INGC0LDQstCw0YDRi9GB0YLQstCwINCu0LHRltC70LXQudC90LDQtS02OCwg0KHQsNGB0L3QvtCy0LDRjyDQstGD0LvRltGG0LAsIDIiCg0sZ9pBFZ28V0I%2C&z=16.06 \n\n"
+                "Маршрут Google map:\n"
+                "https://maps.app.goo.gl/Hsf9Xw69N8tqHyqt5")
+        LoggerService.info(__name__, "Route message sent successfully", kwargs={'chat_id': booking.chat_id, 'message_id': message1.message_id, 'booking_id': booking.id, 'message_type': 'route'})
+        
+        # Отправка контактов администратора
+        message2 = await context.bot.send_message(
+            chat_id=booking.chat_id, 
+            text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
+                f"{ADMINISTRATION_CONTACT}")
+        LoggerService.info(__name__, "Admin contact message sent successfully", kwargs={'chat_id': booking.chat_id, 'message_id': message2.message_id, 'booking_id': booking.id, 'message_type': 'admin_contact'})
+        
+        # Отправка фото с инструкциями
+        photo = file_service.get_image("key.jpg")
+        message3 = await context.bot.send_photo(
+            chat_id=booking.chat_id, 
+            caption="Мы предоставляем самостоятельное заселение.\n"
+                f"1. Слева отображена ключница, которая располагается за территорией дома. В которой лежат ключи от ворот и дома. Пароль: {settings_service.password}\n"
+                "2. Справа отображен ящик, который располагается на территории дома. В ящик нужно положить подписанный договор и оплату за проживание, если вы платите наличкой.\n\n"
+                "Попрошу это сделать в первые 30 мин. Вашего пребывания в The Secret House. Администратор заберет договор и деньги."
+                "Договор и ручка будут лежать в дома на острове на кухне. Вложите деньги и договор с розовый конверт.\n\n"
+                "Информация для оплаты (Альфа-Банк):\n"
+                f"по номеру телефона {BANK_PHONE_NUMBER}\n"
+                "или\n"
+                f"по номеру карты {BANK_CARD_NUMBER}",
+            photo=photo)
+        LoggerService.info(__name__, "Check-in instructions photo sent successfully", kwargs={'chat_id': booking.chat_id, 'message_id': message3.message_id, 'booking_id': booking.id, 'message_type': 'checkin_instructions'})
+        
+        # Отправка инструкций по сауне (если есть)
+        if booking.has_sauna:
+            message4 = await context.bot.send_message(
+                chat_id=booking.chat_id, 
+                text="Инструкция по включению сауны:\n"
+                    "1. Подойдите к входной двери.\n"
+                    "2. По правую руку находился электрический счетчик.\n"
+                    "3. Все рубильники подписаны. Переключите рубильник с надписей «Сауна».\n"
+                    "4. Через 1 час сауна нагреется."
+                    "5. После использования выключите рубильник.\n")
+            LoggerService.info(__name__, "Sauna instructions sent successfully", kwargs={'chat_id': booking.chat_id, 'message_id': message4.message_id, 'booking_id': booking.id, 'message_type': 'sauna_instructions'})
+        
+        LoggerService.info(__name__, "All booking details sent successfully", kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'action': 'send_booking_details_complete'})
+        
+    except Exception as e:
+        LoggerService.error(__name__, "Failed to send booking details to user", exception=e, kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'action': 'send_booking_details'})
+        raise
 
 async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
-    await context.bot.send_message(
-        chat_id=booking.chat_id, 
-        text="🏡 The Secret House благодарит вас за выбор нашего дома для аренды! 💫 \n"
-            "Мы хотели бы узнать, как Вам понравилось наше обслуживание. Будем благодарны, если вы оставите анономный отзыв по ссылке ниже.\n"
-            "Ссылка:\n"
-            "https://docs.google.com/forms/d/1FIDlSsLZLWfKOnhAZ8pPKiPEzLcwl5COI7rEIVGgFEM/edit?ts=66719dd9 \n\n"
-            "После получения фидбека мы дарим Вам 10% скидки для следующей поездки.")
+    try:
+        message = await context.bot.send_message(
+            chat_id=booking.chat_id, 
+            text="🏡 The Secret House благодарит вас за выбор нашего дома для аренды! 💫 \n"
+                "Мы хотели бы узнать, как Вам понравилось наше обслуживание. Будем благодарны, если вы оставите анономный отзыв по ссылке ниже.\n"
+                "Ссылка:\n"
+                "https://docs.google.com/forms/d/1FIDlSsLZLWfKOnhAZ8pPKiPEzLcwl5COI7rEIVGgFEM/edit?ts=66719dd9 \n\n"
+                "После получения фидбека мы дарим Вам 10% скидки для следующей поездки.")
+        
+        LoggerService.info(__name__, "Feedback request sent successfully", kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'message_id': message.message_id, 'action': 'send_feedback'})
+        
+    except Exception as e:
+        LoggerService.error(__name__, "Failed to send feedback request to user", exception=e, kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'action': 'send_feedback'})
+        raise
     
 async def check_and_send_booking(context, booking):
     now = datetime.now()
