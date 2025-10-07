@@ -4,6 +4,7 @@ from typing import Optional
 from singleton_decorator import singleton
 from telegram import Update
 from src.models.booking_draft import BookingDraft
+from src.models.feedback import Feedback
 from src.models.enum.tariff import Tariff
 from src.services.navigation_service import NavigatonService
 from src.config.config import REDIS_URL, REDIS_PORT, REDIS_SSL
@@ -69,3 +70,38 @@ class RedisService:
             return Tariff[value] if isinstance(value, str) else value
         else:
             return value
+
+    # Feedback methods
+    def init_feedback(self, update: Update):
+        """Initialize feedback storage in Redis"""
+        self.clear_feedback(update)
+        self.set_feedback(update, Feedback())
+
+    def set_feedback(self, update: Update, feedback: Feedback):
+        """Store feedback object in Redis"""
+        chat_id = self.__navigaton_service.get_chat_id(update)
+        key = f"feedback:{chat_id}"
+        self.__client.setex(key, self.__ttl, feedback.to_json())
+
+    def get_feedback(self, update: Update) -> Optional[Feedback]:
+        """Retrieve feedback object from Redis"""
+        chat_id = self.__navigaton_service.get_chat_id(update)
+        key = f"feedback:{chat_id}"
+        data = self.__client.get(key)
+        if data:
+            return Feedback.from_json(data)
+        return None
+
+    def update_feedback_field(self, update: Update, field: str, value):
+        """Update a single field in feedback object"""
+        feedback = self.get_feedback(update)
+        if not feedback:
+            feedback = Feedback()
+        setattr(feedback, field, value)
+        self.set_feedback(update, feedback)
+
+    def clear_feedback(self, update: Update):
+        """Clear feedback data from Redis"""
+        chat_id = self.__navigaton_service.get_chat_id(update)
+        key = f"feedback:{chat_id}"
+        self.__client.delete(key)

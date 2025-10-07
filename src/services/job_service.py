@@ -1,6 +1,7 @@
 import sys
 import os
 import pytz
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import logging
 from src.services.logger_service import LoggerService
@@ -13,6 +14,7 @@ from src.services.database_service import DatabaseService
 
 logging.basicConfig(level=logging.INFO)
 database_service = DatabaseService()
+
 
 @singleton
 class JobService:
@@ -36,39 +38,93 @@ class JobService:
         job_time = time(8, 0, tzinfo=timezone)
 
         if not context.job_queue.get_jobs_by_name("send_booking_details"):
-            context.job_queue.run_daily(self.send_booking_details, time=job_time, name="send_booking_details")
+            context.job_queue.run_daily(
+                self.send_booking_details, time=job_time, name="send_booking_details"
+            )
         if not context.job_queue.get_jobs_by_name("send_feeback"):
-            context.job_queue.run_daily(self.send_feeback, time=job_time, name="send_feeback")
-            
+            context.job_queue.run_daily(
+                self.send_feeback, time=job_time, name="send_feeback"
+            )
+
     async def send_booking_details(self, context: CallbackContext):
         tomorrow = date.today() + timedelta(days=1)
         bookings = database_service.get_booking_by_start_date(tomorrow)
         if not bookings:
-            LoggerService.info(__name__, f"No bookings found for {tomorrow}", kwargs={'date': str(tomorrow)})
+            LoggerService.info(
+                __name__,
+                f"No bookings found for {tomorrow}",
+                kwargs={"date": str(tomorrow)},
+            )
             return
-        
-        LoggerService.info(__name__, f"Found {len(bookings)} bookings for {tomorrow}", kwargs={'bookings_count': len(bookings), 'date': str(tomorrow)})
-        
+
+        LoggerService.info(
+            __name__,
+            f"Found {len(bookings)} bookings for {tomorrow}",
+            kwargs={"bookings_count": len(bookings), "date": str(tomorrow)},
+        )
+
         for booking in bookings:
             try:
                 await admin_handler.send_booking_details(context, booking)
-                LoggerService.info(__name__, f"Successfully sent booking details to user", kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'action': 'send_booking_details'})
+                LoggerService.info(
+                    __name__,
+                    "Successfully sent booking details to user",
+                    kwargs={
+                        "chat_id": booking.chat_id,
+                        "booking_id": booking.id,
+                        "action": "send_booking_details",
+                    },
+                )
             except Exception as e:
-                LoggerService.error(__name__, f"Failed to send booking details to user", exception=e, kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'action': 'send_booking_details'})
+                LoggerService.error(
+                    __name__,
+                    "Failed to send booking details to user",
+                    exception=e,
+                    kwargs={
+                        "chat_id": booking.chat_id,
+                        "booking_id": booking.id,
+                        "action": "send_booking_details",
+                    },
+                )
 
     async def send_feeback(self, context: CallbackContext):
         yesterday = date.today() - timedelta(days=1)
         bookings = database_service.get_booking_by_finish_date(yesterday)
         if not bookings:
-            LoggerService.info(__name__, f"No completed bookings found for {yesterday}", kwargs={'date': str(yesterday)})
+            LoggerService.info(
+                __name__,
+                f"No completed bookings found for {yesterday}",
+                kwargs={"date": str(yesterday)},
+            )
             return
 
-        LoggerService.info(__name__, f"Found {len(bookings)} completed bookings for {yesterday}", kwargs={'bookings_count': len(bookings), 'date': str(yesterday)})
+        LoggerService.info(
+            __name__,
+            f"Found {len(bookings)} completed bookings for {yesterday}",
+            kwargs={"bookings_count": len(bookings), "date": str(yesterday)},
+        )
 
         for booking in bookings:
             try:
                 database_service.update_booking(booking.id, is_done=True)
                 await admin_handler.send_feedback(context, booking)
-                LoggerService.info(__name__, f"Successfully sent feedback request to user", kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'action': 'send_feedback'})
+                LoggerService.info(
+                    __name__,
+                    "Successfully sent feedback request to user",
+                    kwargs={
+                        "chat_id": booking.chat_id,
+                        "booking_id": booking.id,
+                        "action": "send_feedback",
+                    },
+                )
             except Exception as e:
-                LoggerService.error(__name__, f"Failed to send feedback request to user", exception=e, kwargs={'chat_id': booking.chat_id, 'booking_id': booking.id, 'action': 'send_feedback'})
+                LoggerService.error(
+                    __name__,
+                    "Failed to send feedback request to user",
+                    exception=e,
+                    kwargs={
+                        "chat_id": booking.chat_id,
+                        "booking_id": booking.id,
+                        "action": "send_feedback",
+                    },
+                )

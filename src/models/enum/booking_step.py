@@ -1,5 +1,5 @@
 from enum import Enum
-from token import NUMBER
+
 
 class BookingStep(Enum):
     TARIFF = "TARIFF"
@@ -14,7 +14,7 @@ class BookingStep(Enum):
     FINISH_TIME = "FINISH_TIME"
     COMMENT = "COMMENT"
     NUMBER_GUESTS = "NUMBER_GUESTS"
-    CONFIRM_BOOKING = "CONFIRM_BOOKING" 
-    CONTACT = "CONTACT" 
-    PAY = "PAY" 
-    FINISH = "FINISH" 
+    CONFIRM_BOOKING = "CONFIRM_BOOKING"
+    CONTACT = "CONTACT"
+    PAY = "PAY"
+    FINISH = "FINISH"

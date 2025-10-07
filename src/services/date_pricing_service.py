@@ -1,11 +1,13 @@
 import sys
 import os
-from datetime import date, datetime
+from datetime import date
 from typing import List, Optional
 from singleton_decorator import singleton
 from src.models.date_pricing_rule import DatePricingRule
 from src.services.file_service import FileService
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 
 @singleton
 class DatePricingService:
@@ -33,7 +35,9 @@ class DatePricingService:
         effective_rule = self.get_effective_rule(target_date)
         return effective_rule is not None and effective_rule.price_override is not None
 
-    def get_price_override(self, target_date: date, duration_hours: int) -> Optional[int]:
+    def get_price_override(
+        self, target_date: date, duration_hours: int
+    ) -> Optional[int]:
         """Get the price override for the target date and duration, if any."""
         effective_rule = self.get_effective_rule(target_date)
         if effective_rule and effective_rule.price_override is not None:
