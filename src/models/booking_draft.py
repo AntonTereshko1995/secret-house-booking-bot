@@ -1,13 +1,12 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Optional
 from datetime import datetime
-from enum import Enum
 from telegram import Document, PhotoSize
-from db.models.gift import GiftBase
 from src.models.enum.booking_step import BookingStep
 from src.models.enum.tariff import Tariff
 from src.models.rental_price import RentalPrice
 from dataclasses_json import dataclass_json
+
 
 @dataclass_json
 @dataclass

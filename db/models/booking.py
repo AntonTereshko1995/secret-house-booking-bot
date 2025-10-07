@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.decorator.type_decorator import IntEnumType
 from src.models.enum.tariff import Tariff
@@ -11,8 +12,9 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from src.config.config import PREPAYMENT
 
+
 class BookingBase(Base):
-    __tablename__ = 'booking'
+    __tablename__ = "booking"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
     chat_id: Mapped[int] = mapped_column(Integer, unique=False, nullable=False)
@@ -29,8 +31,11 @@ class BookingBase(Base):
     number_of_guests: Mapped[int] = mapped_column(Integer, nullable=False)
     is_prepaymented: Mapped[bool] = mapped_column(Boolean, default=False)
     is_done: Mapped[bool] = mapped_column(Boolean, default=False)
+    feedback_submitted: Mapped[bool] = mapped_column(Boolean, default=False)
     price: Mapped[float] = mapped_column(Float, nullable=False, default=0)
-    prepayment_price: Mapped[float] = mapped_column(Float, nullable=False, default=PREPAYMENT)
+    prepayment_price: Mapped[float] = mapped_column(
+        Float, nullable=False, default=PREPAYMENT
+    )
     comment: Mapped[str] = mapped_column(String, nullable=True)
     calendar_event_id: Mapped[str] = mapped_column(String, nullable=True)
     gift_id: Mapped[int] = mapped_column(ForeignKey("gift.id"), nullable=True)

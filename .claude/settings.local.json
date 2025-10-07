@@ -37,7 +37,9 @@
       "Bash(pkill:*)",
       "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Create initial tables\")",
       "Bash(DATABASE_URL=\"postgresql+asyncpg://user:pass@localhost/dbname\" uv run alembic revision --autogenerate -m \"Create initial tables\")",
-      "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add phone_number to users\")"
+      "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add phone_number to users\")",
+      "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add feedback_submitted to booking\")",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

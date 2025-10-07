@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class Tariff(Enum):
     HOURS_12 = 0
     DAY = 1

@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.secret_manager_service import SecretManagerService
 
@@ -35,7 +36,11 @@ if "secrets-production" in os.environ:
     SETTINGS_PATH = secret_manager_service.get_secret("SETTINGS_PATH")
 else:
     if os.environ.get("AMVERA") != 1:
-        file = "src/config/.env.debug" if os.getenv("ENV") == "debug" else "src/config/.env.production"
+        file = (
+            "src/config/.env.debug"
+            if os.getenv("ENV") == "debug"
+            else "src/config/.env.production"
+        )
         load_dotenv(file)
 
     DEBUG = os.getenv("DEBUG").strip().lower() in ("true", "1", "yes", "on")
