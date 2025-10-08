@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import CallbackQueryHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 from src.constants import (
     END,
     FEEDBACK_Q1,
@@ -28,22 +28,34 @@ navigation_service = NavigatonService()
 
 
 def get_handler():
-    """Return list of handlers for feedback conversation"""
-    return [
-        # Entry point - start feedback
-        CallbackQueryHandler(start_feedback, pattern=r"^START_FEEDBACK_(\d+)$"),
-        # Q1-Q6: Rating questions (1-10 buttons)
-        CallbackQueryHandler(handle_q1_rating, pattern=r"^FBQ1_(\d+)$"),
-        CallbackQueryHandler(handle_q2_rating, pattern=r"^FBQ2_(\d+)$"),
-        CallbackQueryHandler(handle_q3_rating, pattern=r"^FBQ3_(\d+)$"),
-        CallbackQueryHandler(handle_q4_rating, pattern=r"^FBQ4_(\d+)$"),
-        CallbackQueryHandler(handle_q5_rating, pattern=r"^FBQ5_(\d+)$"),
-        CallbackQueryHandler(handle_q6_rating, pattern=r"^FBQ6_(\d+)$"),
-        # Q7-Q9: Text input questions
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_response),
-        # Back to menu button
-        CallbackQueryHandler(back_to_menu, pattern=f"^FEEDBACK_{END}$"),
-    ]
+    """Return ConversationHandler for feedback"""
+    handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(start_feedback, pattern=r"^START_FEEDBACK_(\d+)$")
+        ],
+        states={
+            FEEDBACK_Q1: [CallbackQueryHandler(handle_q1_rating, pattern=r"^FBQ1_(\d+)$")],
+            FEEDBACK_Q2: [CallbackQueryHandler(handle_q2_rating, pattern=r"^FBQ2_(\d+)$")],
+            FEEDBACK_Q3: [CallbackQueryHandler(handle_q3_rating, pattern=r"^FBQ3_(\d+)$")],
+            FEEDBACK_Q4: [CallbackQueryHandler(handle_q4_rating, pattern=r"^FBQ4_(\d+)$")],
+            FEEDBACK_Q5: [CallbackQueryHandler(handle_q5_rating, pattern=r"^FBQ5_(\d+)$")],
+            FEEDBACK_Q6: [CallbackQueryHandler(handle_q6_rating, pattern=r"^FBQ6_(\d+)$")],
+            FEEDBACK_Q7: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_response),
+                CallbackQueryHandler(back_to_menu, pattern=f"^FEEDBACK_{END}$")
+            ],
+            FEEDBACK_Q8: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_response),
+                CallbackQueryHandler(back_to_menu, pattern=f"^FEEDBACK_{END}$")
+            ],
+            FEEDBACK_Q9: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_response),
+                CallbackQueryHandler(back_to_menu, pattern=f"^FEEDBACK_{END}$")
+            ],
+        },
+        fallbacks=[CallbackQueryHandler(back_to_menu, pattern=f"^FEEDBACK_{END}$")],
+    )
+    return handler
 
 
 async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -306,7 +318,7 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
     feedback_data = redis_service.get_feedback(update)
     if not feedback_data:
         LoggerService.warning(__name__, "No feedback data found in Redis", update)
-        return f"FEEDBACK_{END}"
+        return ConversationHandler.END
 
     current_q = feedback_data.current_question
     text = update.message.text

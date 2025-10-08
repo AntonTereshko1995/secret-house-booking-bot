@@ -7,21 +7,10 @@ from src.services.logger_service import LoggerService
 import logging
 from flask import Flask
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, ConversationHandler
+from telegram.ext import Application, CommandHandler, ContextTypes
 from src.handlers import menu_handler, admin_handler, feedback_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
-from src.constants import (
-    FEEDBACK_Q1,
-    FEEDBACK_Q2,
-    FEEDBACK_Q3,
-    FEEDBACK_Q4,
-    FEEDBACK_Q5,
-    FEEDBACK_Q6,
-    FEEDBACK_Q7,
-    FEEDBACK_Q8,
-    FEEDBACK_Q9,
-)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -61,22 +50,7 @@ if __name__ == "__main__":
     application.add_handler(admin_handler.get_purchase_handler())
 
     # Feedback conversation handler
-    feedback_conversation_handler = ConversationHandler(
-        entry_points=feedback_handler.get_handler(),
-        states={
-            FEEDBACK_Q1: feedback_handler.get_handler(),
-            FEEDBACK_Q2: feedback_handler.get_handler(),
-            FEEDBACK_Q3: feedback_handler.get_handler(),
-            FEEDBACK_Q4: feedback_handler.get_handler(),
-            FEEDBACK_Q5: feedback_handler.get_handler(),
-            FEEDBACK_Q6: feedback_handler.get_handler(),
-            FEEDBACK_Q7: feedback_handler.get_handler(),
-            FEEDBACK_Q8: feedback_handler.get_handler(),
-            FEEDBACK_Q9: feedback_handler.get_handler(),
-        },
-        fallbacks=feedback_handler.get_handler(),
-    )
-    application.add_handler(feedback_conversation_handler)
+    application.add_handler(feedback_handler.get_handler())
 
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
     application.add_handler(
