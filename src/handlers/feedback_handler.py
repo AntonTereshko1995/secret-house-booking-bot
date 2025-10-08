@@ -41,10 +41,8 @@ def get_handler():
         CallbackQueryHandler(handle_q6_rating, pattern=r"^FBQ6_(\d+)$"),
         # Q7-Q9: Text input questions
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_response),
-        # Cancel button
-        CallbackQueryHandler(cancel_feedback, pattern="^CANCEL_FEEDBACK$"),
         # Back to menu button
-        CallbackQueryHandler(back_to_menu, pattern=f"^{END}$"),
+        CallbackQueryHandler(back_to_menu, pattern=f"^FEEDBACK_{END}$"),
     ]
 
 
@@ -308,7 +306,7 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
     feedback_data = redis_service.get_feedback(update)
     if not feedback_data:
         LoggerService.warning(__name__, "No feedback data found in Redis", update)
-        return END
+        return f"FEEDBACK_{END}"
 
     current_q = feedback_data.current_question
     text = update.message.text
@@ -343,7 +341,7 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
         await send_feedback_to_admin(update, context)
 
         # Thank user and show menu button
-        keyboard = [[InlineKeyboardButton("Главное меню 🏠", callback_data=END)]]
+        keyboard = [[InlineKeyboardButton("Главное меню 🏠", callback_data=f"FEEDBACK_{END}")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update.message.reply_text(
@@ -357,10 +355,10 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
         # Clean up Redis
         redis_service.clear_feedback(update)
 
-        return END
+        return f"FEEDBACK_{END}"
 
     # Fallback
-    return END
+    return f"FEEDBACK_{END}"
 
 
 async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -427,17 +425,3 @@ async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from src.handlers import menu_handler
 
     return await menu_handler.show_menu(update, context)
-
-
-async def cancel_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel feedback conversation"""
-    await update.callback_query.answer()
-    redis_service.clear_feedback(update)
-
-    await update.callback_query.edit_message_text(
-        "Отзыв отменен. Спасибо за ваше время!"
-    )
-
-    LoggerService.info(__name__, "Feedback canceled by user", update)
-
-    return END
