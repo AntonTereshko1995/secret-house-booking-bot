@@ -24,6 +24,7 @@ from src.config.config import (
     BANK_PHONE_NUMBER,
     ADMINISTRATION_CONTACT,
 )
+from telegram.error import TelegramError
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     ContextTypes,
@@ -666,32 +667,12 @@ async def send_booking_details(
             "Маршрут Google map:\n"
             "https://maps.app.goo.gl/Hsf9Xw69N8tqHyqt5",
         )
-        LoggerService.info(
-            __name__,
-            "Route message sent successfully",
-            kwargs={
-                "chat_id": booking.chat_id,
-                "message_id": message1.message_id,
-                "booking_id": booking.id,
-                "message_type": "route",
-            },
-        )
 
         # Отправка контактов администратора
         message2 = await context.bot.send_message(
             chat_id=booking.chat_id,
             text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
             f"{ADMINISTRATION_CONTACT}",
-        )
-        LoggerService.info(
-            __name__,
-            "Admin contact message sent successfully",
-            kwargs={
-                "chat_id": booking.chat_id,
-                "message_id": message2.message_id,
-                "booking_id": booking.id,
-                "message_type": "admin_contact",
-            },
         )
 
         # Отправка фото с инструкциями
@@ -709,16 +690,6 @@ async def send_booking_details(
             f"по номеру карты {BANK_CARD_NUMBER}",
             photo=photo,
         )
-        LoggerService.info(
-            __name__,
-            "Check-in instructions photo sent successfully",
-            kwargs={
-                "chat_id": booking.chat_id,
-                "message_id": message3.message_id,
-                "booking_id": booking.id,
-                "message_type": "checkin_instructions",
-            },
-        )
 
         # Отправка инструкций по сауне (если есть)
         if booking.has_sauna:
@@ -731,16 +702,6 @@ async def send_booking_details(
                 "4. Через 1 час сауна нагреется."
                 "5. После использования выключите рубильник.\n",
             )
-            LoggerService.info(
-                __name__,
-                "Sauna instructions sent successfully",
-                kwargs={
-                    "chat_id": booking.chat_id,
-                    "message_id": message4.message_id,
-                    "booking_id": booking.id,
-                    "message_type": "sauna_instructions",
-                },
-            )
 
         LoggerService.info(
             __name__,
@@ -752,7 +713,7 @@ async def send_booking_details(
             },
         )
 
-    except Exception as e:
+    except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to send booking details to user",
