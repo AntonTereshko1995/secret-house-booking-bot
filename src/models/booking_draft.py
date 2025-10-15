@@ -29,3 +29,5 @@ class BookingDraft:
     document: Optional[Document] = None
     navigation_step: Optional[BookingStep] = None
     rental_rate: Optional[RentalPrice] = None
+    wine_preference: Optional[str] = None
+    transfer_address: Optional[str] = None

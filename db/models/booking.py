@@ -39,6 +39,8 @@ class BookingBase(Base):
     comment: Mapped[str] = mapped_column(String, nullable=True)
     calendar_event_id: Mapped[str] = mapped_column(String, nullable=True)
     gift_id: Mapped[int] = mapped_column(ForeignKey("gift.id"), nullable=True)
+    wine_preference: Mapped[str] = mapped_column(String, nullable=True)
+    transfer_address: Mapped[str] = mapped_column(String, nullable=True)
     user = relationship("UserBase")
     gift = relationship("GiftBase")
 

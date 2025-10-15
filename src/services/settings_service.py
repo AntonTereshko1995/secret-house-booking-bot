@@ -4,6 +4,7 @@ from singleton_decorator import singleton
 from src.config.config import SETTINGS_PATH
 from src.services.logger_service import LoggerService
 
+
 @singleton
 class SettingsService:
     def __init__(self):
@@ -15,17 +16,19 @@ class SettingsService:
                 with open(SETTINGS_PATH, "r", encoding="utf-8") as file:
                     return json.load(file)
             except json.JSONDecodeError as e:
-                LoggerService.error(__name__, f"_load_from_json", e)
-                print("⚠️ Ошибка при загрузке JSON, файл поврежден. Используем значения по умолчанию.")
+                LoggerService.error(__name__, "_load_from_json", e)
+                print(
+                    "⚠️ Ошибка при загрузке JSON, файл поврежден. Используем значения по умолчанию."
+                )
                 return {}
         return {}
 
     def _save_to_json(self):
         try:
             with open(SETTINGS_PATH, "w", encoding="utf-8") as file:
-                json.dump(self._data, file, indent=4, ensure_ascii=False)  
+                json.dump(self._data, file, indent=4, ensure_ascii=False)
         except json.JSONDecodeError as e:
-            LoggerService.error(__name__, f"_save_to_json", e)
+            LoggerService.error(__name__, "_save_to_json", e)
             return {}
 
     @property

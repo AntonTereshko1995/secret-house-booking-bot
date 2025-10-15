@@ -186,6 +186,8 @@ class DatabaseService:
         comment: str,
         chat_id: int,
         gift_id: int = None,
+        wine_preference: str = None,
+        transfer_address: str = None,
     ) -> BookingBase:
         user = self.get_or_create_user(user_contact)
         with self.Session() as session:
@@ -204,6 +206,8 @@ class DatabaseService:
                     comment=comment,
                     chat_id=chat_id,
                     price=price,
+                    wine_preference=wine_preference,
+                    transfer_address=transfer_address,
                 )
 
                 if gift_id:
