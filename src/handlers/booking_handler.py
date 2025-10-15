@@ -42,6 +42,8 @@ from src.constants import (
     CONFIRM,
     BOOKING_PHOTO_UPLOAD,
     CASH_PAY,
+    INCOGNITO_WINE,
+    INCOGNITO_TRANSFER,
 )
 
 MAX_PEOPLE = 6
@@ -92,6 +94,12 @@ def get_handler():
             confirm_booking, pattern=f"^BOOKING-CONFIRM_({CONFIRM}|{END})$"
         ),
         CallbackQueryHandler(back_navigation, pattern=f"^BOOKING-BACK_{BACK}$"),
+        CallbackQueryHandler(
+            handle_wine_preference, pattern=f"^BOOKING-WINE_(.+|{END})$"
+        ),
+        CallbackQueryHandler(
+            handle_transfer_skip, pattern=f"^BOOKING-TRANSFER_({SKIP}|{END})$"
+        ),
     ]
 
 
@@ -257,10 +265,10 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
         user_input = update.message.text
-        is_valid = string_helper.is_valid_user_contact(user_input)
+        is_valid, cleaned_contact = string_helper.is_valid_user_contact(user_input)
         if is_valid:
             booking = redis_service.get_booking(update)
-            redis_service.update_booking_field(update, "user_contact", user_input)
+            redis_service.update_booking_field(update, "user_contact", cleaned_contact)
             LoggerService.info(
                 __name__, "User name is valid", update, kwargs={"user_name": user_input}
             )
@@ -687,7 +695,16 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__, "Write comment", update, kwargs={"comment": booking_comment}
         )
 
-    return await confirm_pay(update, context)
+    # Check if Incognito tariff and route to questionnaire
+    booking = redis_service.get_booking(update)
+    if (
+        booking.tariff == Tariff.INCOGNITA_DAY
+        or booking.tariff == Tariff.INCOGNITA_HOURS
+        or booking.tariff == Tariff.INCOGNITA_WORKER
+    ):
+        return await wine_preference_message(update, context)
+    else:
+        return await confirm_pay(update, context)
 
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1378,6 +1395,158 @@ async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return BOOKING_COMMENT
 
 
+async def wine_preference_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Display wine preference question for Incognito tariffs.
+    Shows 5 wine options + back button.
+    """
+    redis_service.update_booking_field(
+        update, "navigation_step", BookingStep.WINE_PREFERENCE
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("Не нужно вино", callback_data="BOOKING-WINE_none")],
+        [InlineKeyboardButton("Сладкое", callback_data="BOOKING-WINE_sweet")],
+        [InlineKeyboardButton("Полусладкое", callback_data="BOOKING-WINE_semi_sweet")],
+        [InlineKeyboardButton("Сухое", callback_data="BOOKING-WINE_dry")],
+        [InlineKeyboardButton("Полусухое", callback_data="BOOKING-WINE_semi_dry")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-WINE_{END}")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        "🍷 <b>Мы бесплатно подготавливаем вино и легкие закуски для тарифа Инкогнито.</b>\n\n"
+        "Какое вино вы предпочитаете?"
+    )
+
+    if update.message == None:
+        await update.callback_query.answer()
+        await navigation_service.safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
+            reply_markup=reply_markup,
+        )
+    else:
+        await update.message.reply_text(
+            text=message, parse_mode="HTML", reply_markup=reply_markup
+        )
+
+    return INCOGNITO_WINE
+
+
+async def handle_wine_preference(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle wine preference button click.
+    Stores selection in Redis and transitions to transfer question.
+    """
+    await update.callback_query.answer()
+
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if data == str(END):
+        return await back_navigation(update, context)
+
+    wine_preference = data  # "none", "sweet", "semi_sweet", "dry", "semi_dry"
+    redis_service.update_booking_field(update, "wine_preference", wine_preference)
+
+    LoggerService.info(
+        __name__,
+        "Wine preference selected",
+        update,
+        kwargs={"wine_preference": wine_preference},
+    )
+
+    return await transfer_message(update, context)
+
+
+async def transfer_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Display transfer service question for Incognito tariffs.
+    User can click skip button or type address.
+    """
+    redis_service.update_booking_field(
+        update, "navigation_step", BookingStep.TRANSFER_ADDRESS
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("Не нужно", callback_data=f"BOOKING-TRANSFER_{SKIP}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-TRANSFER_{END}")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        "🚗 <b>Мы бесплатно предлагаем трансфер из дома и в дом на авто бизнес класса.</b>\n\n"
+        "Введите Ваш адрес или нажмите 'Не нужно':"
+    )
+
+    await update.callback_query.answer()
+    await navigation_service.safe_edit_message_text(
+        callback_query=update.callback_query,
+        text=message,
+        reply_markup=reply_markup,
+    )
+
+    return INCOGNITO_TRANSFER
+
+
+async def handle_transfer_skip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle "Не нужно" button click for transfer.
+    Stores None for transfer_address and proceeds to payment.
+    """
+    await update.callback_query.answer()
+
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if data == str(END):
+        return await back_navigation(update, context)
+
+    redis_service.update_booking_field(update, "transfer_address", None)
+    LoggerService.info(__name__, "Transfer service declined", update)
+
+    return await confirm_pay(update, context)
+
+
+async def handle_transfer_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle text input for transfer address.
+    Validates address length and stores in Redis.
+    """
+    if update.message and update.message.text:
+        address = update.message.text.strip()
+
+        # Validate address length (min 5 chars, max 500 chars)
+        if not address or len(address) < 5:
+            LoggerService.warning(__name__, "Transfer address too short", update)
+            await update.message.reply_text(
+                "❌ <b>Ошибка!</b>\n"
+                "Адрес слишком короткий. Пожалуйста, введите полный адрес.\n\n"
+                "Или нажмите 'Не нужно', если трансфер не требуется.",
+                parse_mode="HTML",
+            )
+            return INCOGNITO_TRANSFER
+
+        if len(address) > 500:
+            LoggerService.warning(__name__, "Transfer address too long", update)
+            await update.message.reply_text(
+                "❌ <b>Ошибка!</b>\n"
+                "Адрес слишком длинный. Пожалуйста, введите адрес короче 500 символов.",
+                parse_mode="HTML",
+            )
+            return INCOGNITO_TRANSFER
+
+        redis_service.update_booking_field(update, "transfer_address", address)
+
+        LoggerService.info(
+            __name__,
+            "Transfer address saved",
+            update,
+            kwargs={"address": address[:50]},  # Log first 50 chars only
+        )
+
+        return await confirm_pay(update, context)
+
+    return INCOGNITO_TRANSFER
+
+
 async def bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_booking_field(
         update, "navigation_step", BookingStep.FIRST_BEDROOM
@@ -1586,6 +1755,8 @@ def save_booking_information(
         cache_booking.booking_comment,
         chat_id,
         cache_booking.gift_id,
+        cache_booking.wine_preference,
+        cache_booking.transfer_address,
     )
 
     if is_cash:

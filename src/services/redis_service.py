@@ -9,15 +9,17 @@ from src.models.enum.tariff import Tariff
 from src.services.navigation_service import NavigatonService
 from src.config.config import REDIS_URL, REDIS_PORT, REDIS_SSL
 
+
 @singleton
 class RedisService:
     def __init__(self, ttl_hours=24):
         self.__client = redis.Redis(
             host=REDIS_URL,
-            port=REDIS_PORT, 
+            port=REDIS_PORT,
             decode_responses=True,
             ssl=REDIS_SSL,
-            ssl_cert_reqs=None)
+            ssl_cert_reqs=None,
+        )
         self.__ttl = timedelta(hours=ttl_hours)
         self.__navigaton_service = NavigatonService()
 

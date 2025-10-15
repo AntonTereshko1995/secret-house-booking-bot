@@ -13,17 +13,33 @@ from string import ascii_uppercase
 from src.config.config import CLEANING_HOURS
 
 
-def is_valid_user_contact(user_name: str) -> bool:
-    user_name = user_name.replace(" ", "")
-    if "\n" in user_name:
-        return False
+def is_valid_user_contact(user_name: str) -> tuple[bool, str]:
+    """
+    Validate and clean user contact (Telegram username or phone number).
 
-    if user_name.startswith("@"):
+    Returns:
+        tuple[bool, str]: (is_valid, cleaned_contact)
+    """
+    # Remove spaces and newlines
+    cleaned = user_name.replace(" ", "")
+
+    if "\n" in cleaned:
+        return False, user_name
+
+    # Telegram username validation
+    if cleaned.startswith("@"):
         pattern = r"^@[A-Za-z0-9_]{5,32}$"
-        return bool(re.match(pattern, user_name))
+        is_valid = bool(re.match(pattern, cleaned))
+        return is_valid, cleaned
 
-    user_name = user_name.replace("-", "")
-    return user_name.startswith("+375") and len(user_name) == 13
+    # Phone number validation and cleaning
+    # Remove formatting characters: -, (, )
+    cleaned_phone = cleaned.replace("-", "").replace("(", "").replace(")", "")
+
+    # Check if valid Belarus phone number (+375XXXXXXXXX = 13 chars)
+    is_valid = cleaned_phone.startswith("+375") and len(cleaned_phone) == 13
+
+    return is_valid, cleaned_phone
 
 
 def separate_callback_data(data):
@@ -142,11 +158,48 @@ def generate_booking_info_message(
         f"Комментарий: {booking.comment if booking.comment else ''}\n"
     )
 
+    # Add incognito questionnaire info for incognito tariffs
+    from src.models.enum.tariff import Tariff
+
+    is_incognito = booking.tariff in (
+        Tariff.INCOGNITA_DAY,
+        Tariff.INCOGNITA_HOURS,
+        Tariff.INCOGNITA_WORKER,
+    )
+
+    if is_incognito:
+        wine_labels = {
+            "none": "Не нужно вино",
+            "sweet": "Сладкое",
+            "semi_sweet": "Полусладкое",
+            "dry": "Сухое",
+            "semi_dry": "Полусухое",
+        }
+        wine_text = (
+            wine_labels.get(booking.wine_preference, booking.wine_preference)
+            if booking.wine_preference
+            else "Не указано"
+        )
+        message += f"🍷 Вино: {wine_text}\n"
+
+        transfer_text = (
+            booking.transfer_address if booking.transfer_address else "Не нужно"
+        )
+        message += f"🚗 Трансфер: {transfer_text}\n"
+        
+        # Add transfer time information if transfer is requested
+        if booking.transfer_address:
+            # Transfer time is 30 minutes before check-in time
+            from datetime import timedelta
+            transfer_time = booking.start_date - timedelta(minutes=30)
+            message += f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
+
     if count_of_booking:
         message += f"Количество броней: {count_of_booking}\n"
 
     if booking.gift_id:
         message += (
+            f"Подарочный сертификат: Да\n"
             f"Подарочный сертификат: {booking.gift_id}\n"
             f"Доплата наличкой: {bool_to_str(is_additional_payment_by_cash)}\n"
         )

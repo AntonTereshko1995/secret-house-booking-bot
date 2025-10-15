@@ -143,10 +143,10 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
 async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
         user_input = update.message.text
-        is_valid = string_helper.is_valid_user_contact(user_input)
+        is_valid, cleaned_contact = string_helper.is_valid_user_contact(user_input)
         if is_valid:
             global user_contact
-            user_contact = user_input
+            user_contact = cleaned_contact
             return await pay(update, context)
         else:
             LoggerService.warning(__name__, "User name is invalid", update)

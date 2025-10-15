@@ -12,6 +12,7 @@ from src.services.calculation_rate_service import CalculationRateService
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
 from src.constants import CONFIRM, EDIT_BOOKING_PURCHASE, END, BACK, SET_PASSWORD
+from src.models.enum.tariff import Tariff
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
@@ -80,6 +81,7 @@ def get_purchase_handler() -> ConversationHandler:
     )
     return handler
 
+
 def get_password_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[CommandHandler("change_password", change_password)],
@@ -91,6 +93,7 @@ def get_password_handler() -> ConversationHandler:
         fallbacks=[],
     )
     return handler
+
 
 async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -138,6 +141,7 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     return SET_PASSWORD
 
+
 async def enter_house_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global writing_password
     await update.callback_query.answer()
@@ -161,6 +165,7 @@ async def enter_house_password(update: Update, context: ContextTypes.DEFAULT_TYP
     else:
         await change_password(update, context)
         return SET_PASSWORD
+
 
 async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -187,6 +192,7 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             await update.message.reply_text(text=message)
     return END
+
 
 async def accept_booking_payment(
     update: Update,
@@ -267,6 +273,7 @@ async def accept_booking_payment(
             chat_id=ADMIN_CHAT_ID, text=message, reply_markup=reply_markup
         )
 
+
 async def edit_accept_booking_payment(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -329,6 +336,7 @@ async def edit_accept_booking_payment(
         caption=message, reply_markup=reply_markup
     )
 
+
 async def accept_gift_payment(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -367,6 +375,7 @@ async def accept_gift_payment(
             reply_markup=reply_markup,
         )
 
+
 async def inform_cancel_booking(
     update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
 ):
@@ -378,6 +387,7 @@ async def inform_cancel_booking(
         f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
     )
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
+
 
 async def inform_changing_booking_date(
     update: Update,
@@ -400,6 +410,7 @@ async def inform_changing_booking_date(
     )
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
+
 async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -412,30 +423,31 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     match menu_index:
         case "1":
             return await approve_booking(
-                update, context, chat_id, booking_id, is_payment_by_cash
+                update, context, chat_id, booking_id
             )
         case "2":
             return await cancel_booking(update, context, chat_id, booking_id)
         case "3":
             return await change_price_message(
-                update, context, chat_id, booking_id, is_payment_by_cash
+                update, context, chat_id, booking_id
             )
         case "4":
             return await change_prepayment_price_message(
-                update, context, chat_id, booking_id, is_payment_by_cash
+                update, context, chat_id, booking_id
             )
         case "5":
             return await set_sale_booking(
-                update, context, chat_id, booking_id, 5, is_payment_by_cash
+                update, context, chat_id, booking_id, 5
             )
         case "6":
             return await set_sale_booking(
-                update, context, chat_id, booking_id, 10, is_payment_by_cash
+                update, context, chat_id, booking_id, 10
             )
         case "7":
             return await set_sale_booking(
-                update, context, chat_id, booking_id, 15, is_payment_by_cash
+                update, context, chat_id, booking_id, 15
             )
+
 
 async def gift_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -451,24 +463,34 @@ async def gift_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         case "2":
             await cancel_gift(update, context, chat_id, gift_id)
 
+
 async def approve_booking(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     chat_id: int,
-    booking_id: int,
-    is_payment_by_cash: bool,
+    booking_id: int
 ):
-    (booking, user) = await prepare_approve_process(
-        update, context, booking_id, is_payment_by_cash=is_payment_by_cash
-    )
+    (booking, user) = await prepare_approve_process(update, context, booking_id)
     await check_and_send_booking(context, booking)
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="🎉 <b>Отличные новости!</b> 🎉\n"
+    # Prepare confirmation message
+    confirmation_text = (
+        "🎉 <b>Отличные новости!</b> 🎉\n"
         "✅ <b>Ваше бронирование подтверждено администратором.</b>\n"
         "📩 За 1 день до заезда вы получите сообщение с деталями бронирования и инструкцией по заселению.\n"
         f"Общая стоимость бронирования: {booking.price} руб.\n"
-        f"Предоплата: {booking.prepayment_price} руб.\n",
+        f"Предоплата: {booking.prepayment_price} руб.\n"
+    )
+    
+    # Add transfer time information if transfer is requested
+    if booking.transfer_address:
+        # Transfer time is 30 minutes before check-in time
+        transfer_time = booking.start_date - timedelta(minutes=30)
+        confirmation_text += f"🚗 <b>Трансфер:</b> {booking.transfer_address}\n"
+        confirmation_text += f"🕐 <b>Время трансфера:</b> {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
+    
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=confirmation_text,
         parse_mode="HTML",
     )
 
@@ -480,6 +502,7 @@ async def approve_booking(
         await message.edit_text(text)
 
     return END
+
 
 async def cancel_booking(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int
@@ -502,6 +525,7 @@ async def cancel_booking(
         await message.edit_text(text)
     return END
 
+
 async def approve_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
@@ -521,6 +545,7 @@ async def approve_gift(
     )
     return END
 
+
 async def cancel_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
@@ -537,6 +562,7 @@ async def cancel_gift(
     )
     return END
 
+
 async def set_sale_booking(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -549,9 +575,7 @@ async def set_sale_booking(
         update,
         context,
         booking_id,
-        sale_percentage,
-        is_payment_by_cash=is_payment_by_cash,
-    )
+        sale_percentage)
     if booking.start_date.date() == date.today():
         await send_booking_details(context, booking)
 
@@ -571,18 +595,19 @@ async def set_sale_booking(
     )
     return END
 
+
 def get_future_bookings() -> Sequence[BookingBase]:
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     booking_list = database_service.get_booking_by_period(today, max_date_booking, True)
     return booking_list
 
+
 async def prepare_approve_process(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     booking_id: int,
     sale_percentage: int = None,
-    is_payment_by_cash: bool = None,
 ):
     booking = database_service.get_booking_by_id(booking_id)
     user = database_service.get_user_by_id(booking.user_id)
@@ -599,9 +624,9 @@ async def prepare_approve_process(
         is_prepaymented=True,
         calendar_event_id=calendar_event_id,
     )
-    gift = check_gift(booking, user)
-    await inform_message(update, context, booking, user, gift)
+    await inform_message(update, context, booking, user)
     return (booking, user)
+
 
 def check_gift(booking: BookingBase, user: UserBase):
     if not booking.gift_id:
@@ -610,44 +635,14 @@ def check_gift(booking: BookingBase, user: UserBase):
     gift = database_service.update_gift(booking.gift_id, is_done=True, user_id=user.id)
     return gift
 
+
 async def inform_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     booking: BookingBase,
     user: UserBase,
-    gift: GiftBase,
-    is_payment_by_cash: bool = None,
 ):
-    message = (
-        f"Пользователь: {user.contact}\n"
-        f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
-        f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
-        f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
-    )
-
-    if gift:
-        message += (
-            f"Стоимость: {booking.price + gift.price} руб.\n"
-            f"Предоплата: {gift.price} руб.\n"
-            f"Оплата наличкой: {string_helper.bool_to_str(is_payment_by_cash)}\n"
-            f"Подарочный сертификат: Да\n"
-        )
-    else:
-        message += (
-            f"Стоимость: {booking.price} руб.\n"
-            f"Предоплата: {booking.prepayment_price} руб.\n"
-        )
-
-    message += (
-        f"Фотосессия: {string_helper.bool_to_str(booking.has_photoshoot)}\n"
-        f"Сауна: {string_helper.bool_to_str(booking.has_sauna)}\n"
-        f"Белая спальня: {string_helper.bool_to_str(booking.has_white_bedroom)}\n"
-        f"Зеленая спальня: {string_helper.bool_to_str(booking.has_green_bedroom)}\n"
-        f"Секретная комната: {string_helper.bool_to_str(booking.has_secret_room)}\n"
-        f"Количество гостей: {booking.number_of_guests}\n"
-        f"Комментарий: {booking.comment if booking.comment else ''}\n"
-    )
-
+    message = string_helper.generate_booking_info_message(booking, user)
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
 
@@ -726,6 +721,7 @@ async def send_booking_details(
         )
         raise
 
+
 async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
     """Modified to trigger feedback conversation instead of sending Google Forms link"""
     try:
@@ -742,9 +738,9 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
         message = await context.bot.send_message(
             chat_id=booking.chat_id,
             text="🏡 <b>The Secret House благодарит вас за выбор нашего дома для аренды!</b> 💫\n\n"
-                "Мы хотели бы узнать, как Вам понравилось наше обслуживание. "
-                "Будем благодарны, если вы оставите отзыв.\n\n"
-                "После получения фидбека мы дарим Вам <b>10% скидки</b> для следующей поездки.",
+            "Мы хотели бы узнать, как Вам понравилось наше обслуживание. "
+            "Будем благодарны, если вы оставите отзыв.\n\n"
+            "После получения фидбека мы дарим Вам <b>10% скидки</b> для следующей поездки.",
             parse_mode="HTML",
             reply_markup=reply_markup,
         )
@@ -773,6 +769,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
         )
         raise
 
+
 async def check_and_send_booking(context, booking):
     now = datetime.now()
     job_run_time = time(8, 0)
@@ -785,6 +782,7 @@ async def check_and_send_booking(context, booking):
 
     if condition_1 or condition_2:
         await send_booking_details(context, booking)
+
 
 async def change_prepayment_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -825,6 +823,7 @@ async def change_prepayment_price(update: Update, context: ContextTypes.DEFAULT_
     return await change_prepayment_price_message(
         update, context, chat_id, booking_id, is_payment_by_cash
     )
+
 
 async def change_prepayment_price_message(
     update: Update,
@@ -906,6 +905,7 @@ async def change_prepayment_price_message(
         )
     return EDIT_BOOKING_PURCHASE
 
+
 async def change_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     chat_id = update.effective_chat.id
@@ -943,6 +943,7 @@ async def change_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await change_price_message(
         update, context, chat_id, booking_id, is_payment_by_cash
     )
+
 
 async def change_price_message(
     update: Update,
