@@ -471,6 +471,25 @@ class DatabaseService:
             print(f"Error in get_booking_by_user_contact: {e}")
             LoggerService.error(__name__, "get_booking_by_user_contact", e)
 
+    def get_unpaid_bookings(self) -> Sequence[BookingBase]:
+        """Get all unpaid, active bookings"""
+        try:
+            with self.Session() as session:
+                bookings = session.scalars(
+                    select(BookingBase).where(
+                        and_(
+                            BookingBase.is_prepaymented == False,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                        )
+                    ).order_by(BookingBase.start_date)
+                ).all()
+                return bookings
+        except Exception as e:
+            print(f"Error in get_unpaid_bookings: {e}")
+            LoggerService.error(__name__, "get_unpaid_bookings", e)
+            return []
+
     def get_done_booking_count(self, user_id: int) -> BookingBase:
         try:
             with self.Session() as session:

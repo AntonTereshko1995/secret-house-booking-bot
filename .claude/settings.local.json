@@ -40,7 +40,8 @@
       "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add phone_number to users\")",
       "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add feedback_submitted to booking\")",
       "Bash(python3:*)",
-      "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add incognito questionnaire fields\")"
+      "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add incognito questionnaire fields\")",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
