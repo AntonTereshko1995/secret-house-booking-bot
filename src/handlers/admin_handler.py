@@ -12,7 +12,6 @@ from src.services.calculation_rate_service import CalculationRateService
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
 from src.constants import CONFIRM, EDIT_BOOKING_PURCHASE, END, BACK, SET_PASSWORD
-from src.models.enum.tariff import Tariff
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
@@ -194,6 +193,33 @@ async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return END
 
 
+async def get_unpaid_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to show all unpaid bookings"""
+    chat_id = update.effective_chat.id
+    if str(chat_id) != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+
+    bookings = database_service.get_unpaid_bookings()
+
+    if not bookings:
+        await update.message.reply_text("🔍 Не найдено неоплаченных бронирований.")
+        return END
+
+    for booking in bookings:
+        await accept_booking_payment(
+            update,
+            context,
+            booking,
+            booking.chat_id,
+            None,
+            None,
+            False
+        )
+
+    return END
+
+
 async def accept_booking_payment(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -332,9 +358,15 @@ async def edit_accept_booking_payment(
         ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_caption(
-        caption=message, reply_markup=reply_markup
-    )
+    # Check if message has caption (photo/document) or text (regular message)
+    if update.callback_query.message.caption:
+        await update.callback_query.edit_message_caption(
+            caption=message, reply_markup=reply_markup
+        )
+    else:
+        await update.callback_query.edit_message_text(
+            text=message, reply_markup=reply_markup
+        )
 
 
 async def accept_gift_payment(
@@ -900,9 +932,15 @@ async def change_prepayment_price_message(
             text=message, reply_markup=InlineKeyboardMarkup(keyboard)
         )
     elif update.callback_query:
-        await update.callback_query.edit_message_caption(
-            caption=message, reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        # Check if message has caption (photo/document) or text (regular message)
+        if update.callback_query.message.caption:
+            await update.callback_query.edit_message_caption(
+                caption=message, reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        else:
+            await update.callback_query.edit_message_text(
+                text=message, reply_markup=InlineKeyboardMarkup(keyboard)
+            )
     return EDIT_BOOKING_PURCHASE
 
 
@@ -1019,7 +1057,13 @@ async def change_price_message(
             text=message, reply_markup=InlineKeyboardMarkup(keyboard)
         )
     elif update.callback_query:
-        await update.callback_query.edit_message_caption(
-            caption=message, reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        # Check if message has caption (photo/document) or text (regular message)
+        if update.callback_query.message.caption:
+            await update.callback_query.edit_message_caption(
+                caption=message, reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        else:
+            await update.callback_query.edit_message_text(
+                text=message, reply_markup=InlineKeyboardMarkup(keyboard)
+            )
     return EDIT_BOOKING_PURCHASE
