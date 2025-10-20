@@ -33,24 +33,20 @@ async def set_commands(application: Application):
     )
 
 
-def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     LoggerService.error(
         __name__, f"Update {update} caused error {context.error}", update
     )
 
 
 if __name__ == "__main__":
-    application = (
-        Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
-    )
+    application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
 
+    # Register handlers
     application.add_handler(menu_handler.get_handler())
     application.add_error_handler(error_handler)
-
     application.add_handler(admin_handler.get_password_handler())
     application.add_handler(admin_handler.get_purchase_handler())
-
-    # Feedback conversation handler
     application.add_handler(feedback_handler.get_handler())
 
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
