@@ -744,18 +744,12 @@ def get_future_bookings() -> Sequence[BookingBase]:
 async def prepare_approve_process(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    booking_id: int,
-    sale_percentage: int = None,
+    booking_id: int
 ):
     booking = database_service.get_booking_by_id(booking_id)
     user = database_service.get_user_by_id(booking.user_id)
     calendar_event_id = calendar_service.add_event(booking, user)
-    if sale_percentage:
-        price = calculation_rate_service.calculate_discounted_price(
-            booking.price, sale_percentage
-        )
-    else:
-        price = booking.price
+    price = booking.price
     booking = database_service.update_booking(
         booking_id,
         price=price,

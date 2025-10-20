@@ -1733,8 +1733,6 @@ def save_booking_information(
     #     booking.number_of_guests,
     #     booking.price,
     #     booking.comment,
-    #     booking.sale,
-    #     booking.sale_comment,
     #     chat_id,
     #     booking.gift_id,
     #     )
