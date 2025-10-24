@@ -170,10 +170,14 @@ def generate_booking_info_message(
     if is_incognito:
         wine_labels = {
             "none": "Не нужно вино",
-            "sweet": "Сладкое",
-            "semi_sweet": "Полусладкое",
-            "dry": "Сухое",
-            "semi_dry": "Полусухое",
+            "white-sweet": "Белое сладкое",
+            "white-semi-sweet": "Белое полусладкое",
+            "white-dry": "Белое сухое",
+            "white-semi-dry": "Белое полусухое",
+            "red-sweet": "Красное сладкое",
+            "red-semi-sweet": "Красное полусладкое",
+            "red-dry": "Красное сухое",
+            "red-semi-dry": "Красное полусухое",
         }
         wine_text = (
             wine_labels.get(booking.wine_preference, booking.wine_preference)
