@@ -274,6 +274,7 @@ def _check_day_availability(
     # Determine start time for the day
     if date_key == today:
         current_hour = now.hour + 1 if now.minute > 0 else now.hour
+        current_hour = min(current_hour, 23)  # Ensure hour is in valid range 0-23
         day_start = datetime.combine(date_key, time(current_hour, 0))
     else:
         day_start = datetime.combine(date_key, time(0, 0))
@@ -321,6 +322,7 @@ def _log_day_availability(
         # Find and log free slots
         if date_key == today:
             current_hour = now.hour + 1 if now.minute > 0 else now.hour
+            current_hour = min(current_hour, 23)  # Ensure hour is in valid range 0-23
             day_start = datetime.combine(date_key, time(current_hour, 0))
         else:
             day_start = datetime.combine(date_key, time(0, 0))
