@@ -839,7 +839,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔹 <b>Предоплата:</b> {PREPAYMENT} руб.\n"
             "💡 Предоплата не возвращается при отмене бронирования, но вы можете перенести бронь на другую дату.\n\n"
             "📌 <b>Способы оплаты (Альфа-Банк):</b>\n"
-            f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
+            f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>. Обращаем внимание, что предоплату не нужно переводить на счёт мобильного оператора Лайф.\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
             "❗ <b>Важно!</b>\n"
             "После оплаты отправьте скриншот или PDF документ с чеком.\n"
@@ -1396,20 +1396,20 @@ async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def wine_preference_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Display wine preference question for Incognito tariffs.
-    Shows 5 wine options + back button.
-    """
     redis_service.update_booking_field(
         update, "navigation_step", BookingStep.WINE_PREFERENCE
     )
 
     keyboard = [
         [InlineKeyboardButton("Не нужно вино", callback_data="BOOKING-WINE_none")],
-        [InlineKeyboardButton("Сладкое", callback_data="BOOKING-WINE_sweet")],
-        [InlineKeyboardButton("Полусладкое", callback_data="BOOKING-WINE_semi_sweet")],
-        [InlineKeyboardButton("Сухое", callback_data="BOOKING-WINE_dry")],
-        [InlineKeyboardButton("Полусухое", callback_data="BOOKING-WINE_semi_dry")],
+        [InlineKeyboardButton("Белое сладкое", callback_data="BOOKING-WINE_white-sweet")],
+        [InlineKeyboardButton("Белое полусладкое", callback_data="BOOKING-WINE_white-semi-sweet")],
+        [InlineKeyboardButton("Белое сухое", callback_data="BOOKING-WINE_white-dry")],
+        [InlineKeyboardButton("Белое полусухое", callback_data="BOOKING-WINE_white-semi-dry")],
+        [InlineKeyboardButton("Красное сладкое", callback_data="BOOKING-WINE_red-sweet")],
+        [InlineKeyboardButton("Красное полусладкое", callback_data="BOOKING-WINE_red-semi-sweet")],
+        [InlineKeyboardButton("Красное сухое", callback_data="BOOKING-WINE_red-dry")],
+        [InlineKeyboardButton("Красное полусухое", callback_data="BOOKING-WINE_red-semi-dry")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-WINE_{END}")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
