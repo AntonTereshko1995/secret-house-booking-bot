@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta
+import asyncio
 import sys
 import os
 from typing import Sequence
@@ -10,7 +11,7 @@ from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
-from src.constants import END, SET_PASSWORD, ENTER_PRICE, ENTER_PREPAYMENT
+from src.constants import END, SET_PASSWORD, ENTER_PRICE, ENTER_PREPAYMENT, BROADCAST_INPUT
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
@@ -97,6 +98,24 @@ def get_password_handler() -> ConversationHandler:
             SET_PASSWORD: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_password_input),
                 CallbackQueryHandler(cancel_password_change, pattern="^cancel_password_change$"),
+            ],
+        },
+        fallbacks=[],
+    )
+    return handler
+
+
+def get_broadcast_handler() -> ConversationHandler:
+    """Returns ConversationHandler for broadcast command"""
+    handler = ConversationHandler(
+        entry_points=[CommandHandler("broadcast", start_broadcast)],
+        states={
+            BROADCAST_INPUT: [
+                MessageHandler(
+                    filters.Chat(chat_id=ADMIN_CHAT_ID) & filters.TEXT & ~filters.COMMAND,
+                    handle_broadcast_input
+                ),
+                CallbackQueryHandler(cancel_broadcast, pattern="^cancel_broadcast$"),
             ],
         },
         fallbacks=[],
@@ -232,6 +251,165 @@ async def get_unpaid_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
 
     return END
+
+
+async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to start broadcast - asks for message text"""
+    chat_id = update.effective_chat.id
+    if chat_id != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+
+    # Get total users count for preview
+    chat_ids = database_service.get_all_chat_ids()
+    total_users = len(chat_ids)
+
+    if total_users == 0:
+        await update.message.reply_text("❌ В базе нет пользователей для рассылки.")
+        return END
+
+    # Prompt for message input
+    keyboard = [[InlineKeyboardButton("Отмена", callback_data="cancel_broadcast")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        f"📢 <b>Рассылка сообщений</b>\n\n"
+        f"Количество получателей: <b>{total_users}</b>\n"
+        f"Примерное время: <b>~{total_users} секунд</b>\n\n"
+        f"Введите текст сообщения для рассылки:"
+    )
+
+    await update.message.reply_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode="HTML"
+    )
+
+    return BROADCAST_INPUT
+
+
+async def handle_broadcast_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle broadcast message input from admin and execute broadcast"""
+    chat_id = update.effective_chat.id
+    if chat_id != ADMIN_CHAT_ID:
+        return END
+
+    # Get message text
+    message_text = update.message.text.strip()
+
+    if not message_text:
+        await update.message.reply_text("❌ Сообщение не может быть пустым. Попробуйте еще раз:")
+        return BROADCAST_INPUT
+
+    # Store in context for potential future use
+    context.user_data["broadcast_message"] = message_text
+
+    # Get all chat IDs
+    chat_ids = database_service.get_all_chat_ids()
+
+    # Send confirmation and start broadcast
+    await update.message.reply_text(
+        f"✅ Начинаю рассылку для {len(chat_ids)} пользователей...\n"
+        f"📤 Это займет примерно {len(chat_ids)} секунд."
+    )
+
+    # Execute broadcast with rate limiting
+    result = await execute_broadcast(context, chat_ids, message_text)
+
+    # Send completion summary
+    summary = (
+        f"✅ <b>Рассылка завершена!</b>\n\n"
+        f"📊 Статистика:\n"
+        f"• Всего пользователей: {result['total_users']}\n"
+        f"• Успешно отправлено: {result['sent']}\n"
+        f"• Не доставлено: {result['failed']}\n"
+        f"• Время выполнения: {result['duration_seconds']:.1f} сек"
+    )
+
+    await context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID,
+        text=summary,
+        parse_mode="HTML"
+    )
+
+    # Clear context
+    context.user_data.pop("broadcast_message", None)
+
+    return END
+
+
+async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Cancel broadcast operation"""
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text("❌ Рассылка отменена.")
+
+    # Clear context
+    context.user_data.pop("broadcast_message", None)
+
+    return END
+
+
+async def execute_broadcast(
+    context: ContextTypes.DEFAULT_TYPE,
+    chat_ids: list[int],
+    message: str
+) -> dict:
+    """
+    Execute broadcast with rate limiting and error handling
+
+    Rate limiting strategy:
+    - 1 message per second per chat (Telegram limit)
+    - ~30 messages per second globally (free tier)
+    - Use 1.1 second delay to stay safe (~27 msg/sec)
+    """
+    start_time = time.time()
+    total_users = len(chat_ids)
+    sent_count = 0
+    failed_count = 0
+
+    for index, chat_id in enumerate(chat_ids):
+        try:
+            # CRITICAL: Rate limiting - 1 msg/sec per chat
+            # Use asyncio.sleep() for non-blocking delay
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode="HTML"
+            )
+            sent_count += 1
+
+            # Progress update every 10 users
+            if (index + 1) % 10 == 0:
+                await context.bot.send_message(
+                    chat_id=ADMIN_CHAT_ID,
+                    text=f"📤 Прогресс: {index + 1}/{total_users} ({sent_count} отправлено, {failed_count} ошибок)"
+                )
+
+            # CRITICAL: Rate limit delay
+            # 1.1 seconds = safe rate (~0.9 msg/sec per chat, ~27 msg/sec globally)
+            await asyncio.sleep(1.1)
+
+        except Exception as e:
+            # Handle common errors: bot blocked, chat deleted
+            failed_count += 1
+            error_str = str(e)
+
+            # Only log unexpected errors (not blocks/deletions)
+            if "Forbidden" not in error_str and "Chat not found" not in error_str:
+                LoggerService.error(
+                    __name__,
+                    f"Broadcast error for chat {chat_id}",
+                    exception=e
+                )
+
+    duration = time.time() - start_time
+
+    return {
+        "total_users": total_users,
+        "sent": sent_count,
+        "failed": failed_count,
+        "duration_seconds": duration,
+    }
 
 
 def _create_booking_keyboard(user_chat_id: int, booking_id: int, is_payment_by_cash: bool) -> InlineKeyboardMarkup:

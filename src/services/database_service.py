@@ -13,7 +13,7 @@ from src.models.enum.tariff import Tariff
 from singleton_decorator import singleton
 from database import engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Sequence, and_, func, or_, select
+from sqlalchemy import Sequence, and_, distinct, func, or_, select
 from src.config.config import MAX_PERIOD_FOR_GIFT_IN_MONTHS
 
 
@@ -152,8 +152,8 @@ class DatabaseService:
                 gift = session.scalar(
                     select(GiftBase).where(
                         (GiftBase.code == code)
-                        & (GiftBase.is_paymented == True)
-                        & (GiftBase.is_done == False)
+                        & (GiftBase.is_paymented)
+                        & (not GiftBase.is_done)
                     )
                 )
                 return gift
@@ -235,9 +235,9 @@ class DatabaseService:
                         and_(
                             BookingBase.user_id == user.id,
                             func.date(BookingBase.start_date) == start_date,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == False,
-                            BookingBase.is_prepaymented == True,
+                            not BookingBase.is_canceled,
+                            not BookingBase.is_done,
+                            BookingBase.is_prepaymented,
                         )
                     )
                 )
@@ -253,9 +253,9 @@ class DatabaseService:
                     select(BookingBase).where(
                         and_(
                             func.date(BookingBase.start_date) == start_date,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == False,
-                            BookingBase.is_prepaymented == True,
+                            not BookingBase.is_canceled,
+                            not BookingBase.is_done,
+                            BookingBase.is_prepaymented,
                         )
                     )
                 ).all()
@@ -271,9 +271,9 @@ class DatabaseService:
                     select(BookingBase).where(
                         and_(
                             func.date(BookingBase.end_date) == end_date,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == False,
-                            BookingBase.is_prepaymented == True,
+                            not BookingBase.is_canceled,
+                            not BookingBase.is_done,
+                            BookingBase.is_prepaymented,
                         )
                     )
                 ).all()
@@ -294,9 +294,9 @@ class DatabaseService:
                             and_(
                                 BookingBase.start_date >= from_date,
                                 BookingBase.start_date <= to_date,
-                                BookingBase.is_canceled == False,
-                                BookingBase.is_done == False,
-                                BookingBase.is_prepaymented == True,
+                                not BookingBase.is_canceled,
+                                not BookingBase.is_done,
+                                BookingBase.is_prepaymented,
                             )
                         )
                         .order_by(BookingBase.start_date)
@@ -328,9 +328,9 @@ class DatabaseService:
                 bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == False,
-                            BookingBase.is_prepaymented == True,
+                            not BookingBase.is_canceled,
+                            not BookingBase.is_done,
+                            BookingBase.is_prepaymented,
                             BookingBase.id != except_booking_id,
                             or_(
                                 and_(
@@ -377,9 +377,9 @@ class DatabaseService:
                 # Get all bookings that overlap with the month
                 query = select(BookingBase).where(
                     and_(
-                        BookingBase.is_canceled == False,
-                        BookingBase.is_done == False,
-                        BookingBase.is_prepaymented == True,
+                        not BookingBase.is_canceled,
+                        not BookingBase.is_done,
+                        BookingBase.is_prepaymented,
                         or_(
                             and_(
                                 BookingBase.start_date >= start_of_month,
@@ -413,9 +413,9 @@ class DatabaseService:
                 overlapping_bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == False,
-                            BookingBase.is_prepaymented == True,
+                            not BookingBase.is_canceled,
+                            not BookingBase.is_done,
+                            BookingBase.is_prepaymented,
                             or_(
                                 and_(
                                     BookingBase.start_date < end,
@@ -460,9 +460,9 @@ class DatabaseService:
                     select(BookingBase).where(
                         and_(
                             BookingBase.user_id == user.id,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == False,
-                            BookingBase.is_prepaymented == True,
+                            not BookingBase.is_canceled,
+                            not BookingBase.is_done,
+                            BookingBase.is_prepaymented,
                         )
                     )
                 ).all()
@@ -478,9 +478,9 @@ class DatabaseService:
                 bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            BookingBase.is_prepaymented == False,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == False,
+                            not BookingBase.is_prepaymented,
+                            not BookingBase.is_canceled,
+                            not BookingBase.is_done,
                         )
                     ).order_by(BookingBase.start_date)
                 ).all()
@@ -489,6 +489,23 @@ class DatabaseService:
             print(f"Error in get_unpaid_bookings: {e}")
             LoggerService.error(__name__, "get_unpaid_bookings", e)
             return []
+
+    def get_all_chat_ids(self) -> list[int]:
+        """Get all unique chat IDs from bookings"""
+        try:
+            with self.Session() as session:
+                # Use distinct() to get unique chat_ids
+                # Some users may have multiple bookings
+                chat_ids = session.scalars(
+                    select(distinct(BookingBase.chat_id))
+                ).all()
+
+                # Convert to list and return
+                return list(chat_ids)
+        except Exception as e:
+            print(f"Error in get_all_chat_ids: {e}")
+            LoggerService.error(__name__, "get_all_chat_ids", e)
+            return []  # Return empty list on error
 
     def get_done_booking_count(self, user_id: int) -> BookingBase:
         try:
@@ -499,8 +516,8 @@ class DatabaseService:
                     .where(
                         and_(
                             BookingBase.user_id == user_id,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == True,
+                            not BookingBase.is_canceled,
+                            BookingBase.is_done,
                         )
                     )
                 ).all()
