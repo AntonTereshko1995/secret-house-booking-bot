@@ -362,6 +362,7 @@ async def execute_broadcast(
     - ~30 messages per second globally (free tier)
     - Use 1.1 second delay to stay safe (~27 msg/sec)
     """
+    import time
     start_time = time.time()
     total_users = len(chat_ids)
     sent_count = 0
