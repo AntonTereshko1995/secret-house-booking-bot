@@ -25,6 +25,7 @@ async def set_commands(application: Application):
         BotCommand("booking_list", "Бронирования"),
         BotCommand("change_password", "Изменить пароль"),
         BotCommand("unpaid_bookings", "Неоплаченные бронирования"),
+        BotCommand("broadcast", "Рассылка всем пользователям"),
     ]
 
     await application.bot.set_my_commands(user_commands)
@@ -47,6 +48,7 @@ if __name__ == "__main__":
     application.add_error_handler(error_handler)
     application.add_handler(admin_handler.get_password_handler())
     application.add_handler(admin_handler.get_purchase_handler())
+    application.add_handler(admin_handler.get_broadcast_handler())
     application.add_handler(feedback_handler.get_handler())
 
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
