@@ -12,5 +12,5 @@ from src.config.config import DATABASE_URL
 engine = create_engine(DATABASE_URL, echo=True)
 
 def create_db_and_tables() -> None:
-	Base.metadata.create_all(engine)
+	# Base.metadata.create_all(engine)  # Disabled: using Alembic migrations instead
 	run_migrations.run_migrations_if_needed()

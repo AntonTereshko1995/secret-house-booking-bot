@@ -41,9 +41,7 @@
       "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add feedback_submitted to booking\")",
       "Bash(python3:*)",
       "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add incognito questionnaire fields\")",
-      "Bash(timeout:*)",
-      "Bash(rm:*)",
-      "Bash(export ENV=debug)"
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
