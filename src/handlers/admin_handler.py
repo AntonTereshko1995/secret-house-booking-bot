@@ -244,7 +244,7 @@ async def get_unpaid_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE
             update,
             context,
             booking,
-            booking.chat_id,
+            booking.user.chat_id,
             None,
             None,
             False
@@ -261,7 +261,7 @@ async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return END
 
     # Get total users count for preview
-    chat_ids = database_service.get_all_chat_ids()
+    chat_ids = database_service.get_all_user_chat_ids()
     total_users = len(chat_ids)
 
     if total_users == 0:
@@ -305,7 +305,7 @@ async def handle_broadcast_input(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data["broadcast_message"] = message_text
 
     # Get all chat IDs
-    chat_ids = database_service.get_all_chat_ids()
+    chat_ids = database_service.get_all_user_chat_ids()
 
     # Send confirmation and start broadcast
     await update.message.reply_text(
@@ -963,7 +963,7 @@ async def send_booking_details(
     try:
         # Отправка маршрута
         await context.bot.send_message(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             text="Мы отобразили путь по которому лучше всего доехать до The Secret House.\n"
             "Через 500 метров после ж/д переезда по левую сторону будет оранжевый магазин. После магазина нужно повернуть налево. Это Вам ориентир нужного поворота, далее навигатор Вас привезет правильно.\n"
             "Когда будете ехать вдоль леса, то Вам нужно будет повернуть на садовое товарищество 'Юбилейное-68' (будет вывеска).\n"
@@ -976,7 +976,7 @@ async def send_booking_details(
 
         # Отправка контактов администратора
         await context.bot.send_message(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
             f"{ADMINISTRATION_CONTACT}",
         )
@@ -984,7 +984,7 @@ async def send_booking_details(
         # Отправка фото с инструкциями
         photo = file_service.get_image("key.jpg")
         await context.bot.send_photo(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             caption="Мы предоставляем самостоятельное заселение.\n"
             f"1. Слева отображена ключница, которая располагается за территорией дома. В которой лежат ключи от ворот и дома. Пароль: {settings_service.password}\n"
             "2. Справа отображен ящик, который располагается на территории дома. В ящик нужно положить подписанный договор и оплату за проживание, если вы платите наличкой.\n\n"
@@ -1000,7 +1000,7 @@ async def send_booking_details(
         # Отправка инструкций по сауне (если есть)
         if booking.has_sauna:
             await context.bot.send_message(
-                chat_id=booking.chat_id,
+                chat_id=booking.user.chat_id,
                 text="Инструкция по включению сауны:\n"
                 "1. Подойдите к входной двери.\n"
                 "2. По правую руку находился электрический счетчик.\n"
@@ -1013,7 +1013,7 @@ async def send_booking_details(
             __name__,
             "All booking details sent successfully",
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details_complete",
             },
@@ -1025,7 +1025,7 @@ async def send_booking_details(
             "Failed to send booking details to user",
             exception=e,
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details",
             },
@@ -1047,7 +1047,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         message = await context.bot.send_message(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             text="🏡 <b>The Secret House благодарит вас за выбор нашего дома для аренды!</b> 💫\n\n"
             "Мы хотели бы узнать, как Вам понравилось наше обслуживание. "
             "Будем благодарны, если вы оставите отзыв.\n\n"
@@ -1060,7 +1060,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             __name__,
             "Feedback request sent successfully",
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "message_id": message.message_id,
                 "action": "send_feedback",
@@ -1073,7 +1073,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             "Failed to send feedback request to user",
             exception=e,
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_feedback",
             },

@@ -1751,7 +1751,6 @@ def save_booking_information(
         cache_booking.number_of_guests,
         cache_booking.price,
         cache_booking.booking_comment,
-        chat_id,
         cache_booking.gift_id,
         cache_booking.wine_preference,
         cache_booking.transfer_address,

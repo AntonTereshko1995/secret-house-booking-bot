@@ -6,6 +6,7 @@ from src.services.navigation_service import NavigatonService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services import job_service
+from src.services.database_service import DatabaseService
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     MessageHandler,
@@ -192,13 +193,35 @@ def get_handler() -> ConversationHandler:
     return handler
 
 
+def __capture_and_store_user_chat_id(update: Update) -> None:
+    """Capture and store user's chat_id in the database."""
+    navigation_service = NavigatonService()
+    chat_id = navigation_service.get_chat_id(update)
+    user_contact = update.effective_user.username or str(chat_id)
+
+    try:
+        database_service = DatabaseService()
+        database_service.update_user_chat_id(user_contact, chat_id)
+        LoggerService.info(
+            __name__,
+            "Chat ID stored for user",
+            kwargs={"chat_id": chat_id, "contact": user_contact}
+        )
+    except Exception as e:
+        LoggerService.error(
+            __name__,
+            "Failed to store chat_id",
+            exception=e,
+            kwargs={"chat_id": chat_id}
+        )
+
+
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     LoggerService.info(__name__, "show menu", update)
     await job.init_job(update, context)
 
-    # ds = DatabaseService()
-    # booking = ds.get_booking_by_id(1)
-    # await admin_handler.send_feedback(context, booking)
+    # Capture and store user's chat_id
+    __capture_and_store_user_chat_id(update)
 
     buttons = [
         [InlineKeyboardButton("Забронировать дом 🏠", callback_data=BOOKING)],
