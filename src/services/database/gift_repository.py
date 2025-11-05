@@ -92,8 +92,8 @@ class GiftRepository(BaseRepository):
                 gift = session.scalar(
                     select(GiftBase).where(
                         (GiftBase.code == code)
-                        & (GiftBase.is_paymented)
-                        & (~GiftBase.is_done)
+                        & (GiftBase.is_paymented == True)
+                        & (GiftBase.is_done == False)
                     )
                 )
                 return gift

@@ -1085,7 +1085,7 @@ async def check_and_send_booking(context, booking):
     now = datetime.now()
     job_run_time = time(8, 0)
 
-    condition_1 = booking.start_date.date() == now.date() and now.time() > job_run_time
+    condition_1 = booking.start_date.date() == now.date() or booking.start_date.date() == now.date() + timedelta(days=1)
     condition_2 = (
         booking.start_date.date() == now.date()
         or booking.start_date.date() - timedelta(days=1) == now.date()

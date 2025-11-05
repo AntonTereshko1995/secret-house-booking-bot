@@ -1756,9 +1756,6 @@ def save_booking_information(
         cache_booking.transfer_address,
     )
 
-    if is_cash:
-        booking = database_service.update_booking(booking.id, prepayment=0)
-
     if booking == None:
         LoggerService.error(
             __name__,
@@ -1778,6 +1775,10 @@ def save_booking_information(
             chat_id=chat_id,
             gift_id=cache_booking.gift_id,
         )
+        return None
+
+    if is_cash:
+        booking = database_service.update_booking(booking.id, prepayment=0)
 
     return booking
 
@@ -1816,7 +1817,7 @@ async def send_approving_to_admin(
             text="❌ <b>Ошибка!</b>\n\n"
             "Не удалось сохранить информацию о бронировании.\n"
             "Пожалуйста, попробуйте ещё раз или свяжитесь с администратором.\n"
-            "Нажмите на синюю кнопку 'Меню' и выберите 'Открыть Главное меню'.\n\n"
+            "Нажмите на синюю кнопку 'Меню' и выберите 'Открыть Главное меню'. Далее выберите пункт меню 'Связаться с администратором'.\n\n"
             "🙏 Спасибо за понимание!",
             parse_mode="HTML",
         )

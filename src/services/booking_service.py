@@ -88,9 +88,9 @@ class BookingService(BaseDatabaseService):
                         and_(
                             BookingBase.user_id == user.id,
                             func.date(BookingBase.start_date) == start_date,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 )
@@ -107,9 +107,9 @@ class BookingService(BaseDatabaseService):
                     select(BookingBase).where(
                         and_(
                             func.date(BookingBase.start_date) == start_date,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 ).all()
@@ -126,9 +126,9 @@ class BookingService(BaseDatabaseService):
                     select(BookingBase).where(
                         and_(
                             func.date(BookingBase.end_date) == end_date,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 ).all()
@@ -150,9 +150,9 @@ class BookingService(BaseDatabaseService):
                             and_(
                                 BookingBase.start_date >= from_date,
                                 BookingBase.start_date <= to_date,
-                                ~BookingBase.is_canceled,
-                                ~BookingBase.is_done,
-                                BookingBase.is_prepaymented,
+                                BookingBase.is_canceled == False,
+                                BookingBase.is_done == False,
+                                BookingBase.is_prepaymented == True,
                             )
                         )
                         .order_by(BookingBase.start_date)
@@ -185,9 +185,9 @@ class BookingService(BaseDatabaseService):
                 bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                             BookingBase.id != except_booking_id,
                             or_(
                                 and_(
@@ -232,9 +232,9 @@ class BookingService(BaseDatabaseService):
                 # Get all bookings that overlap with the month
                 query = select(BookingBase).where(
                     and_(
-                        ~BookingBase.is_canceled,
-                        ~BookingBase.is_done,
-                        BookingBase.is_prepaymented,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True,
                         or_(
                             and_(
                                 BookingBase.start_date >= start_of_month,
@@ -269,9 +269,9 @@ class BookingService(BaseDatabaseService):
                 overlapping_bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                             or_(
                                 and_(
                                     BookingBase.start_date < end,
@@ -318,9 +318,9 @@ class BookingService(BaseDatabaseService):
                     select(BookingBase).where(
                         and_(
                             BookingBase.user_id == user.id,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 ).all()
@@ -336,9 +336,9 @@ class BookingService(BaseDatabaseService):
                 bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            ~BookingBase.is_prepaymented,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
+                            BookingBase.is_prepaymented == False,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
                         )
                     ).order_by(BookingBase.start_date)
                 ).all()
@@ -375,8 +375,8 @@ class BookingService(BaseDatabaseService):
                     .where(
                         and_(
                             BookingBase.user_id == user_id,
-                            ~BookingBase.is_canceled,
-                            BookingBase.is_done,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == True,
                         )
                     )
                 )

@@ -75,6 +75,7 @@ class BookingRepository(BaseRepository):
                 print(f"Error adding booking: {e}")
                 session.rollback()
                 LoggerService.error(__name__, "add_booking", e)
+                return None
 
     def get_booking_by_start_date_user(
         self, user_contact: str, start_date: date
@@ -90,9 +91,9 @@ class BookingRepository(BaseRepository):
                         and_(
                             BookingBase.user_id == user.id,
                             func.date(BookingBase.start_date) == start_date,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 )
@@ -109,9 +110,9 @@ class BookingRepository(BaseRepository):
                     select(BookingBase).where(
                         and_(
                             func.date(BookingBase.start_date) == start_date,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 ).all()
@@ -128,9 +129,9 @@ class BookingRepository(BaseRepository):
                     select(BookingBase).where(
                         and_(
                             func.date(BookingBase.end_date) == end_date,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 ).all()
@@ -152,9 +153,9 @@ class BookingRepository(BaseRepository):
                             and_(
                                 BookingBase.start_date >= from_date,
                                 BookingBase.start_date <= to_date,
-                                ~BookingBase.is_canceled,
-                                ~BookingBase.is_done,
-                                BookingBase.is_prepaymented,
+                                BookingBase.is_canceled == False,
+                                BookingBase.is_done == False,
+                                BookingBase.is_prepaymented == True,
                             )
                         )
                         .order_by(BookingBase.start_date)
@@ -187,9 +188,9 @@ class BookingRepository(BaseRepository):
                 bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                             BookingBase.id != except_booking_id,
                             or_(
                                 and_(
@@ -234,9 +235,9 @@ class BookingRepository(BaseRepository):
                 # Get all bookings that overlap with the month
                 query = select(BookingBase).where(
                     and_(
-                        ~BookingBase.is_canceled,
-                        ~BookingBase.is_done,
-                        BookingBase.is_prepaymented,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_done == False,
+                        BookingBase.is_prepaymented == True,
                         or_(
                             and_(
                                 BookingBase.start_date >= start_of_month,
@@ -271,9 +272,9 @@ class BookingRepository(BaseRepository):
                 overlapping_bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                             or_(
                                 and_(
                                     BookingBase.start_date < end,
@@ -320,9 +321,9 @@ class BookingRepository(BaseRepository):
                     select(BookingBase).where(
                         and_(
                             BookingBase.user_id == user.id,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
-                            BookingBase.is_prepaymented,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
+                            BookingBase.is_prepaymented == True,
                         )
                     )
                 ).all()
@@ -338,9 +339,9 @@ class BookingRepository(BaseRepository):
                 bookings = session.scalars(
                     select(BookingBase).where(
                         and_(
-                            ~BookingBase.is_prepaymented,
-                            ~BookingBase.is_canceled,
-                            ~BookingBase.is_done,
+                            BookingBase.is_prepaymented == False,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == False,
                         )
                     ).order_by(BookingBase.start_date)
                 ).all()
@@ -377,8 +378,8 @@ class BookingRepository(BaseRepository):
                     .where(
                         and_(
                             BookingBase.user_id == user_id,
-                            ~BookingBase.is_canceled,
-                            BookingBase.is_done,
+                            BookingBase.is_canceled == False,
+                            BookingBase.is_done == True,
                         )
                     )
                 )
