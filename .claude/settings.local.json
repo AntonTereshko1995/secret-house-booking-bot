@@ -59,7 +59,22 @@
       "Bash(ENV=debug uv run python -c \"from db.models.user import UserBase; from db.database import engine; from sqlalchemy import inspect; insp = inspect(engine); cols = [c.name for c in insp.get_columns(''user'')]; print(''Columns:'', cols); print(''has_bookings present:'', ''has_bookings'' in cols)\")",
       "Bash(sqlite3:*)",
       "Bash(ENV=debug uv run pytest tests/test_chat_id_management.py -v --tb=short)",
-      "Bash(ENV=debug python3:*)"
+      "Bash(ENV=debug python3:*)",
+      "Bash(gtimeout:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(uv pip install:*)",
+      "Bash(ENV=debug python:*)",
+      "Bash(ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add completed_bookings to users\")",
+      "Bash(ENV=debug ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add completed_bookings to users\")",
+      "Bash(ENV=debug uv run alembic revision -m \"Populate completed_bookings from existing data\")",
+      "Bash(ENV=debug ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add user_name field to users\")",
+      "Bash(ENV=debug uv run alembic revision -m \"Add user_name field to users\")",
+      "Bash(ENV=debug uv run alembic history --verbose)",
+      "Bash(export ENV=debug)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

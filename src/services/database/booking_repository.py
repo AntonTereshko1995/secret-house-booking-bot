@@ -337,13 +337,15 @@ class BookingRepository(BaseRepository):
         try:
             with self.Session() as session:
                 bookings = session.scalars(
-                    select(BookingBase).where(
+                    select(BookingBase)
+                    .where(
                         and_(
                             BookingBase.is_prepaymented == False,
                             BookingBase.is_canceled == False,
                             BookingBase.is_done == False,
                         )
-                    ).order_by(BookingBase.start_date)
+                    )
+                    .order_by(BookingBase.start_date)
                 ).all()
                 return bookings
         except Exception as e:
@@ -357,9 +359,7 @@ class BookingRepository(BaseRepository):
             with self.Session() as session:
                 # Use distinct() to get unique chat_ids
                 # Some users may have multiple bookings
-                chat_ids = session.scalars(
-                    select(distinct(BookingBase.chat_id))
-                ).all()
+                chat_ids = session.scalars(select(distinct(BookingBase.chat_id))).all()
 
                 # Convert to list and return
                 return list(chat_ids)
@@ -367,27 +367,6 @@ class BookingRepository(BaseRepository):
             print(f"Error in get_all_chat_ids: {e}")
             LoggerService.error(__name__, "get_all_chat_ids", e)
             return []  # Return empty list on error
-
-    def get_done_booking_count(self, user_id: int) -> int:
-        """Get count of completed bookings for a user."""
-        try:
-            with self.Session() as session:
-                count = session.scalar(
-                    select(func.count())
-                    .select_from(BookingBase)
-                    .where(
-                        and_(
-                            BookingBase.user_id == user_id,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == True,
-                        )
-                    )
-                )
-                return count or 0
-        except Exception as e:
-            print(f"Error in get_done_booking_count: {e}")
-            LoggerService.error(__name__, "get_done_booking_count", e)
-            return 0
 
     def update_booking(
         self,
@@ -428,6 +407,9 @@ class BookingRepository(BaseRepository):
                     booking.calendar_event_id = calendar_event_id
                 if is_done:
                     booking.is_done = is_done
+                    # Increment completed bookings counter when marking as done
+                    if is_done and not booking.is_canceled:
+                        self.user_service.increment_completed_bookings(booking.user_id)
                 if prepayment is not None and prepayment >= 0:
                     booking.prepayment_price = prepayment
 

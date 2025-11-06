@@ -193,19 +193,19 @@ def get_handler() -> ConversationHandler:
     return handler
 
 
-def __capture_and_store_user_chat_id(update: Update) -> None:
+def _capture_and_store_user_chat_id(update: Update) -> None:
     """Capture and store user's chat_id in the database."""
     navigation_service = NavigatonService()
     chat_id = navigation_service.get_chat_id(update)
-    user_contact = update.effective_user.username or str(chat_id)
+    user_name = update.effective_user.username
 
     try:
         database_service = DatabaseService()
-        database_service.update_user_chat_id(user_contact, chat_id)
+        database_service.update_user_chat_id(user_name, chat_id)
         LoggerService.info(
             __name__,
             "Chat ID stored for user",
-            kwargs={"chat_id": chat_id, "contact": user_contact}
+            kwargs={"chat_id": chat_id}
         )
     except Exception as e:
         LoggerService.error(
@@ -221,7 +221,7 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await job.init_job(update, context)
 
     # Capture and store user's chat_id
-    __capture_and_store_user_chat_id(update)
+    _capture_and_store_user_chat_id(update)
 
     buttons = [
         [InlineKeyboardButton("Забронировать дом 🏠", callback_data=BOOKING)],

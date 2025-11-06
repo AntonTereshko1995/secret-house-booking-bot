@@ -9,6 +9,7 @@ This service provides backward compatibility by delegating to specialized reposi
 For new code, prefer using the specialized repositories directly from:
 src.services.database import UserRepository, GiftRepository, BookingRepository
 """
+
 from datetime import date, datetime
 from typing import Sequence
 import sys
@@ -59,6 +60,14 @@ class DatabaseService:
         """Get user by ID."""
         return self.user_repository.get_user_by_id(user_id)
 
+    def get_user_by_chat_id(self, chat_id: int) -> UserBase:
+        """Get user by chat_id."""
+        return self.user_repository.get_user_by_chat_id(chat_id)
+
+    def update_user_contact(self, user_id: int, contact: str) -> UserBase:
+        """Update user's contact (phone/email)."""
+        return self.user_repository.update_user_contact(user_id, contact)
+
     def update_user_chat_id(self, contact: str, chat_id: int) -> UserBase:
         """Update or set chat_id for user. Handles duplicates gracefully."""
         return self.user_repository.update_user_chat_id(contact, chat_id)
@@ -70,6 +79,10 @@ class DatabaseService:
     def remove_user_chat_id(self, chat_id: int) -> bool:
         """Remove chat_id from user (set to None). Returns True if found."""
         return self.user_repository.remove_user_chat_id(chat_id)
+
+    def increment_completed_bookings(self, user_id: int) -> None:
+        """Increment completed booking counter for user."""
+        return self.user_repository.increment_completed_bookings(user_id)
 
     # ========== Gift Operations ==========
 
@@ -174,13 +187,17 @@ class DatabaseService:
         self, from_date: date, to_date: date, is_admin: bool = False
     ) -> Sequence[BookingBase]:
         """Get bookings within a date range."""
-        return self.booking_repository.get_booking_by_period(from_date, to_date, is_admin)
+        return self.booking_repository.get_booking_by_period(
+            from_date, to_date, is_admin
+        )
 
     def get_booking_by_day(
         self, target_date: date, except_booking_id: int = None
     ) -> Sequence[BookingBase]:
         """Get all bookings overlapping with a specific day."""
-        return self.booking_repository.get_booking_by_day(target_date, except_booking_id)
+        return self.booking_repository.get_booking_by_day(
+            target_date, except_booking_id
+        )
 
     def get_bookings_by_month(
         self, target_month: int, target_year: int
@@ -209,8 +226,9 @@ class DatabaseService:
         return self.booking_repository.get_all_chat_ids()
 
     def get_done_booking_count(self, user_id: int) -> int:
-        """Get count of completed bookings for a user."""
-        return self.booking_repository.get_done_booking_count(user_id)
+        """Get count of completed bookings for a user from user.completed_bookings."""
+        user = self.user_repository.get_user_by_id(user_id)
+        return user.completed_bookings if user else 0
 
     def update_booking(
         self,

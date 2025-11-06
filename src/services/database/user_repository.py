@@ -38,15 +38,11 @@ class UserRepository(BaseRepository):
                     print(f"User already exists: {user}")
                     return user
 
-                new_user = UserBase(contact=contact)
-                session.add(new_user)
-                session.commit()
-                print(f"User created: {new_user}")
+                new_user = self.add_user(contact)
                 return new_user
             except Exception as e:
                 print(f"Error in get_or_create_user: {e}")
                 LoggerService.error(__name__, "get_or_create_user", e)
-                session.rollback()
 
     def get_user_by_contact(self, contact: str) -> UserBase:
         """Get user by contact (username or phone)."""
@@ -70,45 +66,71 @@ class UserRepository(BaseRepository):
             print(f"Error in get_user_by_id: {e}")
             LoggerService.error(__name__, "get_user_by_id", e)
 
-    def update_user_chat_id(self, contact: str, chat_id: int) -> UserBase:
+    def get_user_by_chat_id(self, chat_id: int) -> UserBase:
+        """Get user by chat_id."""
+        try:
+            with self.Session() as session:
+                user = session.scalar(
+                    select(UserBase).where(UserBase.chat_id == chat_id)
+                )
+                return user
+        except Exception as e:
+            print(f"Error in get_user_by_chat_id: {e}")
+            LoggerService.error(__name__, "get_user_by_chat_id", e)
+            return None
+
+    def update_user_contact(self, user_id: int, contact: str) -> UserBase:
+        """Update user's contact (phone/email)."""
+        with self.Session() as session:
+            try:
+                user = session.scalar(
+                    select(UserBase).where(UserBase.id == user_id)
+                )
+                if not user:
+                    raise ValueError(f"User with id {user_id} not found")
+
+                user.contact = contact
+                session.commit()
+
+                LoggerService.info(
+                    __name__,
+                    "Updated user contact",
+                    kwargs={"user_id": user_id, "contact": contact}
+                )
+                return user
+
+            except Exception as e:
+                session.rollback()
+                print(f"Error in update_user_contact: {e}")
+                LoggerService.error(__name__, "update_user_contact", exception=e)
+                raise
+
+    def update_user_chat_id(self, user_name: str, chat_id: int) -> UserBase:
         """Update or set chat_id for user. Handles duplicates gracefully."""
         with self.Session() as session:
             try:
                 # Get or create user by contact
                 user = session.scalar(
-                    select(UserBase).where(UserBase.contact == contact)
+                    select(UserBase).where(UserBase.chat_id == chat_id)
                 )
                 if not user:
-                    user = UserBase(contact=contact)
-                    session.add(user)
-                    session.flush()  # Flush to get user.id
-
-                # Check if this chat_id is already assigned to different user
-                existing_user = session.scalar(
-                    select(UserBase).where(
-                        and_(
-                            UserBase.chat_id == chat_id,
-                            UserBase.id != user.id
+                    if user_name != None and user_name != "":
+                        user = session.scalar(
+                            select(UserBase).where(UserBase.user_name == user_name)
                         )
-                    )
+                        user.chat_id = chat_id
+                        session.commit()
+                    else:
+                        user = UserBase(user_name=user_name, chat_id=chat_id)
+                        session.add(user)
+                        session.commit()
+
+                LoggerService.info(
+                    __name__,
+                    "Updated chat_id for user",
+                    kwargs={"user_id": user.id, "chat_id": chat_id, "user_name": user_name},
                 )
 
-                # If chat_id exists for different user, remove it (re-subscribe scenario)
-                if existing_user:
-                    LoggerService.info(
-                        __name__,
-                        f"Removing chat_id {chat_id} from user {existing_user.id}",
-                        kwargs={"old_user_id": existing_user.id}
-                    )
-                    existing_user.chat_id = None
-
-                # Set chat_id for current user
-                user.chat_id = chat_id
-                session.commit()
-
-                LoggerService.info(__name__, "Updated chat_id for user", kwargs={
-                    "user_id": user.id, "chat_id": chat_id, "contact": contact
-                })
                 return user
 
             except Exception as e:
@@ -166,3 +188,14 @@ class UserRepository(BaseRepository):
                     session.commit()
         except Exception as e:
             LoggerService.error(__name__, "increment_booking_count", e)
+
+    def increment_completed_bookings(self, user_id: int) -> None:
+        """Increment completed booking counter for user."""
+        try:
+            with self.Session() as session:
+                user = session.scalar(select(UserBase).where(UserBase.id == user_id))
+                if user:
+                    user.completed_bookings = (user.completed_bookings or 0) + 1
+                    session.commit()
+        except Exception as e:
+            LoggerService.error(__name__, "increment_completed_bookings", e)

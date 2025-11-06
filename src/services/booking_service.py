@@ -365,26 +365,6 @@ class BookingService(BaseDatabaseService):
             LoggerService.error(__name__, "get_all_chat_ids", e)
             return []  # Return empty list on error
 
-    def get_done_booking_count(self, user_id: int) -> int:
-        """Get count of completed bookings for a user."""
-        try:
-            with self.Session() as session:
-                count = session.scalar(
-                    select(func.count())
-                    .select_from(BookingBase)
-                    .where(
-                        and_(
-                            BookingBase.user_id == user_id,
-                            BookingBase.is_canceled == False,
-                            BookingBase.is_done == True,
-                        )
-                    )
-                )
-                return count or 0
-        except Exception as e:
-            print(f"Error in get_done_booking_count: {e}")
-            LoggerService.error(__name__, "get_done_booking_count", e)
-            return 0
 
     def update_booking(
         self,
