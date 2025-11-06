@@ -4,6 +4,7 @@ import sys
 import os
 from typing import Sequence
 from src.services.logger_service import LoggerService
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.navigation_service import NavigatonService
 from src.services.settings_service import SettingsService
@@ -11,7 +12,13 @@ from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
 from db.models.gift import GiftBase
 from matplotlib.dates import relativedelta
-from src.constants import END, SET_PASSWORD, ENTER_PRICE, ENTER_PREPAYMENT, BROADCAST_INPUT
+from src.constants import (
+    END,
+    SET_PASSWORD,
+    ENTER_PRICE,
+    ENTER_PREPAYMENT,
+    BROADCAST_INPUT,
+)
 from src.services.calendar_service import CalendarService
 from db.models.user import UserBase
 from db.models.booking import BookingBase
@@ -62,16 +69,30 @@ def get_purchase_handler() -> ConversationHandler:
         entry_points=entry_points(),
         states={
             ENTER_PRICE: [
-                MessageHandler(filters.Chat(chat_id=ADMIN_CHAT_ID) & filters.TEXT & ~filters.COMMAND, handle_price_input),
-                CallbackQueryHandler(cancel_price_input, pattern="^cancel_price_input$"),
+                MessageHandler(
+                    filters.Chat(chat_id=ADMIN_CHAT_ID)
+                    & filters.TEXT
+                    & ~filters.COMMAND,
+                    handle_price_input,
+                ),
+                CallbackQueryHandler(
+                    cancel_price_input, pattern="^cancel_price_input$"
+                ),
                 CallbackQueryHandler(
                     booking_callback,
                     pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$",
                 ),
             ],
             ENTER_PREPAYMENT: [
-                MessageHandler(filters.Chat(chat_id=ADMIN_CHAT_ID) & filters.TEXT & ~filters.COMMAND, handle_prepayment_input),
-                CallbackQueryHandler(cancel_prepayment_input, pattern="^cancel_prepayment_input$"),
+                MessageHandler(
+                    filters.Chat(chat_id=ADMIN_CHAT_ID)
+                    & filters.TEXT
+                    & ~filters.COMMAND,
+                    handle_prepayment_input,
+                ),
+                CallbackQueryHandler(
+                    cancel_prepayment_input, pattern="^cancel_prepayment_input$"
+                ),
                 CallbackQueryHandler(
                     booking_callback,
                     pattern=r"^booking_\d+_chatid_(\d+)_bookingid_(\d+)_cash_(True|False)$",
@@ -97,7 +118,9 @@ def get_password_handler() -> ConversationHandler:
         states={
             SET_PASSWORD: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_password_input),
-                CallbackQueryHandler(cancel_password_change, pattern="^cancel_password_change$"),
+                CallbackQueryHandler(
+                    cancel_password_change, pattern="^cancel_password_change$"
+                ),
             ],
         },
         fallbacks=[],
@@ -106,14 +129,62 @@ def get_password_handler() -> ConversationHandler:
 
 
 def get_broadcast_handler() -> ConversationHandler:
-    """Returns ConversationHandler for broadcast command"""
+    """Returns ConversationHandler for broadcast command (all users)"""
     handler = ConversationHandler(
         entry_points=[CommandHandler("broadcast", start_broadcast)],
         states={
             BROADCAST_INPUT: [
                 MessageHandler(
-                    filters.Chat(chat_id=ADMIN_CHAT_ID) & filters.TEXT & ~filters.COMMAND,
-                    handle_broadcast_input
+                    filters.Chat(chat_id=ADMIN_CHAT_ID)
+                    & filters.TEXT
+                    & ~filters.COMMAND,
+                    handle_broadcast_input,
+                ),
+                CallbackQueryHandler(cancel_broadcast, pattern="^cancel_broadcast$"),
+            ],
+        },
+        fallbacks=[],
+    )
+    return handler
+
+
+def get_broadcast_with_bookings_handler() -> ConversationHandler:
+    """Returns ConversationHandler for broadcast_with_bookings command"""
+    handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("broadcast_with_bookings", start_broadcast_with_bookings)
+        ],
+        states={
+            BROADCAST_INPUT: [
+                MessageHandler(
+                    filters.Chat(chat_id=ADMIN_CHAT_ID)
+                    & filters.TEXT
+                    & ~filters.COMMAND,
+                    handle_broadcast_input,
+                ),
+                CallbackQueryHandler(cancel_broadcast, pattern="^cancel_broadcast$"),
+            ],
+        },
+        fallbacks=[],
+    )
+    return handler
+
+
+def get_broadcast_without_bookings_handler() -> ConversationHandler:
+    """Returns ConversationHandler for broadcast_without_bookings command"""
+    handler = ConversationHandler(
+        entry_points=[
+            CommandHandler(
+                "broadcast_without_bookings", start_broadcast_without_bookings
+            )
+        ],
+        states={
+            BROADCAST_INPUT: [
+                MessageHandler(
+                    filters.Chat(chat_id=ADMIN_CHAT_ID)
+                    & filters.TEXT
+                    & ~filters.COMMAND,
+                    handle_broadcast_input,
                 ),
                 CallbackQueryHandler(cancel_broadcast, pattern="^cancel_broadcast$"),
             ],
@@ -133,7 +204,9 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Store current password in context
     context.user_data["old_password"] = settings_service.password
 
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data="cancel_password_change")]]
+    keyboard = [
+        [InlineKeyboardButton("Отмена", callback_data="cancel_password_change")]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = (
@@ -143,9 +216,7 @@ async def change_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(
-        text=message,
-        reply_markup=reply_markup,
-        parse_mode="HTML"
+        text=message, reply_markup=reply_markup, parse_mode="HTML"
     )
     return SET_PASSWORD
 
@@ -241,32 +312,110 @@ async def get_unpaid_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     for booking in bookings:
         await accept_booking_payment(
-            update,
-            context,
-            booking,
-            booking.chat_id,
-            None,
-            None,
-            False
+            update, context, booking, booking.user.chat_id, None, None, False
+        )
+
+    return END
+
+
+async def get_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to show comprehensive booking and user statistics"""
+    chat_id = update.effective_chat.id
+    if chat_id != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+
+    # Show loading message
+    loading_msg = await update.message.reply_text("⏳ Генерирую статистику...")
+
+    try:
+        # Import services
+        from src.services.statistics_service import StatisticsService
+        from src.helpers.statistics_helper import format_statistics_message
+
+        # Get statistics
+        stats_service = StatisticsService()
+        stats = stats_service.get_complete_statistics()
+
+        # Format message
+        message = format_statistics_message(stats)
+
+        # Delete loading message and send statistics
+        await loading_msg.delete()
+        await update.message.reply_text(message, parse_mode="HTML")
+
+    except Exception as e:
+        LoggerService.error(__name__, "get_statistics", e)
+        await loading_msg.delete()
+        await update.message.reply_text(
+            "❌ Ошибка при генерации статистики. Проверьте логи."
         )
 
     return END
 
 
 async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to start broadcast - asks for message text"""
+    """Admin command to start broadcast to ALL users - asks for message text"""
+    return await _start_broadcast_with_filter(update, context, filter_type="all")
+
+
+async def start_broadcast_with_bookings(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Admin command to start broadcast to users WITH bookings - asks for message text"""
+    return await _start_broadcast_with_filter(
+        update, context, filter_type="with_bookings"
+    )
+
+
+async def start_broadcast_without_bookings(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Admin command to start broadcast to users WITHOUT bookings - asks for message text"""
+    return await _start_broadcast_with_filter(
+        update, context, filter_type="without_bookings"
+    )
+
+
+async def _start_broadcast_with_filter(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, filter_type: str
+):
+    """
+    Internal function to start broadcast with user filter.
+
+    Args:
+        filter_type: "all", "with_bookings", or "without_bookings"
+    """
     chat_id = update.effective_chat.id
     if chat_id != ADMIN_CHAT_ID:
         await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
         return END
 
-    # Get total users count for preview
-    chat_ids = database_service.get_all_chat_ids()
+    # Get chat IDs based on filter
+    if filter_type == "all":
+        chat_ids = database_service.get_all_user_chat_ids()
+        filter_label = "всем пользователям"
+    elif filter_type == "with_bookings":
+        chat_ids = database_service.get_user_chat_ids_with_bookings()
+        filter_label = "пользователям С бронями"
+    elif filter_type == "without_bookings":
+        chat_ids = database_service.get_user_chat_ids_without_bookings()
+        filter_label = "пользователям БЕЗ броней"
+    else:
+        await update.message.reply_text("❌ Неверный тип фильтра.")
+        return END
+
     total_users = len(chat_ids)
 
     if total_users == 0:
-        await update.message.reply_text("❌ В базе нет пользователей для рассылки.")
+        await update.message.reply_text(
+            f"❌ В базе нет пользователей для рассылки ({filter_label})."
+        )
         return END
+
+    # Store filter info in context for later use
+    context.user_data["broadcast_filter"] = filter_type
+    context.user_data["broadcast_chat_ids"] = chat_ids
 
     # Prompt for message input
     keyboard = [[InlineKeyboardButton("Отмена", callback_data="cancel_broadcast")]]
@@ -274,15 +423,14 @@ async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = (
         f"📢 <b>Рассылка сообщений</b>\n\n"
-        f"Количество получателей: <b>{total_users}</b>\n"
-        f"Примерное время: <b>~{total_users} секунд</b>\n\n"
-        f"Введите текст сообщения для рассылки:"
+        f"🎯 Аудитория: <b>{filter_label}</b>\n"
+        f"👥 Количество получателей: <b>{total_users}</b>\n"
+        f"⏱ Примерное время: <b>~{total_users} секунд</b>\n\n"
+        f"✏️ Введите текст сообщения для рассылки:"
     )
 
     await update.message.reply_text(
-        text=message,
-        reply_markup=reply_markup,
-        parse_mode="HTML"
+        text=message, reply_markup=reply_markup, parse_mode="HTML"
     )
 
     return BROADCAST_INPUT
@@ -298,18 +446,37 @@ async def handle_broadcast_input(update: Update, context: ContextTypes.DEFAULT_T
     message_text = update.message.text.strip()
 
     if not message_text:
-        await update.message.reply_text("❌ Сообщение не может быть пустым. Попробуйте еще раз:")
+        await update.message.reply_text(
+            "❌ Сообщение не может быть пустым. Попробуйте еще раз:"
+        )
         return BROADCAST_INPUT
 
     # Store in context for potential future use
     context.user_data["broadcast_message"] = message_text
 
-    # Get all chat IDs
-    chat_ids = database_service.get_all_chat_ids()
+    # Get chat IDs from context (stored by _start_broadcast_with_filter)
+    chat_ids = context.user_data.get("broadcast_chat_ids", [])
+    filter_type = context.user_data.get("broadcast_filter", "all")
+
+    # Fallback: if no chat_ids in context, get all users
+    if not chat_ids:
+        chat_ids = database_service.get_all_user_chat_ids()
+        filter_type = "all"
+
+    # Get filter label for confirmation message
+    if filter_type == "all":
+        filter_label = "всем пользователям"
+    elif filter_type == "with_bookings":
+        filter_label = "пользователям С бронями"
+    elif filter_type == "without_bookings":
+        filter_label = "пользователям БЕЗ броней"
+    else:
+        filter_label = "выбранным пользователям"
 
     # Send confirmation and start broadcast
     await update.message.reply_text(
-        f"✅ Начинаю рассылку для {len(chat_ids)} пользователей...\n"
+        f"✅ Начинаю рассылку ({filter_label})\n"
+        f"👥 Количество: {len(chat_ids)} пользователей\n"
         f"📤 Это займет примерно {len(chat_ids)} секунд."
     )
 
@@ -327,13 +494,13 @@ async def handle_broadcast_input(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     await context.bot.send_message(
-        chat_id=ADMIN_CHAT_ID,
-        text=summary,
-        parse_mode="HTML"
+        chat_id=ADMIN_CHAT_ID, text=summary, parse_mode="HTML"
     )
 
     # Clear context
     context.user_data.pop("broadcast_message", None)
+    context.user_data.pop("broadcast_filter", None)
+    context.user_data.pop("broadcast_chat_ids", None)
 
     return END
 
@@ -345,14 +512,14 @@ async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Clear context
     context.user_data.pop("broadcast_message", None)
+    context.user_data.pop("broadcast_filter", None)
+    context.user_data.pop("broadcast_chat_ids", None)
 
     return END
 
 
 async def execute_broadcast(
-    context: ContextTypes.DEFAULT_TYPE,
-    chat_ids: list[int],
-    message: str
+    context: ContextTypes.DEFAULT_TYPE, chat_ids: list[int], message: str
 ) -> dict:
     """
     Execute broadcast with rate limiting and error handling
@@ -363,6 +530,7 @@ async def execute_broadcast(
     - Use 1.1 second delay to stay safe (~27 msg/sec)
     """
     import time
+
     start_time = time.time()
     total_users = len(chat_ids)
     sent_count = 0
@@ -373,9 +541,7 @@ async def execute_broadcast(
             # CRITICAL: Rate limiting - 1 msg/sec per chat
             # Use asyncio.sleep() for non-blocking delay
             await context.bot.send_message(
-                chat_id=chat_id,
-                text=message,
-                parse_mode="HTML"
+                chat_id=chat_id, text=message, parse_mode="HTML"
             )
             sent_count += 1
 
@@ -383,7 +549,7 @@ async def execute_broadcast(
             if (index + 1) % 10 == 0:
                 await context.bot.send_message(
                     chat_id=ADMIN_CHAT_ID,
-                    text=f"📤 Прогресс: {index + 1}/{total_users} ({sent_count} отправлено, {failed_count} ошибок)"
+                    text=f"📤 Прогресс: {index + 1}/{total_users} ({sent_count} отправлено, {failed_count} ошибок)",
                 )
 
             # CRITICAL: Rate limit delay
@@ -398,9 +564,7 @@ async def execute_broadcast(
             # Only log unexpected errors (not blocks/deletions)
             if "Forbidden" not in error_str and "Chat not found" not in error_str:
                 LoggerService.error(
-                    __name__,
-                    f"Broadcast error for chat {chat_id}",
-                    exception=e
+                    __name__, f"Broadcast error for chat {chat_id}", exception=e
                 )
 
     duration = time.time() - start_time
@@ -413,25 +577,57 @@ async def execute_broadcast(
     }
 
 
-def _create_booking_keyboard(user_chat_id: int, booking_id: int, is_payment_by_cash: bool) -> InlineKeyboardMarkup:
+def _create_booking_keyboard(
+    user_chat_id: int, booking_id: int, is_payment_by_cash: bool
+) -> InlineKeyboardMarkup:
     """Create inline keyboard for booking management"""
     keyboard = [
-        [InlineKeyboardButton("Подтвердить оплату", callback_data=f"booking_1_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Отмена бронирования", callback_data=f"booking_2_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Изменить стоимость", callback_data=f"booking_3_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
-        [InlineKeyboardButton("Изменить предоплату", callback_data=f"booking_4_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}")],
+        [
+            InlineKeyboardButton(
+                "Подтвердить оплату",
+                callback_data=f"booking_1_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Отмена бронирования",
+                callback_data=f"booking_2_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Изменить стоимость",
+                callback_data=f"booking_3_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Изменить предоплату",
+                callback_data=f"booking_4_chatid_{user_chat_id}_bookingid_{booking_id}_cash_{is_payment_by_cash}",
+            )
+        ],
     ]
     return InlineKeyboardMarkup(keyboard)
 
 
 def _clear_edit_context(context: ContextTypes.DEFAULT_TYPE, prefix: str):
     """Clear editing context from user_data"""
-    keys = [f"{prefix}_booking_id", f"{prefix}_user_chat_id", f"{prefix}_is_payment_by_cash", f"{prefix}_message_id"]
+    keys = [
+        f"{prefix}_booking_id",
+        f"{prefix}_user_chat_id",
+        f"{prefix}_is_payment_by_cash",
+        f"{prefix}_message_id",
+    ]
     for key in keys:
         context.user_data.pop(key, None)
 
 
-async def _edit_message(update: Update, message: str, reply_markup: InlineKeyboardMarkup, parse_mode: str = None):
+async def _edit_message(
+    update: Update,
+    message: str,
+    reply_markup: InlineKeyboardMarkup,
+    parse_mode: str = None,
+):
     """Edit message text or caption depending on message type"""
     if update.callback_query.message.caption:
         await update.callback_query.edit_message_caption(
@@ -453,11 +649,12 @@ async def accept_booking_payment(
     is_payment_by_cash=False,
 ):
     user = database_service.get_user_by_id(booking.user_id)
-    count_booking = database_service.get_done_booking_count(booking.user_id)
     message = string_helper.generate_booking_info_message(
-        booking, user, is_payment_by_cash, count_of_booking=count_booking
+        booking, user, is_payment_by_cash
     )
-    reply_markup = _create_booking_keyboard(user_chat_id, booking.id, is_payment_by_cash)
+    reply_markup = _create_booking_keyboard(
+        user_chat_id, booking.id, is_payment_by_cash
+    )
 
     if photo:
         await context.bot.send_photo(
@@ -488,11 +685,12 @@ async def edit_accept_booking_payment(
 ):
     booking = database_service.get_booking_by_id(booking_id)
     user = database_service.get_user_by_id(booking.user_id)
-    count_booking = database_service.get_done_booking_count(booking.user_id)
     message = string_helper.generate_booking_info_message(
-        booking, user, is_payment_by_cash, count_of_booking=count_booking
+        booking, user, is_payment_by_cash
     )
-    reply_markup = _create_booking_keyboard(user_chat_id, booking_id, is_payment_by_cash)
+    reply_markup = _create_booking_keyboard(
+        user_chat_id, booking_id, is_payment_by_cash
+    )
     await _edit_message(update, message, reply_markup)
 
 
@@ -585,9 +783,13 @@ async def booking_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         case "2":
             return await cancel_booking(update, context, chat_id, booking_id)
         case "3":
-            return await request_price_input(update, context, chat_id, booking_id, is_payment_by_cash)
+            return await request_price_input(
+                update, context, chat_id, booking_id, is_payment_by_cash
+            )
         case "4":
-            return await request_prepayment_input(update, context, chat_id, booking_id, is_payment_by_cash)
+            return await request_prepayment_input(
+                update, context, chat_id, booking_id, is_payment_by_cash
+            )
 
 
 async def gift_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -610,14 +812,16 @@ async def request_price_input(
     context: ContextTypes.DEFAULT_TYPE,
     user_chat_id: int,
     booking_id: int,
-    is_payment_by_cash: bool = False
+    is_payment_by_cash: bool = False,
 ):
     """Ask admin to enter new price via text input"""
     # Store context in user_data - including is_payment_by_cash and message_id
     context.user_data["price_edit_booking_id"] = booking_id
     context.user_data["price_edit_user_chat_id"] = user_chat_id
     context.user_data["price_edit_is_payment_by_cash"] = is_payment_by_cash
-    context.user_data["price_edit_message_id"] = update.callback_query.message.message_id
+    context.user_data["price_edit_message_id"] = (
+        update.callback_query.message.message_id
+    )
 
     booking = database_service.get_booking_by_id(booking_id)
     keyboard = [[InlineKeyboardButton("Отмена", callback_data="cancel_price_input")]]
@@ -638,17 +842,18 @@ async def _update_booking_message(
     booking_id: int,
     user_chat_id: int,
     is_payment_by_cash: bool,
-    message_id: int
+    message_id: int,
 ):
     """Helper function to update booking message with new data"""
     booking = database_service.get_booking_by_id(booking_id)
     user = database_service.get_user_by_id(booking.user_id)
-    count_booking = database_service.get_done_booking_count(booking.user_id)
 
     message_text = string_helper.generate_booking_info_message(
-        booking, user, is_payment_by_cash, count_of_booking=count_booking
+        booking, user, is_payment_by_cash
     )
-    reply_markup = _create_booking_keyboard(user_chat_id, booking_id, is_payment_by_cash)
+    reply_markup = _create_booking_keyboard(
+        user_chat_id, booking_id, is_payment_by_cash
+    )
 
     # Try to edit message text first, fall back to caption if needed
     try:
@@ -656,7 +861,7 @@ async def _update_booking_message(
             chat_id=ADMIN_CHAT_ID,
             message_id=message_id,
             text=message_text,
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
     except Exception:
         try:
@@ -664,7 +869,7 @@ async def _update_booking_message(
                 chat_id=ADMIN_CHAT_ID,
                 message_id=message_id,
                 caption=message_text,
-                reply_markup=reply_markup
+                reply_markup=reply_markup,
             )
         except Exception as e:
             LoggerService.error(__name__, f"Failed to update booking message: {e}")
@@ -685,10 +890,14 @@ async def handle_price_input(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         new_price = float(price_text)
         if new_price <= 0:
-            await update.message.reply_text("❌ Стоимость должна быть положительным числом.")
+            await update.message.reply_text(
+                "❌ Стоимость должна быть положительным числом."
+            )
             return ENTER_PRICE
     except ValueError:
-        await update.message.reply_text("❌ Неверный формат. Введите число (например: 370):")
+        await update.message.reply_text(
+            "❌ Неверный формат. Введите число (например: 370):"
+        )
         return ENTER_PRICE
 
     # Update booking
@@ -701,7 +910,7 @@ async def handle_price_input(update: Update, context: ContextTypes.DEFAULT_TYPE)
         booking_id,
         context.user_data.get("price_edit_user_chat_id"),
         context.user_data.get("price_edit_is_payment_by_cash"),
-        context.user_data.get("price_edit_message_id")
+        context.user_data.get("price_edit_message_id"),
     )
 
     # Clear context
@@ -733,17 +942,21 @@ async def request_prepayment_input(
     context: ContextTypes.DEFAULT_TYPE,
     user_chat_id: int,
     booking_id: int,
-    is_payment_by_cash: bool = False
+    is_payment_by_cash: bool = False,
 ):
     """Ask admin to enter new prepayment via text input"""
     # Store context in user_data - including is_payment_by_cash and message_id
     context.user_data["prepay_edit_booking_id"] = booking_id
     context.user_data["prepay_edit_user_chat_id"] = user_chat_id
     context.user_data["prepay_edit_is_payment_by_cash"] = is_payment_by_cash
-    context.user_data["prepay_edit_message_id"] = update.callback_query.message.message_id
+    context.user_data["prepay_edit_message_id"] = (
+        update.callback_query.message.message_id
+    )
 
     booking = database_service.get_booking_by_id(booking_id)
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data="cancel_prepayment_input")]]
+    keyboard = [
+        [InlineKeyboardButton("Отмена", callback_data="cancel_prepayment_input")]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = (
@@ -771,10 +984,14 @@ async def handle_prepayment_input(update: Update, context: ContextTypes.DEFAULT_
     try:
         new_prepayment = float(prepayment_text)
         if new_prepayment < 0:
-            await update.message.reply_text("❌ Предоплата не может быть отрицательной.")
+            await update.message.reply_text(
+                "❌ Предоплата не может быть отрицательной."
+            )
             return ENTER_PREPAYMENT
     except ValueError:
-        await update.message.reply_text("❌ Неверный формат. Введите число (например: 150):")
+        await update.message.reply_text(
+            "❌ Неверный формат. Введите число (например: 150):"
+        )
         return ENTER_PREPAYMENT
 
     # Update booking
@@ -787,7 +1004,7 @@ async def handle_prepayment_input(update: Update, context: ContextTypes.DEFAULT_
         booking_id,
         context.user_data.get("prepay_edit_user_chat_id"),
         context.user_data.get("prepay_edit_is_payment_by_cash"),
-        context.user_data.get("prepay_edit_message_id")
+        context.user_data.get("prepay_edit_message_id"),
     )
 
     # Clear context
@@ -815,10 +1032,7 @@ async def cancel_prepayment_input(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def approve_booking(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    chat_id: int,
-    booking_id: int
+    update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int
 ):
     (booking, user) = await prepare_approve_process(update, context, booking_id)
     await check_and_send_booking(context, booking)
@@ -830,14 +1044,16 @@ async def approve_booking(
         f"Общая стоимость бронирования: {booking.price} руб.\n"
         f"Предоплата: {booking.prepayment_price} руб.\n"
     )
-    
+
     # Add transfer time information if transfer is requested
     if booking.transfer_address:
         # Transfer time is 30 minutes before check-in time
         transfer_time = booking.start_date - timedelta(minutes=30)
         confirmation_text += f"🚗 <b>Трансфер:</b> {booking.transfer_address}\n"
-        confirmation_text += f"🕐 <b>Время трансфера:</b> {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
-    
+        confirmation_text += (
+            f"🕐 <b>Время трансфера:</b> {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
+        )
+
     await context.bot.send_message(
         chat_id=chat_id,
         text=confirmation_text,
@@ -921,9 +1137,7 @@ def get_future_bookings() -> Sequence[BookingBase]:
 
 
 async def prepare_approve_process(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    booking_id: int
+    update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: int
 ):
     booking = database_service.get_booking_by_id(booking_id)
     user = database_service.get_user_by_id(booking.user_id)
@@ -963,7 +1177,7 @@ async def send_booking_details(
     try:
         # Отправка маршрута
         await context.bot.send_message(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             text="Мы отобразили путь по которому лучше всего доехать до The Secret House.\n"
             "Через 500 метров после ж/д переезда по левую сторону будет оранжевый магазин. После магазина нужно повернуть налево. Это Вам ориентир нужного поворота, далее навигатор Вас привезет правильно.\n"
             "Когда будете ехать вдоль леса, то Вам нужно будет повернуть на садовое товарищество 'Юбилейное-68' (будет вывеска).\n"
@@ -976,7 +1190,7 @@ async def send_booking_details(
 
         # Отправка контактов администратора
         await context.bot.send_message(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
             f"{ADMINISTRATION_CONTACT}",
         )
@@ -984,7 +1198,7 @@ async def send_booking_details(
         # Отправка фото с инструкциями
         photo = file_service.get_image("key.jpg")
         await context.bot.send_photo(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             caption="Мы предоставляем самостоятельное заселение.\n"
             f"1. Слева отображена ключница, которая располагается за территорией дома. В которой лежат ключи от ворот и дома. Пароль: {settings_service.password}\n"
             "2. Справа отображен ящик, который располагается на территории дома. В ящик нужно положить подписанный договор и оплату за проживание, если вы платите наличкой.\n\n"
@@ -1000,7 +1214,7 @@ async def send_booking_details(
         # Отправка инструкций по сауне (если есть)
         if booking.has_sauna:
             await context.bot.send_message(
-                chat_id=booking.chat_id,
+                chat_id=booking.user.chat_id,
                 text="Инструкция по включению сауны:\n"
                 "1. Подойдите к входной двери.\n"
                 "2. По правую руку находился электрический счетчик.\n"
@@ -1013,7 +1227,7 @@ async def send_booking_details(
             __name__,
             "All booking details sent successfully",
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details_complete",
             },
@@ -1025,7 +1239,7 @@ async def send_booking_details(
             "Failed to send booking details to user",
             exception=e,
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details",
             },
@@ -1047,7 +1261,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         message = await context.bot.send_message(
-            chat_id=booking.chat_id,
+            chat_id=booking.user.chat_id,
             text="🏡 <b>The Secret House благодарит вас за выбор нашего дома для аренды!</b> 💫\n\n"
             "Мы хотели бы узнать, как Вам понравилось наше обслуживание. "
             "Будем благодарны, если вы оставите отзыв.\n\n"
@@ -1060,7 +1274,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             __name__,
             "Feedback request sent successfully",
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "message_id": message.message_id,
                 "action": "send_feedback",
@@ -1073,7 +1287,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             "Failed to send feedback request to user",
             exception=e,
             kwargs={
-                "chat_id": booking.chat_id,
+                "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_feedback",
             },
@@ -1085,7 +1299,10 @@ async def check_and_send_booking(context, booking):
     now = datetime.now()
     job_run_time = time(8, 0)
 
-    condition_1 = booking.start_date.date() == now.date() or booking.start_date.date() == now.date() + timedelta(days=1)
+    condition_1 = (
+        booking.start_date.date() == now.date()
+        or booking.start_date.date() == now.date() + timedelta(days=1)
+    )
     condition_2 = (
         booking.start_date.date() == now.date()
         or booking.start_date.date() - timedelta(days=1) == now.date()
