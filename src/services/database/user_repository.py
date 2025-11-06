@@ -199,3 +199,43 @@ class UserRepository(BaseRepository):
                     session.commit()
         except Exception as e:
             LoggerService.error(__name__, "increment_completed_bookings", e)
+
+    def get_total_users_count(self) -> int:
+        """Get total count of users in system."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+                count = session.scalar(select(func.count(UserBase.id)))
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_total_users_count: {e}")
+            LoggerService.error(__name__, "get_total_users_count", e)
+            return 0
+
+    def get_users_with_bookings_count(self) -> int:
+        """Get count of users with at least one booking."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+                count = session.scalar(
+                    select(func.count(UserBase.id)).where(UserBase.has_bookings == 1)
+                )
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_users_with_bookings_count: {e}")
+            LoggerService.error(__name__, "get_users_with_bookings_count", e)
+            return 0
+
+    def get_users_with_completed_count(self) -> int:
+        """Get count of users with at least one completed booking."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+                count = session.scalar(
+                    select(func.count(UserBase.id)).where(UserBase.completed_bookings > 0)
+                )
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_users_with_completed_count: {e}")
+            LoggerService.error(__name__, "get_users_with_completed_count", e)
+            return 0

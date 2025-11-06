@@ -420,3 +420,114 @@ class BookingRepository(BaseRepository):
                 session.rollback()
                 print(f"Error updating Booking: {e}")
                 LoggerService.error(__name__, "update_booking", e)
+
+    def get_bookings_count_by_period(
+        self, start_date: datetime = None, end_date: datetime = None, is_completed: bool = None
+    ) -> int:
+        """Get count of bookings in a period with optional completion filter."""
+        try:
+            with self.Session() as session:
+                query = select(func.count(BookingBase.id)).where(
+                    BookingBase.is_prepaymented == True
+                )
+
+                if start_date:
+                    query = query.where(BookingBase.start_date >= start_date)
+                if end_date:
+                    query = query.where(BookingBase.start_date <= end_date)
+
+                if is_completed is True:
+                    query = query.where(
+                        and_(
+                            BookingBase.is_done == True,
+                            BookingBase.is_canceled == False
+                        )
+                    )
+                elif is_completed is False:
+                    query = query.where(
+                        and_(
+                            BookingBase.is_done == False,
+                            BookingBase.is_canceled == False
+                        )
+                    )
+
+                count = session.scalar(query)
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_bookings_count_by_period: {e}")
+            LoggerService.error(__name__, "get_bookings_count_by_period", e)
+            return 0
+
+    def get_revenue_by_period(
+        self, start_date: datetime = None, end_date: datetime = None
+    ) -> float:
+        """Get total revenue from completed bookings in a period."""
+        try:
+            with self.Session() as session:
+                query = select(func.sum(BookingBase.price)).where(
+                    and_(
+                        BookingBase.is_done == True,
+                        BookingBase.is_canceled == False,
+                        BookingBase.is_prepaymented == True,
+                    )
+                )
+
+                if start_date:
+                    query = query.where(BookingBase.start_date >= start_date)
+                if end_date:
+                    query = query.where(BookingBase.start_date <= end_date)
+
+                result = session.scalar(query)
+                return float(result) if result else 0.0
+        except Exception as e:
+            print(f"Error in get_revenue_by_period: {e}")
+            LoggerService.error(__name__, "get_revenue_by_period", e)
+            return 0.0
+
+    def get_canceled_bookings_count(
+        self, start_date: datetime = None, end_date: datetime = None
+    ) -> int:
+        """Get count of canceled bookings in a period."""
+        try:
+            with self.Session() as session:
+                query = select(func.count(BookingBase.id)).where(
+                    BookingBase.is_canceled == True
+                )
+
+                if start_date:
+                    query = query.where(BookingBase.start_date >= start_date)
+                if end_date:
+                    query = query.where(BookingBase.start_date <= end_date)
+
+                count = session.scalar(query)
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_canceled_bookings_count: {e}")
+            LoggerService.error(__name__, "get_canceled_bookings_count", e)
+            return 0
+
+    def get_active_bookings_count(
+        self, start_date: datetime = None, end_date: datetime = None
+    ) -> int:
+        """Get count of active/upcoming bookings in a period."""
+        try:
+            with self.Session() as session:
+                query = select(func.count(BookingBase.id)).where(
+                    and_(
+                        BookingBase.is_prepaymented == True,
+                        BookingBase.is_done == False,
+                        BookingBase.is_canceled == False,
+                    )
+                )
+
+                if start_date:
+                    query = query.where(BookingBase.start_date >= start_date)
+                if end_date:
+                    query = query.where(BookingBase.start_date <= end_date)
+
+                count = session.scalar(query)
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_active_bookings_count: {e}")
+            LoggerService.error(__name__, "get_active_bookings_count", e)
+            return 0

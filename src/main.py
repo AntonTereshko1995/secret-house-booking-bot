@@ -25,7 +25,9 @@ async def set_commands(application: Application):
         BotCommand("booking_list", "Бронирования"),
         BotCommand("change_password", "Изменить пароль"),
         BotCommand("unpaid_bookings", "Неоплаченные бронирования"),
-        BotCommand("broadcast", "Рассылка всем пользователям"),
+        BotCommand("broadcast", "Рассылка всем"),
+        BotCommand("broadcast", "Рассылка c бронями"),
+        BotCommand("statistics", "Статистика"),
     ]
 
     await application.bot.set_my_commands(user_commands)
@@ -57,6 +59,9 @@ if __name__ == "__main__":
     )
     application.add_handler(
         CommandHandler("unpaid_bookings", admin_handler.get_unpaid_bookings)
+    )
+    application.add_handler(
+        CommandHandler("statistics", admin_handler.get_statistics)
     )
 
     job = job_service.JobService()

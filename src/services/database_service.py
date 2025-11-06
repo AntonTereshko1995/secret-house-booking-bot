@@ -256,3 +256,40 @@ class DatabaseService:
             is_done,
             prepayment,
         )
+
+    # Statistics methods
+    def get_bookings_count_by_period(
+        self, start_date: datetime = None, end_date: datetime = None, is_completed: bool = None
+    ) -> int:
+        """Get count of bookings in a period with optional completion filter."""
+        return self.booking_repository.get_bookings_count_by_period(start_date, end_date, is_completed)
+
+    def get_revenue_by_period(
+        self, start_date: datetime = None, end_date: datetime = None
+    ) -> float:
+        """Get total revenue from completed bookings in a period."""
+        return self.booking_repository.get_revenue_by_period(start_date, end_date)
+
+    def get_canceled_bookings_count(
+        self, start_date: datetime = None, end_date: datetime = None
+    ) -> int:
+        """Get count of canceled bookings in a period."""
+        return self.booking_repository.get_canceled_bookings_count(start_date, end_date)
+
+    def get_active_bookings_count(
+        self, start_date: datetime = None, end_date: datetime = None
+    ) -> int:
+        """Get count of active/upcoming bookings in a period."""
+        return self.booking_repository.get_active_bookings_count(start_date, end_date)
+
+    def get_total_users_count(self) -> int:
+        """Get total count of users in system."""
+        return self.user_repository.get_total_users_count()
+
+    def get_users_with_bookings_count(self) -> int:
+        """Get count of users with at least one booking."""
+        return self.user_repository.get_users_with_bookings_count()
+
+    def get_users_with_completed_count(self) -> int:
+        """Get count of users with at least one completed booking."""
+        return self.user_repository.get_users_with_completed_count()

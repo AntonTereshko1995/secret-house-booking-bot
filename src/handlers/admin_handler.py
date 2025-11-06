@@ -272,6 +272,42 @@ async def get_unpaid_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE
     return END
 
 
+async def get_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to show comprehensive booking and user statistics"""
+    chat_id = update.effective_chat.id
+    if chat_id != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+
+    # Show loading message
+    loading_msg = await update.message.reply_text("⏳ Генерирую статистику...")
+
+    try:
+        # Import services
+        from src.services.statistics_service import StatisticsService
+        from src.helpers.statistics_helper import format_statistics_message
+
+        # Get statistics
+        stats_service = StatisticsService()
+        stats = stats_service.get_complete_statistics()
+
+        # Format message
+        message = format_statistics_message(stats)
+
+        # Delete loading message and send statistics
+        await loading_msg.delete()
+        await update.message.reply_text(message, parse_mode="HTML")
+
+    except Exception as e:
+        LoggerService.error(__name__, "get_statistics", e)
+        await loading_msg.delete()
+        await update.message.reply_text(
+            "❌ Ошибка при генерации статистики. Проверьте логи."
+        )
+
+    return END
+
+
 async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Admin command to start broadcast - asks for message text"""
     chat_id = update.effective_chat.id
