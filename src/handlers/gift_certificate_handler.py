@@ -147,6 +147,40 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             global user_contact
             user_contact = cleaned_contact
+
+            # Save contact to database
+            try:
+                chat_id = update.effective_chat.id
+                user = database_service.get_user_by_chat_id(chat_id)
+
+                if user:
+                    database_service.update_user_contact(user.id, cleaned_contact)
+                    LoggerService.info(
+                        __name__,
+                        "User contact saved to database",
+                        update,
+                        kwargs={"user_id": user.id, "contact": cleaned_contact},
+                    )
+                else:
+                    user_name = update.effective_user.username or cleaned_contact
+                    database_service.update_user_chat_id(user_name, chat_id)
+                    user = database_service.get_user_by_chat_id(chat_id)
+                    if user:
+                        database_service.update_user_contact(user.id, cleaned_contact)
+                    LoggerService.warning(
+                        __name__,
+                        "User not found by chat_id, created new user",
+                        update,
+                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                    )
+            except Exception as e:
+                LoggerService.error(
+                    __name__,
+                    "Failed to save user contact to database",
+                    exception=e,
+                    kwargs={"contact": cleaned_contact},
+                )
+
             return await pay(update, context)
         else:
             LoggerService.warning(__name__, "User name is invalid", update)
@@ -165,12 +199,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == str(END):
         return await back_navigation(update, context)
 
-    global \
-        tariff, \
-        rental_rate, \
-        is_sauna_included, \
-        is_secret_room_included, \
-        is_additional_bedroom_included
+    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included
     tariff = tariff_helper.get_by_str(data)
     rental_rate = rate_service.get_by_tariff(tariff)
     LoggerService.info(__name__, "select tariff", update, kwargs={"tariff": tariff})
@@ -395,14 +424,7 @@ def save_gift_information():
 
 
 def reset_variables():
-    global \
-        user_contact, \
-        tariff, \
-        is_sauna_included, \
-        is_secret_room_included, \
-        is_additional_bedroom_included, \
-        rental_rate, \
-        price
+    global user_contact, tariff, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, rental_rate, price
     user_contact = None
     tariff = None
     is_sauna_included = None

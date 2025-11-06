@@ -141,7 +141,6 @@ def generate_booking_info_message(
     booking: BookingBase,
     user: UserBase,
     is_additional_payment_by_cash=False,
-    count_of_booking: int = None,
 ) -> str:
     message = (
         f"Пользователь: {user.contact}\n"
@@ -156,6 +155,8 @@ def generate_booking_info_message(
         f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
         f"Количество гостей: {booking.number_of_guests}\n"
         f"Комментарий: {booking.comment if booking.comment else ''}\n"
+        f"Всего бронирований: {user.total_bookings}\n"
+        f"Завершенных бронирований: {user.completed_bookings}\n"
     )
 
     # Add incognito questionnaire info for incognito tariffs
@@ -197,9 +198,6 @@ def generate_booking_info_message(
             from datetime import timedelta
             transfer_time = booking.start_date - timedelta(minutes=30)
             message += f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
-
-    if count_of_booking:
-        message += f"Количество броней: {count_of_booking}\n"
 
     if booking.gift_id:
         message += (

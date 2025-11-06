@@ -25,7 +25,10 @@ async def set_commands(application: Application):
         BotCommand("booking_list", "Бронирования"),
         BotCommand("change_password", "Изменить пароль"),
         BotCommand("unpaid_bookings", "Неоплаченные бронирования"),
-        BotCommand("broadcast", "Рассылка всем пользователям"),
+        BotCommand("broadcast", "Рассылка всем"),
+        BotCommand("broadcast_with_bookings", "Рассылка c бронями"),
+        BotCommand("broadcast_without_bookings", "Рассылка БЕЗ броней"),
+        BotCommand("statistics", "Статистика"),
     ]
 
     await application.bot.set_my_commands(user_commands)
@@ -41,7 +44,9 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 if __name__ == "__main__":
-    application = Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+    application = (
+        Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+    )
 
     # Register handlers
     application.add_handler(menu_handler.get_handler())
@@ -49,6 +54,8 @@ if __name__ == "__main__":
     application.add_handler(admin_handler.get_password_handler())
     application.add_handler(admin_handler.get_purchase_handler())
     application.add_handler(admin_handler.get_broadcast_handler())
+    application.add_handler(admin_handler.get_broadcast_with_bookings_handler())
+    application.add_handler(admin_handler.get_broadcast_without_bookings_handler())
     application.add_handler(feedback_handler.get_handler())
 
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
@@ -58,6 +65,7 @@ if __name__ == "__main__":
     application.add_handler(
         CommandHandler("unpaid_bookings", admin_handler.get_unpaid_bookings)
     )
+    application.add_handler(CommandHandler("statistics", admin_handler.get_statistics))
 
     job = job_service.JobService()
     job.set_application(application)

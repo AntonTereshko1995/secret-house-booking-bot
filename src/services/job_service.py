@@ -11,6 +11,7 @@ from telegram import Update
 from telegram.ext import Application, CallbackContext, JobQueue
 from singleton_decorator import singleton
 from src.services.database_service import DatabaseService
+from src.services.chat_validation_service import ChatValidationService
 
 logging.basicConfig(level=logging.INFO)
 database_service = DatabaseService()
@@ -45,18 +46,19 @@ class JobService:
             context.job_queue.run_daily(
                 self.send_feeback, time=job_time, name="send_feeback"
             )
+        if not context.job_queue.get_jobs_by_name("cleanup_invalid_chats"):
+            # Run weekly - every 7 days, first run 10 seconds after start for testing
+            context.job_queue.run_repeating(
+                self.cleanup_invalid_chats,
+                interval=timedelta(days=7),
+                first=timedelta(seconds=10),
+                name="cleanup_invalid_chats"
+            )
 
     async def send_booking_details(self, context: CallbackContext):
         tomorrow = date.today() + timedelta(days=1)
-        bookings = database_service.get_booking_by_start_date(tomorrow)
-        if not bookings:
-            LoggerService.info(
-                __name__,
-                f"No bookings found for {tomorrow}",
-                kwargs={"date": str(tomorrow)},
-            )
-            return
-
+        # bookings = database_service.get_booking_by_start_date(tomorrow)
+        bookings = database_service.get_booking_by_period(date.today(), tomorrow)
         LoggerService.info(
             __name__,
             f"Found {len(bookings)} bookings for {tomorrow}",
@@ -70,7 +72,7 @@ class JobService:
                     __name__,
                     "Successfully sent booking details to user",
                     kwargs={
-                        "chat_id": booking.chat_id,
+                        "chat_id": booking.user.chat_id,
                         "booking_id": booking.id,
                         "action": "send_booking_details",
                     },
@@ -81,7 +83,7 @@ class JobService:
                     "Failed to send booking details to user",
                     exception=e,
                     kwargs={
-                        "chat_id": booking.chat_id,
+                        "chat_id": booking.user.chat_id,
                         "booking_id": booking.id,
                         "action": "send_booking_details",
                     },
@@ -112,7 +114,7 @@ class JobService:
                     __name__,
                     "Successfully sent feedback request to user",
                     kwargs={
-                        "chat_id": booking.chat_id,
+                        "chat_id": booking.user.chat_id,
                         "booking_id": booking.id,
                         "action": "send_feedback",
                     },
@@ -123,8 +125,73 @@ class JobService:
                     "Failed to send feedback request to user",
                     exception=e,
                     kwargs={
-                        "chat_id": booking.chat_id,
+                        "chat_id": booking.user.chat_id,
                         "booking_id": booking.id,
                         "action": "send_feedback",
                     },
                 )
+
+    async def cleanup_invalid_chats(self, context: CallbackContext):
+        """Weekly job to validate all chat IDs and remove invalid ones."""
+        try:
+            # Get all chat IDs from users
+            chat_ids = database_service.get_all_user_chat_ids()
+
+            if not chat_ids:
+                LoggerService.info(
+                    __name__,
+                    "No chat IDs to validate",
+                    kwargs={"chat_count": 0}
+                )
+                return
+
+            LoggerService.info(
+                __name__,
+                "Starting weekly chat validation",
+                kwargs={"total_chats": len(chat_ids)}
+            )
+
+            # Validate all chat IDs
+            validation_service = ChatValidationService()
+            results = await validation_service.validate_all_chat_ids(
+                self._application.bot,
+                chat_ids
+            )
+
+            # Remove invalid chat IDs from database
+            removed_count = 0
+            for invalid_chat_id in results["invalid_ids"]:
+                try:
+                    if database_service.remove_user_chat_id(invalid_chat_id):
+                        removed_count += 1
+                        LoggerService.info(
+                            __name__,
+                            "Removed invalid chat_id",
+                            kwargs={"chat_id": invalid_chat_id}
+                        )
+                except Exception as e:
+                    LoggerService.error(
+                        __name__,
+                        "Failed to remove chat_id",
+                        exception=e,
+                        kwargs={"chat_id": invalid_chat_id}
+                    )
+
+            # Log summary
+            LoggerService.info(
+                __name__,
+                "Weekly chat cleanup completed",
+                kwargs={
+                    "total_checked": results["total_checked"],
+                    "valid": results["valid"],
+                    "invalid": results["invalid"],
+                    "removed": removed_count
+                }
+            )
+
+        except Exception as e:
+            LoggerService.error(
+                __name__,
+                "Weekly chat cleanup failed",
+                exception=e
+            )

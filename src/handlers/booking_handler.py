@@ -269,6 +269,27 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if is_valid:
             booking = redis_service.get_booking(update)
             redis_service.update_booking_field(update, "user_contact", cleaned_contact)
+
+            # Save contact to database
+            try:
+                chat_id = navigation_service.get_chat_id(update)
+                user = database_service.get_user_by_chat_id(chat_id)
+                database_service.update_user_contact(user.id, cleaned_contact)
+                LoggerService.info(
+                    __name__,
+                    "User contact saved to database",
+                    update,
+                    kwargs={"user_id": user.id, "contact": cleaned_contact},
+                )
+            except Exception as e:
+                LoggerService.error(
+                    __name__,
+                    "Failed to save user contact to database",
+                    exception=e,
+                    kwargs={"contact": cleaned_contact},
+                )
+                # Continue with booking flow even if DB update fails
+
             LoggerService.info(
                 __name__, "User name is valid", update, kwargs={"user_name": user_input}
             )
@@ -1402,14 +1423,38 @@ async def wine_preference_message(update: Update, context: ContextTypes.DEFAULT_
 
     keyboard = [
         [InlineKeyboardButton("Не нужно вино", callback_data="BOOKING-WINE_none")],
-        [InlineKeyboardButton("Белое сладкое", callback_data="BOOKING-WINE_white-sweet")],
-        [InlineKeyboardButton("Белое полусладкое", callback_data="BOOKING-WINE_white-semi-sweet")],
+        [
+            InlineKeyboardButton(
+                "Белое сладкое", callback_data="BOOKING-WINE_white-sweet"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Белое полусладкое", callback_data="BOOKING-WINE_white-semi-sweet"
+            )
+        ],
         [InlineKeyboardButton("Белое сухое", callback_data="BOOKING-WINE_white-dry")],
-        [InlineKeyboardButton("Белое полусухое", callback_data="BOOKING-WINE_white-semi-dry")],
-        [InlineKeyboardButton("Красное сладкое", callback_data="BOOKING-WINE_red-sweet")],
-        [InlineKeyboardButton("Красное полусладкое", callback_data="BOOKING-WINE_red-semi-sweet")],
+        [
+            InlineKeyboardButton(
+                "Белое полусухое", callback_data="BOOKING-WINE_white-semi-dry"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Красное сладкое", callback_data="BOOKING-WINE_red-sweet"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Красное полусладкое", callback_data="BOOKING-WINE_red-semi-sweet"
+            )
+        ],
         [InlineKeyboardButton("Красное сухое", callback_data="BOOKING-WINE_red-dry")],
-        [InlineKeyboardButton("Красное полусухое", callback_data="BOOKING-WINE_red-semi-dry")],
+        [
+            InlineKeyboardButton(
+                "Красное полусухое", callback_data="BOOKING-WINE_red-semi-dry"
+            )
+        ],
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-WINE_{END}")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1751,7 +1796,6 @@ def save_booking_information(
         cache_booking.number_of_guests,
         cache_booking.price,
         cache_booking.booking_comment,
-        chat_id,
         cache_booking.gift_id,
         cache_booking.wine_preference,
         cache_booking.transfer_address,
