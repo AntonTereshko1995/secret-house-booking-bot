@@ -129,9 +129,55 @@ def get_password_handler() -> ConversationHandler:
 
 
 def get_broadcast_handler() -> ConversationHandler:
-    """Returns ConversationHandler for broadcast command"""
+    """Returns ConversationHandler for broadcast command (all users)"""
     handler = ConversationHandler(
         entry_points=[CommandHandler("broadcast", start_broadcast)],
+        states={
+            BROADCAST_INPUT: [
+                MessageHandler(
+                    filters.Chat(chat_id=ADMIN_CHAT_ID)
+                    & filters.TEXT
+                    & ~filters.COMMAND,
+                    handle_broadcast_input,
+                ),
+                CallbackQueryHandler(cancel_broadcast, pattern="^cancel_broadcast$"),
+            ],
+        },
+        fallbacks=[],
+    )
+    return handler
+
+
+def get_broadcast_with_bookings_handler() -> ConversationHandler:
+    """Returns ConversationHandler for broadcast_with_bookings command"""
+    handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("broadcast_with_bookings", start_broadcast_with_bookings)
+        ],
+        states={
+            BROADCAST_INPUT: [
+                MessageHandler(
+                    filters.Chat(chat_id=ADMIN_CHAT_ID)
+                    & filters.TEXT
+                    & ~filters.COMMAND,
+                    handle_broadcast_input,
+                ),
+                CallbackQueryHandler(cancel_broadcast, pattern="^cancel_broadcast$"),
+            ],
+        },
+        fallbacks=[],
+    )
+    return handler
+
+
+def get_broadcast_without_bookings_handler() -> ConversationHandler:
+    """Returns ConversationHandler for broadcast_without_bookings command"""
+    handler = ConversationHandler(
+        entry_points=[
+            CommandHandler(
+                "broadcast_without_bookings", start_broadcast_without_bookings
+            )
+        ],
         states={
             BROADCAST_INPUT: [
                 MessageHandler(
@@ -309,19 +355,67 @@ async def get_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to start broadcast - asks for message text"""
+    """Admin command to start broadcast to ALL users - asks for message text"""
+    return await _start_broadcast_with_filter(update, context, filter_type="all")
+
+
+async def start_broadcast_with_bookings(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Admin command to start broadcast to users WITH bookings - asks for message text"""
+    return await _start_broadcast_with_filter(
+        update, context, filter_type="with_bookings"
+    )
+
+
+async def start_broadcast_without_bookings(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Admin command to start broadcast to users WITHOUT bookings - asks for message text"""
+    return await _start_broadcast_with_filter(
+        update, context, filter_type="without_bookings"
+    )
+
+
+async def _start_broadcast_with_filter(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, filter_type: str
+):
+    """
+    Internal function to start broadcast with user filter.
+
+    Args:
+        filter_type: "all", "with_bookings", or "without_bookings"
+    """
     chat_id = update.effective_chat.id
     if chat_id != ADMIN_CHAT_ID:
         await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
         return END
 
-    # Get total users count for preview
-    chat_ids = database_service.get_all_user_chat_ids()
+    # Get chat IDs based on filter
+    if filter_type == "all":
+        chat_ids = database_service.get_all_user_chat_ids()
+        filter_label = "всем пользователям"
+    elif filter_type == "with_bookings":
+        chat_ids = database_service.get_user_chat_ids_with_bookings()
+        filter_label = "пользователям С бронями"
+    elif filter_type == "without_bookings":
+        chat_ids = database_service.get_user_chat_ids_without_bookings()
+        filter_label = "пользователям БЕЗ броней"
+    else:
+        await update.message.reply_text("❌ Неверный тип фильтра.")
+        return END
+
     total_users = len(chat_ids)
 
     if total_users == 0:
-        await update.message.reply_text("❌ В базе нет пользователей для рассылки.")
+        await update.message.reply_text(
+            f"❌ В базе нет пользователей для рассылки ({filter_label})."
+        )
         return END
+
+    # Store filter info in context for later use
+    context.user_data["broadcast_filter"] = filter_type
+    context.user_data["broadcast_chat_ids"] = chat_ids
 
     # Prompt for message input
     keyboard = [[InlineKeyboardButton("Отмена", callback_data="cancel_broadcast")]]
@@ -329,9 +423,10 @@ async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = (
         f"📢 <b>Рассылка сообщений</b>\n\n"
-        f"Количество получателей: <b>{total_users}</b>\n"
-        f"Примерное время: <b>~{total_users} секунд</b>\n\n"
-        f"Введите текст сообщения для рассылки:"
+        f"🎯 Аудитория: <b>{filter_label}</b>\n"
+        f"👥 Количество получателей: <b>{total_users}</b>\n"
+        f"⏱ Примерное время: <b>~{total_users} секунд</b>\n\n"
+        f"✏️ Введите текст сообщения для рассылки:"
     )
 
     await update.message.reply_text(
@@ -359,12 +454,29 @@ async def handle_broadcast_input(update: Update, context: ContextTypes.DEFAULT_T
     # Store in context for potential future use
     context.user_data["broadcast_message"] = message_text
 
-    # Get all chat IDs
-    chat_ids = database_service.get_all_user_chat_ids()
+    # Get chat IDs from context (stored by _start_broadcast_with_filter)
+    chat_ids = context.user_data.get("broadcast_chat_ids", [])
+    filter_type = context.user_data.get("broadcast_filter", "all")
+
+    # Fallback: if no chat_ids in context, get all users
+    if not chat_ids:
+        chat_ids = database_service.get_all_user_chat_ids()
+        filter_type = "all"
+
+    # Get filter label for confirmation message
+    if filter_type == "all":
+        filter_label = "всем пользователям"
+    elif filter_type == "with_bookings":
+        filter_label = "пользователям С бронями"
+    elif filter_type == "without_bookings":
+        filter_label = "пользователям БЕЗ броней"
+    else:
+        filter_label = "выбранным пользователям"
 
     # Send confirmation and start broadcast
     await update.message.reply_text(
-        f"✅ Начинаю рассылку для {len(chat_ids)} пользователей...\n"
+        f"✅ Начинаю рассылку ({filter_label})\n"
+        f"👥 Количество: {len(chat_ids)} пользователей\n"
         f"📤 Это займет примерно {len(chat_ids)} секунд."
     )
 
@@ -387,6 +499,8 @@ async def handle_broadcast_input(update: Update, context: ContextTypes.DEFAULT_T
 
     # Clear context
     context.user_data.pop("broadcast_message", None)
+    context.user_data.pop("broadcast_filter", None)
+    context.user_data.pop("broadcast_chat_ids", None)
 
     return END
 
@@ -398,6 +512,8 @@ async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Clear context
     context.user_data.pop("broadcast_message", None)
+    context.user_data.pop("broadcast_filter", None)
+    context.user_data.pop("broadcast_chat_ids", None)
 
     return END
 

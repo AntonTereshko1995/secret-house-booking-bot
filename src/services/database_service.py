@@ -76,6 +76,14 @@ class DatabaseService:
         """Get all chat IDs from UserBase."""
         return self.user_repository.get_all_user_chat_ids()
 
+    def get_user_chat_ids_with_bookings(self) -> list[int]:
+        """Get chat IDs of users who have at least one booking."""
+        return self.user_repository.get_user_chat_ids_with_bookings()
+
+    def get_user_chat_ids_without_bookings(self) -> list[int]:
+        """Get chat IDs of users who have never made a booking."""
+        return self.user_repository.get_user_chat_ids_without_bookings()
+
     def remove_user_chat_id(self, chat_id: int) -> bool:
         """Remove chat_id from user (set to None). Returns True if found."""
         return self.user_repository.remove_user_chat_id(chat_id)
@@ -259,10 +267,15 @@ class DatabaseService:
 
     # Statistics methods
     def get_bookings_count_by_period(
-        self, start_date: datetime = None, end_date: datetime = None, is_completed: bool = None
+        self,
+        start_date: datetime = None,
+        end_date: datetime = None,
+        is_completed: bool = None,
     ) -> int:
         """Get count of bookings in a period with optional completion filter."""
-        return self.booking_repository.get_bookings_count_by_period(start_date, end_date, is_completed)
+        return self.booking_repository.get_bookings_count_by_period(
+            start_date, end_date, is_completed
+        )
 
     def get_revenue_by_period(
         self, start_date: datetime = None, end_date: datetime = None

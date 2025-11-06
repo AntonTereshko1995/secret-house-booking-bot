@@ -83,9 +83,7 @@ class UserRepository(BaseRepository):
         """Update user's contact (phone/email)."""
         with self.Session() as session:
             try:
-                user = session.scalar(
-                    select(UserBase).where(UserBase.id == user_id)
-                )
+                user = session.scalar(select(UserBase).where(UserBase.id == user_id))
                 if not user:
                     raise ValueError(f"User with id {user_id} not found")
 
@@ -95,7 +93,7 @@ class UserRepository(BaseRepository):
                 LoggerService.info(
                     __name__,
                     "Updated user contact",
-                    kwargs={"user_id": user_id, "contact": contact}
+                    kwargs={"user_id": user_id, "contact": contact},
                 )
                 return user
 
@@ -114,7 +112,7 @@ class UserRepository(BaseRepository):
                     select(UserBase).where(UserBase.chat_id == chat_id)
                 )
                 if not user:
-                    if user_name != None and user_name != "":
+                    if user_name is not None and user_name != "":
                         user = session.scalar(
                             select(UserBase).where(UserBase.user_name == user_name)
                         )
@@ -128,7 +126,11 @@ class UserRepository(BaseRepository):
                 LoggerService.info(
                     __name__,
                     "Updated chat_id for user",
-                    kwargs={"user_id": user.id, "chat_id": chat_id, "user_name": user_name},
+                    kwargs={
+                        "user_id": user.id,
+                        "chat_id": chat_id,
+                        "user_name": user_name,
+                    },
                 )
 
                 return user
@@ -155,6 +157,36 @@ class UserRepository(BaseRepository):
             print(f"Error in get_all_user_chat_ids: {e}")
             LoggerService.error(__name__, "get_all_user_chat_ids", e)
             return []  # Return empty list on error
+
+    def get_user_chat_ids_with_bookings(self) -> list[int]:
+        """Get chat IDs of users who have at least one booking."""
+        try:
+            with self.Session() as session:
+                chat_ids = session.scalars(
+                    select(UserBase.chat_id).where(
+                        and_(UserBase.chat_id.isnot(None), UserBase.has_bookings == 1)
+                    )
+                ).all()
+                return list(chat_ids)
+        except Exception as e:
+            print(f"Error in get_user_chat_ids_with_bookings: {e}")
+            LoggerService.error(__name__, "get_user_chat_ids_with_bookings", e)
+            return []
+
+    def get_user_chat_ids_without_bookings(self) -> list[int]:
+        """Get chat IDs of users who have never made a booking."""
+        try:
+            with self.Session() as session:
+                chat_ids = session.scalars(
+                    select(UserBase.chat_id).where(
+                        and_(UserBase.chat_id.isnot(None), UserBase.has_bookings == 0)
+                    )
+                ).all()
+                return list(chat_ids)
+        except Exception as e:
+            print(f"Error in get_user_chat_ids_without_bookings: {e}")
+            LoggerService.error(__name__, "get_user_chat_ids_without_bookings", e)
+            return []
 
     def remove_user_chat_id(self, chat_id: int) -> bool:
         """Remove chat_id from user (set to None). Returns True if found."""
@@ -205,6 +237,7 @@ class UserRepository(BaseRepository):
         try:
             with self.Session() as session:
                 from sqlalchemy import func
+
                 count = session.scalar(select(func.count(UserBase.id)))
                 return int(count) if count else 0
         except Exception as e:
@@ -217,6 +250,7 @@ class UserRepository(BaseRepository):
         try:
             with self.Session() as session:
                 from sqlalchemy import func
+
                 count = session.scalar(
                     select(func.count(UserBase.id)).where(UserBase.has_bookings == 1)
                 )
@@ -231,8 +265,11 @@ class UserRepository(BaseRepository):
         try:
             with self.Session() as session:
                 from sqlalchemy import func
+
                 count = session.scalar(
-                    select(func.count(UserBase.id)).where(UserBase.completed_bookings > 0)
+                    select(func.count(UserBase.id)).where(
+                        UserBase.completed_bookings > 0
+                    )
                 )
                 return int(count) if count else 0
         except Exception as e:
