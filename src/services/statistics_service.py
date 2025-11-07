@@ -1,6 +1,6 @@
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -53,16 +53,24 @@ class StatisticsService:
         """Generate complete statistics report for all time periods."""
         now = datetime.now()
         year_start = datetime(now.year, 1, 1)
+        year_end = datetime(now.year, 12, 31, 23, 59, 59)
         month_start = datetime(now.year, now.month, 1)
+
+        # Calculate month end (last day of current month)
+        if now.month == 12:
+            month_end = datetime(now.year, 12, 31, 23, 59, 59)
+        else:
+            next_month = datetime(now.year, now.month + 1, 1)
+            month_end = next_month - timedelta(seconds=1)
 
         # All-time stats
         all_time = self._get_booking_stats(start_date=None, end_date=None)
 
-        # Year-to-date
-        ytd = self._get_booking_stats(start_date=year_start, end_date=now)
+        # Year (full year, not just to date)
+        ytd = self._get_booking_stats(start_date=year_start, end_date=year_end)
 
-        # Current month
-        current_month = self._get_booking_stats(start_date=month_start, end_date=now)
+        # Current month (full month, not just to date)
+        current_month = self._get_booking_stats(start_date=month_start, end_date=month_end)
 
         # User stats
         user_stats = self._get_user_stats()
