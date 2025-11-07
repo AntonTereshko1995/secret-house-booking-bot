@@ -136,12 +136,14 @@ class UserRepository(BaseRepository):
                             session.commit()
                         else:
                             # Create new user if not found
-                            user = UserBase(user_name=user_name, chat_id=chat_id, is_active=True)
+                            # contact can be None initially, will be set later when user provides it
+                            user = UserBase(contact=None, user_name=user_name, chat_id=chat_id, is_active=True)
                             session.add(user)
                             session.commit()
                     else:
                         # Create new user without user_name
-                        user = UserBase(user_name=user_name, chat_id=chat_id, is_active=True)
+                        # contact can be None initially, will be set later when user provides it
+                        user = UserBase(contact=None, user_name=user_name, chat_id=chat_id, is_active=True)
                         session.add(user)
                         session.commit()
 
