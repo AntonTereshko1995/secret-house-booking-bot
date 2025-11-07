@@ -276,3 +276,33 @@ class UserRepository(BaseRepository):
             print(f"Error in get_users_with_completed_count: {e}")
             LoggerService.error(__name__, "get_users_with_completed_count", e)
             return 0
+
+    def get_active_users_count(self) -> int:
+        """Get count of active users."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+
+                count = session.scalar(
+                    select(func.count(UserBase.id)).where(UserBase.is_active == True)
+                )
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_active_users_count: {e}")
+            LoggerService.error(__name__, "get_active_users_count", e)
+            return 0
+
+    def get_deactivated_users_count(self) -> int:
+        """Get count of deactivated users."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+
+                count = session.scalar(
+                    select(func.count(UserBase.id)).where(UserBase.is_active == False)
+                )
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_deactivated_users_count: {e}")
+            LoggerService.error(__name__, "get_deactivated_users_count", e)
+            return 0

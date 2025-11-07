@@ -17,6 +17,7 @@ class UserBase(Base):
     has_bookings: Mapped[bool] = mapped_column(Integer, default=0, nullable=False)
     total_bookings: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     completed_bookings: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Integer, default=1, nullable=False)
 
     def __repr__(self) -> str:
         return f"UserBase(id={self.id}, user_name={self.user_name}, contact={self.contact}, total={self.total_bookings}, completed={self.completed_bookings})"

@@ -25,6 +25,8 @@ class UserStats:
     """User-related statistics"""
 
     total_users: int
+    active_users: int
+    deactivated_users: int
     users_with_bookings: int
     users_with_completed: int
     conversion_rate: float
@@ -123,6 +125,10 @@ class StatisticsService:
         # Total users
         total_users = self.db.get_total_users_count()
 
+        # Active and deactivated users
+        active_users = self.db.get_active_users_count()
+        deactivated_users = self.db.get_deactivated_users_count()
+
         # Users with at least 1 booking
         users_with_bookings = self.db.get_users_with_bookings_count()
 
@@ -144,6 +150,8 @@ class StatisticsService:
 
         return UserStats(
             total_users=total_users,
+            active_users=active_users,
+            deactivated_users=deactivated_users,
             users_with_bookings=users_with_bookings,
             users_with_completed=users_with_completed,
             conversion_rate=conversion_rate,

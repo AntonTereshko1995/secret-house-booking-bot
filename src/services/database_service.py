@@ -306,3 +306,11 @@ class DatabaseService:
     def get_users_with_completed_count(self) -> int:
         """Get count of users with at least one completed booking."""
         return self.user_repository.get_users_with_completed_count()
+
+    def get_active_users_count(self) -> int:
+        """Get count of active users."""
+        return self.user_repository.get_active_users_count()
+
+    def get_deactivated_users_count(self) -> int:
+        """Get count of deactivated users."""
+        return self.user_repository.get_deactivated_users_count()

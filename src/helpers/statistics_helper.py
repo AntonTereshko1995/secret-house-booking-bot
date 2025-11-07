@@ -60,6 +60,8 @@ def format_booking_stats_section(stats: BookingStats) -> str:
 def format_user_stats_section(stats: UserStats) -> str:
     """Format user statistics section."""
     section = f"├ Всего: {stats.total_users:,}\n"
+    section += f"├ 🟢 Активных: {stats.active_users:,}\n"
+    section += f"├ 🔴 Деактивированных: {stats.deactivated_users:,}\n"
     section += f"├ С бронями: {stats.users_with_bookings:,}\n"
     section += f"├ Завершили: {stats.users_with_completed:,}\n"
     section += f"├ Конверсия: {stats.conversion_rate:.1f}%\n"
