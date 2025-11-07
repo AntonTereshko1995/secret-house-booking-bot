@@ -11,7 +11,7 @@ from sqlalchemy.orm import mapped_column
 class UserBase(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    contact: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    contact: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     user_name: Mapped[str] = mapped_column(String, unique=False, nullable=True)
     chat_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=True)
     has_bookings: Mapped[bool] = mapped_column(Integer, default=0, nullable=False)
