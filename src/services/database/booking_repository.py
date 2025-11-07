@@ -487,11 +487,14 @@ class BookingRepository(BaseRepository):
     def get_canceled_bookings_count(
         self, start_date: datetime = None, end_date: datetime = None
     ) -> int:
-        """Get count of canceled bookings in a period."""
+        """Get count of canceled prepaid bookings in a period."""
         try:
             with self.Session() as session:
                 query = select(func.count(BookingBase.id)).where(
-                    BookingBase.is_canceled == True
+                    and_(
+                        BookingBase.is_canceled == True,
+                        BookingBase.is_prepaymented == True
+                    )
                 )
 
                 if start_date:
