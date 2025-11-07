@@ -76,7 +76,8 @@
       "Bash(echo:*)",
       "Bash(done)",
       "Bash(ENV=debug ALEMBIC_OFFLINE=true uv run alembic revision --autogenerate -m \"Add is_active field to users\")",
-      "Bash(ENV=debug uv run alembic revision -m \"Add is_active field to users\")"
+      "Bash(ENV=debug uv run alembic revision -m \"Add is_active field to users\")",
+      "Bash(ENV=debug uv run alembic revision -m \"Set is_done for used gifts\")"
     ],
     "deny": [],
     "ask": []

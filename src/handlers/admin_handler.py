@@ -1095,7 +1095,7 @@ async def cancel_booking(
 async def approve_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
-    gift = database_service.update_gift(gift_id, is_paymented=True)
+    gift = database_service.update_gift(gift_id, is_paymented=True, is_done=True)
     await context.bot.send_message(chat_id=chat_id, text=f"{gift.code}")
 
     await context.bot.send_message(
@@ -1151,15 +1151,6 @@ async def prepare_approve_process(
     )
     await inform_message(update, context, booking, user)
     return (booking, user)
-
-
-def check_gift(booking: BookingBase, user: UserBase):
-    if not booking.gift_id:
-        return
-
-    gift = database_service.update_gift(booking.gift_id, is_done=True, user_id=user.id)
-    return gift
-
 
 async def inform_message(
     update: Update,
