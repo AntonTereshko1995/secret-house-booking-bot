@@ -158,21 +158,21 @@ class JobService:
                 chat_ids
             )
 
-            # Remove invalid chat IDs from database
-            removed_count = 0
+            # Deactivate users with invalid chat IDs
+            deactivated_count = 0
             for invalid_chat_id in results["invalid_ids"]:
                 try:
-                    if database_service.remove_user_chat_id(invalid_chat_id):
-                        removed_count += 1
+                    if database_service.deactivate_user(invalid_chat_id):
+                        deactivated_count += 1
                         LoggerService.info(
                             __name__,
-                            "Removed invalid chat_id",
+                            "Deactivated user with invalid chat_id",
                             kwargs={"chat_id": invalid_chat_id}
                         )
                 except Exception as e:
                     LoggerService.error(
                         __name__,
-                        "Failed to remove chat_id",
+                        "Failed to deactivate user",
                         exception=e,
                         kwargs={"chat_id": invalid_chat_id}
                     )
@@ -185,7 +185,7 @@ class JobService:
                     "total_checked": results["total_checked"],
                     "valid": results["valid"],
                     "invalid": results["invalid"],
-                    "removed": removed_count
+                    "deactivated": deactivated_count
                 }
             )
 

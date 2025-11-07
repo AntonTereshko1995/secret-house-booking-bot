@@ -84,9 +84,9 @@ class DatabaseService:
         """Get chat IDs of users who have never made a booking."""
         return self.user_repository.get_user_chat_ids_without_bookings()
 
-    def remove_user_chat_id(self, chat_id: int) -> bool:
-        """Remove chat_id from user (set to None). Returns True if found."""
-        return self.user_repository.remove_user_chat_id(chat_id)
+    def deactivate_user(self, chat_id: int) -> bool:
+        """Deactivate user by chat_id (set is_active=False). Returns True if found."""
+        return self.user_repository.deactivate_user(chat_id)
 
     def increment_completed_bookings(self, user_id: int) -> None:
         """Increment completed booking counter for user."""

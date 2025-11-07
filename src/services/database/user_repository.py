@@ -104,22 +104,44 @@ class UserRepository(BaseRepository):
                 raise
 
     def update_user_chat_id(self, user_name: str, chat_id: int) -> UserBase:
-        """Update or set chat_id for user. Handles duplicates gracefully."""
+        """Update or set chat_id for user. Reactivates deactivated users. Handles duplicates gracefully."""
         with self.Session() as session:
             try:
-                # Get or create user by contact
+                # Check if user with this chat_id already exists
                 user = session.scalar(
                     select(UserBase).where(UserBase.chat_id == chat_id)
                 )
+
                 if not user:
                     if user_name is not None and user_name != "":
+                        # Check if user with this user_name exists (including deactivated)
                         user = session.scalar(
                             select(UserBase).where(UserBase.user_name == user_name)
                         )
-                        user.chat_id = chat_id
-                        session.commit()
+
+                        if user:
+                            # Update existing user (possibly reactivating)
+                            user.chat_id = chat_id
+                            if not user.is_active:
+                                user.is_active = True
+                                LoggerService.info(
+                                    __name__,
+                                    "Reactivated deactivated user",
+                                    kwargs={
+                                        "user_id": user.id,
+                                        "user_name": user_name,
+                                        "new_chat_id": chat_id,
+                                    },
+                                )
+                            session.commit()
+                        else:
+                            # Create new user if not found
+                            user = UserBase(user_name=user_name, chat_id=chat_id, is_active=True)
+                            session.add(user)
+                            session.commit()
                     else:
-                        user = UserBase(user_name=user_name, chat_id=chat_id)
+                        # Create new user without user_name
+                        user = UserBase(user_name=user_name, chat_id=chat_id, is_active=True)
                         session.add(user)
                         session.commit()
 
@@ -142,13 +164,18 @@ class UserRepository(BaseRepository):
                 raise
 
     def get_all_user_chat_ids(self) -> list[int]:
-        """Get all chat IDs from UserBase."""
+        """Get all chat IDs from active UserBase."""
         try:
             with self.Session() as session:
                 # Use distinct() to get unique chat_ids from UserBase
-                # Filter out null values
+                # Filter out null values and inactive users
                 chat_ids = session.scalars(
-                    select(UserBase.chat_id).where(UserBase.chat_id.isnot(None))
+                    select(UserBase.chat_id).where(
+                        and_(
+                            UserBase.chat_id.isnot(None),
+                            UserBase.is_active == True
+                        )
+                    )
                 ).all()
 
                 # Convert to list and return
@@ -159,12 +186,16 @@ class UserRepository(BaseRepository):
             return []  # Return empty list on error
 
     def get_user_chat_ids_with_bookings(self) -> list[int]:
-        """Get chat IDs of users who have at least one booking."""
+        """Get chat IDs of active users who have at least one booking."""
         try:
             with self.Session() as session:
                 chat_ids = session.scalars(
                     select(UserBase.chat_id).where(
-                        and_(UserBase.chat_id.isnot(None), UserBase.has_bookings == 1)
+                        and_(
+                            UserBase.chat_id.isnot(None),
+                            UserBase.has_bookings == 1,
+                            UserBase.is_active == True
+                        )
                     )
                 ).all()
                 return list(chat_ids)
@@ -174,12 +205,16 @@ class UserRepository(BaseRepository):
             return []
 
     def get_user_chat_ids_without_bookings(self) -> list[int]:
-        """Get chat IDs of users who have never made a booking."""
+        """Get chat IDs of active users who have never made a booking."""
         try:
             with self.Session() as session:
                 chat_ids = session.scalars(
                     select(UserBase.chat_id).where(
-                        and_(UserBase.chat_id.isnot(None), UserBase.has_bookings == 0)
+                        and_(
+                            UserBase.chat_id.isnot(None),
+                            UserBase.has_bookings == 0,
+                            UserBase.is_active == True
+                        )
                     )
                 ).all()
                 return list(chat_ids)
@@ -188,8 +223,8 @@ class UserRepository(BaseRepository):
             LoggerService.error(__name__, "get_user_chat_ids_without_bookings", e)
             return []
 
-    def remove_user_chat_id(self, chat_id: int) -> bool:
-        """Remove chat_id from user (set to None). Returns True if found."""
+    def deactivate_user(self, chat_id: int) -> bool:
+        """Deactivate user by chat_id (set is_active=False). Returns True if found."""
         try:
             with self.Session() as session:
                 # Find user with this chat_id
@@ -198,15 +233,15 @@ class UserRepository(BaseRepository):
                 )
 
                 if user:
-                    user.chat_id = None
+                    user.is_active = False
                     session.commit()
-                    print(f"Removed chat_id {chat_id} from user {user.id}")
+                    print(f"Deactivated user {user.id} with chat_id {chat_id}")
                     return True
                 else:
                     return False
         except Exception as e:
-            print(f"Error in remove_user_chat_id: {e}")
-            LoggerService.error(__name__, "remove_user_chat_id", e)
+            print(f"Error in deactivate_user: {e}")
+            LoggerService.error(__name__, "deactivate_user", e)
             return False
 
     def increment_booking_count(self, user_id: int) -> None:
