@@ -1,6 +1,6 @@
 """Helper functions for formatting statistics messages."""
 
-from src.services.statistics_service import Statistics, BookingStats, UserStats
+from src.services.statistics_service import Statistics, BookingStats, UserStats, GiftStats
 
 
 def format_statistics_message(stats: Statistics) -> str:
@@ -42,6 +42,18 @@ def format_statistics_message(stats: Statistics) -> str:
     # Users
     msg += "<b>👥 ПОЛЬЗОВАТЕЛИ</b>\n"
     msg += format_user_stats_section(stats.users)
+    msg += "\n"
+
+    # Gifts
+    msg += "<b>🎁 ПОДАРОЧНЫЕ СЕРТИФИКАТЫ</b>\n"
+    msg += format_gift_stats_section(stats.gifts)
+    msg += "\n"
+
+    # Total revenue
+    msg += "<b>💎 ОБЩАЯ ПРИБЫЛЬ</b>\n"
+    msg += f"├ От броней: {stats.all_time.total_revenue:,.0f} руб.\n"
+    msg += f"├ От сертификатов: {stats.gifts.gift_revenue:,.0f} руб.\n"
+    msg += f"└ <b>Итого: {stats.total_revenue:,.0f} руб.</b>\n"
 
     return msg
 
@@ -66,4 +78,14 @@ def format_user_stats_section(stats: UserStats) -> str:
     section += f"├ Завершили: {stats.users_with_completed:,}\n"
     section += f"├ Конверсия: {stats.conversion_rate:.1f}%\n"
     section += f"└ Среднее броней: {stats.avg_bookings_per_user:.1f}\n"
+    return section
+
+
+def format_gift_stats_section(stats: GiftStats) -> str:
+    """Format gift certificate statistics section."""
+    section = f"├ Всего: {stats.total_gifts:,}\n"
+    section += f"├ 💳 Оплачено: {stats.paid_gifts:,}\n"
+    section += f"├ ✅ Использовано: {stats.used_gifts:,}\n"
+    section += f"├ ⏳ Не использовано: {stats.unused_gifts:,}\n"
+    section += f"└ 💰 Выручка: <b>{stats.gift_revenue:,.0f}</b> руб.\n"
     return section

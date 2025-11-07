@@ -314,3 +314,21 @@ class DatabaseService:
     def get_deactivated_users_count(self) -> int:
         """Get count of deactivated users."""
         return self.user_repository.get_deactivated_users_count()
+
+    # ========== Gift Statistics ==========
+
+    def get_total_gifts_count(self) -> int:
+        """Get total count of gift certificates."""
+        return self.gift_repository.get_total_gifts_count()
+
+    def get_paid_gifts_count(self) -> int:
+        """Get count of paid gift certificates."""
+        return self.gift_repository.get_paid_gifts_count()
+
+    def get_used_gifts_count(self) -> int:
+        """Get count of used gift certificates."""
+        return self.gift_repository.get_used_gifts_count()
+
+    def get_gift_revenue(self) -> float:
+        """Get total revenue from paid gift certificates."""
+        return self.gift_repository.get_gift_revenue()
