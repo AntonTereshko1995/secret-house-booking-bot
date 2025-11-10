@@ -137,13 +137,23 @@ class UserRepository(BaseRepository):
                         else:
                             # Create new user if not found
                             # contact can be None initially, will be set later when user provides it
-                            user = UserBase(contact=None, user_name=user_name, chat_id=chat_id, is_active=True)
+                            user = UserBase(
+                                contact=None,
+                                user_name=user_name,
+                                chat_id=chat_id,
+                                is_active=True,
+                            )
                             session.add(user)
                             session.commit()
                     else:
                         # Create new user without user_name
                         # contact can be None initially, will be set later when user provides it
-                        user = UserBase(contact=None, user_name=user_name, chat_id=chat_id, is_active=True)
+                        user = UserBase(
+                            contact=None,
+                            user_name=user_name,
+                            chat_id=chat_id,
+                            is_active=True,
+                        )
                         session.add(user)
                         session.commit()
 
@@ -173,10 +183,7 @@ class UserRepository(BaseRepository):
                 # Filter out null values and inactive users
                 chat_ids = session.scalars(
                     select(UserBase.chat_id).where(
-                        and_(
-                            UserBase.chat_id.isnot(None),
-                            UserBase.is_active == True
-                        )
+                        and_(UserBase.chat_id.isnot(None), UserBase.is_active == True)
                     )
                 ).all()
 
@@ -196,7 +203,7 @@ class UserRepository(BaseRepository):
                         and_(
                             UserBase.chat_id.isnot(None),
                             UserBase.has_bookings == 1,
-                            UserBase.is_active == True
+                            UserBase.is_active == True,
                         )
                     )
                 ).all()
@@ -215,7 +222,7 @@ class UserRepository(BaseRepository):
                         and_(
                             UserBase.chat_id.isnot(None),
                             UserBase.has_bookings == 0,
-                            UserBase.is_active == True
+                            UserBase.is_active == True,
                         )
                     )
                 ).all()

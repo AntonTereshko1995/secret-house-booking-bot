@@ -86,10 +86,7 @@ class UserService(BaseDatabaseService):
                 # Check if this chat_id is already assigned to different user
                 existing_user = session.scalar(
                     select(UserBase).where(
-                        and_(
-                            UserBase.chat_id == chat_id,
-                            UserBase.id != user.id
-                        )
+                        and_(UserBase.chat_id == chat_id, UserBase.id != user.id)
                     )
                 )
 
@@ -98,7 +95,7 @@ class UserService(BaseDatabaseService):
                     LoggerService.info(
                         __name__,
                         f"Removing chat_id {chat_id} from user {existing_user.id}",
-                        kwargs={"old_user_id": existing_user.id}
+                        kwargs={"old_user_id": existing_user.id},
                     )
                     existing_user.chat_id = None
 
@@ -106,9 +103,11 @@ class UserService(BaseDatabaseService):
                 user.chat_id = chat_id
                 session.commit()
 
-                LoggerService.info(__name__, "Updated chat_id for user", kwargs={
-                    "user_id": user.id, "chat_id": chat_id, "contact": contact
-                })
+                LoggerService.info(
+                    __name__,
+                    "Updated chat_id for user",
+                    kwargs={"user_id": user.id, "chat_id": chat_id, "contact": contact},
+                )
                 return user
 
             except Exception as e:

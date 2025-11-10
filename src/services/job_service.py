@@ -52,7 +52,14 @@ class JobService:
                 self.cleanup_invalid_chats,
                 interval=timedelta(days=7),
                 first=timedelta(seconds=10),
-                name="cleanup_invalid_chats"
+                name="cleanup_invalid_chats",
+            )
+        if not context.job_queue.get_jobs_by_name("cleanup_expired_promocodes"):
+            # Run daily at midnight (00:00)
+            context.job_queue.run_daily(
+                self.cleanup_expired_promocodes,
+                time=time(0, 0, tzinfo=timezone),
+                name="cleanup_expired_promocodes",
             )
 
     async def send_booking_details(self, context: CallbackContext):
@@ -139,23 +146,20 @@ class JobService:
 
             if not chat_ids:
                 LoggerService.info(
-                    __name__,
-                    "No chat IDs to validate",
-                    kwargs={"chat_count": 0}
+                    __name__, "No chat IDs to validate", kwargs={"chat_count": 0}
                 )
                 return
 
             LoggerService.info(
                 __name__,
                 "Starting weekly chat validation",
-                kwargs={"total_chats": len(chat_ids)}
+                kwargs={"total_chats": len(chat_ids)},
             )
 
             # Validate all chat IDs
             validation_service = ChatValidationService()
             results = await validation_service.validate_all_chat_ids(
-                self._application.bot,
-                chat_ids
+                self._application.bot, chat_ids
             )
 
             # Deactivate users with invalid chat IDs
@@ -167,14 +171,14 @@ class JobService:
                         LoggerService.info(
                             __name__,
                             "Deactivated user with invalid chat_id",
-                            kwargs={"chat_id": invalid_chat_id}
+                            kwargs={"chat_id": invalid_chat_id},
                         )
                 except Exception as e:
                     LoggerService.error(
                         __name__,
                         "Failed to deactivate user",
                         exception=e,
-                        kwargs={"chat_id": invalid_chat_id}
+                        kwargs={"chat_id": invalid_chat_id},
                     )
 
             # Log summary
@@ -185,13 +189,34 @@ class JobService:
                     "total_checked": results["total_checked"],
                     "valid": results["valid"],
                     "invalid": results["invalid"],
-                    "deactivated": deactivated_count
-                }
+                    "deactivated": deactivated_count,
+                },
             )
 
         except Exception as e:
+            LoggerService.error(__name__, "Weekly chat cleanup failed", exception=e)
+
+    async def cleanup_expired_promocodes(self, context: CallbackContext):
+        """Daily job to deactivate expired promocodes."""
+        try:
+            count = database_service.deactivate_expired_promocodes()
+            if count > 0:
+                LoggerService.info(
+                    __name__,
+                    "Expired promocodes cleanup completed",
+                    kwargs={
+                        "deactivated_count": count,
+                        "date": str(date.today()),
+                    },
+                )
+            else:
+                LoggerService.info(
+                    __name__,
+                    "No expired promocodes to clean up",
+                    kwargs={"date": str(date.today())},
+                )
+
+        except Exception as e:
             LoggerService.error(
-                __name__,
-                "Weekly chat cleanup failed",
-                exception=e
+                __name__, "Expired promocodes cleanup failed", exception=e
             )

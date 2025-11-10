@@ -17,11 +17,14 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database import UserRepository, GiftRepository, BookingRepository
+from src.services.database.promocode_repository import PromocodeRepository
 from db.models.user import UserBase
 from db.models.gift import GiftBase
 from db.models.booking import BookingBase
+from db.models.promocode import PromocodeBase
 from src.models.enum.tariff import Tariff
 from singleton_decorator import singleton
+from typing import Optional
 
 
 @singleton
@@ -37,6 +40,7 @@ class DatabaseService:
         self.user_repository = UserRepository()
         self.gift_repository = GiftRepository()
         self.booking_repository = BookingRepository()
+        self.promocode_repository = PromocodeRepository()
 
         # For backward compatibility
         self.engine = self.user_repository.engine
@@ -136,6 +140,47 @@ class DatabaseService:
         """Get gift certificate by ID."""
         return self.gift_repository.get_gift_by_id(id)
 
+    # ========== Promocode Operations ==========
+
+    def add_promocode(
+        self,
+        name: str,
+        date_from: date,
+        date_to: date,
+        discount_percentage: float,
+        applicable_tariffs: Optional[list[int]] = None,
+    ) -> PromocodeBase:
+        """Add a new promocode to the database."""
+        return self.promocode_repository.add_promocode(
+            name, date_from, date_to, discount_percentage, applicable_tariffs
+        )
+
+    def get_promocode_by_name(self, name: str) -> Optional[PromocodeBase]:
+        """Get promocode by name."""
+        return self.promocode_repository.get_promocode_by_name(name)
+
+    def get_promocode_by_id(self, promocode_id: int) -> Optional[PromocodeBase]:
+        """Get promocode by ID."""
+        return self.promocode_repository.get_promocode_by_id(promocode_id)
+
+    def validate_promocode(
+        self, name: str, booking_date: date, tariff: Tariff
+    ) -> tuple[bool, str, Optional[PromocodeBase]]:
+        """Validate promocode against booking parameters."""
+        return self.promocode_repository.validate_promocode(name, booking_date, tariff)
+
+    def list_active_promocodes(self) -> list[PromocodeBase]:
+        """Get all active promocodes."""
+        return self.promocode_repository.list_active_promocodes()
+
+    def deactivate_promocode(self, promocode_id: int) -> bool:
+        """Deactivate a promocode (soft delete)."""
+        return self.promocode_repository.deactivate_promocode(promocode_id)
+
+    def deactivate_expired_promocodes(self) -> int:
+        """Deactivate all expired promocodes. Returns count of deactivated promocodes."""
+        return self.promocode_repository.deactivate_expired_promocodes()
+
     # ========== Booking Operations ==========
 
     def add_booking(
@@ -153,6 +198,7 @@ class DatabaseService:
         price: float,
         comment: str,
         gift_id: int = None,
+        promocode_id: int = None,
         wine_preference: str = None,
         transfer_address: str = None,
     ) -> BookingBase:
@@ -171,6 +217,7 @@ class DatabaseService:
             price,
             comment,
             gift_id,
+            promocode_id,
             wine_preference,
             transfer_address,
         )
@@ -314,3 +361,21 @@ class DatabaseService:
     def get_deactivated_users_count(self) -> int:
         """Get count of deactivated users."""
         return self.user_repository.get_deactivated_users_count()
+
+    # ========== Gift Statistics ==========
+
+    def get_total_gifts_count(self) -> int:
+        """Get total count of gift certificates."""
+        return self.gift_repository.get_total_gifts_count()
+
+    def get_paid_gifts_count(self) -> int:
+        """Get count of paid gift certificates."""
+        return self.gift_repository.get_paid_gifts_count()
+
+    def get_used_gifts_count(self) -> int:
+        """Get count of used gift certificates."""
+        return self.gift_repository.get_used_gifts_count()
+
+    def get_gift_revenue(self) -> float:
+        """Get total revenue from paid gift certificates."""
+        return self.gift_repository.get_gift_revenue()

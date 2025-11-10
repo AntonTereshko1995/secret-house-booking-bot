@@ -5,7 +5,9 @@ from datetime import date
 from unittest.mock import patch, MagicMock
 
 # Add src to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
 
 from models.date_pricing_rule import DatePricingRule
 from models.enum.tariff import Tariff
@@ -35,11 +37,7 @@ class TestCalculationRateServiceIntegration:
             is_check_in_time_limit=False,
             is_photoshoot=True,
             is_transfer=False,
-            multi_day_prices={
-                "1": 700,
-                "2": 1300,
-                "3": 1850
-            }
+            multi_day_prices={"1": 700, "2": 1300, "3": 1850},
         )
 
         # Mock date pricing rules
@@ -49,28 +47,35 @@ class TestCalculationRateServiceIntegration:
                 name="Christmas Day Premium",
                 start_date="2024-12-25",
                 end_date="2024-12-25",
-                price_override=1500
+                price_override=1500,
             ),
             DatePricingRule(
                 rule_id="new_year_week_2025",
                 name="New Year Week Special",
                 start_date="2024-12-31",
                 end_date="2025-01-07",
-                price_override=1200
-            )
+                price_override=1200,
+            ),
         ]
 
-        with patch('services.calculation_rate_service.FileService') as mock_file_service, \
-             patch('services.date_pricing_service.FileService') as mock_date_file_service:
-
-            mock_file_service.return_value.get_tariff_rates.return_value = [standard_rental_price]
-            mock_date_file_service.return_value.get_date_pricing_rules.return_value = test_rules
+        with (
+            patch("services.calculation_rate_service.FileService") as mock_file_service,
+            patch(
+                "services.date_pricing_service.FileService"
+            ) as mock_date_file_service,
+        ):
+            mock_file_service.return_value.get_tariff_rates.return_value = [
+                standard_rental_price
+            ]
+            mock_date_file_service.return_value.get_date_pricing_rules.return_value = (
+                test_rules
+            )
 
             yield {
-                'file_service': mock_file_service,
-                'date_file_service': mock_date_file_service,
-                'standard_price': standard_rental_price,
-                'rules': test_rules
+                "file_service": mock_file_service,
+                "date_file_service": mock_date_file_service,
+                "standard_price": standard_rental_price,
+                "rules": test_rules,
             }
 
     def test_get_effective_price_for_date_with_override(self, mock_services):
@@ -80,9 +85,7 @@ class TestCalculationRateServiceIntegration:
 
         # Christmas should use override price
         christmas_price = service.get_effective_price_for_date(
-            date(2024, 12, 25),
-            Tariff.DAY,
-            24
+            date(2024, 12, 25), Tariff.DAY, 24
         )
         assert christmas_price == 1500
 
@@ -93,9 +96,7 @@ class TestCalculationRateServiceIntegration:
 
         # Regular date should use standard price (using April to avoid summer promotion)
         regular_price = service.get_effective_price_for_date(
-            date(2024, 4, 15),
-            Tariff.DAY,
-            24
+            date(2024, 4, 15), Tariff.DAY, 24
         )
         assert regular_price == 700
 
@@ -106,17 +107,13 @@ class TestCalculationRateServiceIntegration:
 
         # New Year week with 2 days - should use single override price
         two_day_price = service.get_effective_price_for_date(
-            date(2025, 1, 1),
-            Tariff.DAY,
-            48
+            date(2025, 1, 1), Tariff.DAY, 48
         )
         assert two_day_price == 1200
 
         # New Year week with 3 days - should use single override price
         three_day_price = service.get_effective_price_for_date(
-            date(2025, 1, 1),
-            Tariff.DAY,
-            72
+            date(2025, 1, 1), Tariff.DAY, 72
         )
         assert three_day_price == 1200
 
@@ -127,9 +124,7 @@ class TestCalculationRateServiceIntegration:
 
         # Regular date with 2 days should use standard multi-day pricing
         two_day_price = service.get_effective_price_for_date(
-            date(2024, 4, 15),
-            Tariff.DAY,
-            48
+            date(2024, 4, 15), Tariff.DAY, 48
         )
         assert two_day_price == 1300
 
@@ -144,7 +139,7 @@ class TestCalculationRateServiceIntegration:
             tariff=Tariff.DAY,
             duration_hours=24,
             is_sauna=True,
-            is_photoshoot=True
+            is_photoshoot=True,
         )
 
         # Base price (override) + sauna + photoshoot
@@ -162,19 +157,12 @@ class TestCalculationRateServiceIntegration:
             tariff=Tariff.DAY,
             duration_hours=24,
             is_sauna=True,
-            is_photoshoot=True
+            is_photoshoot=True,
         )
 
         # Standard base price + sauna + photoshoot
         expected_price = 700 + 100 + 100  # 900
         assert total_price == expected_price
-
-
-
-
-
-
-
 
     def test_backward_compatibility_existing_methods(self, mock_services):
         """Test that existing methods still work unchanged."""
@@ -197,7 +185,7 @@ class TestCalculationRateServiceIntegration:
             is_second_room=False,
             is_photoshoot=True,
             count_people=2,
-            duration_hours=24
+            duration_hours=24,
         )
         expected = 700 + 100 + 100  # base + sauna + photoshoot
         assert total_price == expected
@@ -210,11 +198,7 @@ class TestCalculationRateServiceIntegration:
         # Christmas day with extra 6 hours (30 hours total)
         # Note: For date overrides, extra hours calculation is not implemented
         # The override price applies to the whole duration
-        price = service.get_effective_price_for_date(
-            date(2024, 12, 25),
-            Tariff.DAY,
-            30
-        )
+        price = service.get_effective_price_for_date(date(2024, 12, 25), Tariff.DAY, 30)
 
         # Should be just the override price (date rules don't add extra hour charges)
         expected = 1500
@@ -226,9 +210,5 @@ class TestCalculationRateServiceIntegration:
         service._rates = []  # Force reload
 
         # Should handle zero duration gracefully
-        price = service.get_effective_price_for_date(
-            date(2024, 12, 25),
-            Tariff.DAY,
-            0
-        )
+        price = service.get_effective_price_for_date(date(2024, 12, 25), Tariff.DAY, 0)
         assert price == 1500  # Should return base override price

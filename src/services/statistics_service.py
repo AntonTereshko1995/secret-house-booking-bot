@@ -34,6 +34,17 @@ class UserStats:
 
 
 @dataclass
+class GiftStats:
+    """Gift certificate statistics"""
+
+    total_gifts: int
+    paid_gifts: int
+    used_gifts: int
+    unused_gifts: int
+    gift_revenue: float
+
+
+@dataclass
 class Statistics:
     """Complete statistics report"""
 
@@ -41,6 +52,8 @@ class Statistics:
     year_to_date: BookingStats
     current_month: BookingStats
     users: UserStats
+    gifts: GiftStats
+    total_revenue: float
     generated_at: datetime
 
 
@@ -72,16 +85,26 @@ class StatisticsService:
         ytd = self._get_booking_stats(start_date=year_start, end_date=year_end)
 
         # Current month (full month, not just to date)
-        current_month = self._get_booking_stats(start_date=month_start, end_date=month_end)
+        current_month = self._get_booking_stats(
+            start_date=month_start, end_date=month_end
+        )
 
         # User stats
         user_stats = self._get_user_stats()
+
+        # Gift stats
+        gift_stats = self._get_gift_stats()
+
+        # Total revenue (bookings + gifts)
+        total_revenue = all_time.total_revenue + gift_stats.gift_revenue
 
         return Statistics(
             all_time=all_time,
             year_to_date=ytd,
             current_month=current_month,
             users=user_stats,
+            gifts=gift_stats,
+            total_revenue=total_revenue,
             generated_at=now,
         )
 
@@ -156,4 +179,29 @@ class StatisticsService:
             users_with_completed=users_with_completed,
             conversion_rate=conversion_rate,
             avg_bookings_per_user=avg_bookings,
+        )
+
+    def _get_gift_stats(self) -> GiftStats:
+        """Calculate gift certificate statistics."""
+        # Total gifts
+        total_gifts = self.db.get_total_gifts_count()
+
+        # Paid gifts
+        paid_gifts = self.db.get_paid_gifts_count()
+
+        # Used gifts
+        used_gifts = self.db.get_used_gifts_count()
+
+        # Unused gifts (paid but not used)
+        unused_gifts = paid_gifts - used_gifts
+
+        # Gift revenue
+        gift_revenue = self.db.get_gift_revenue()
+
+        return GiftStats(
+            total_gifts=total_gifts,
+            paid_gifts=paid_gifts,
+            used_gifts=used_gifts,
+            unused_gifts=unused_gifts,
+            gift_revenue=gift_revenue,
         )

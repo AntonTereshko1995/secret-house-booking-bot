@@ -199,7 +199,12 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == str(END):
         return await back_navigation(update, context)
 
-    global tariff, rental_rate, is_sauna_included, is_secret_room_included, is_additional_bedroom_included
+    global \
+        tariff, \
+        rental_rate, \
+        is_sauna_included, \
+        is_secret_room_included, \
+        is_additional_bedroom_included
     tariff = tariff_helper.get_by_str(data)
     rental_rate = rate_service.get_by_tariff(tariff)
     LoggerService.info(__name__, "select tariff", update, kwargs={"tariff": tariff})
@@ -424,7 +429,14 @@ def save_gift_information():
 
 
 def reset_variables():
-    global user_contact, tariff, is_sauna_included, is_secret_room_included, is_additional_bedroom_included, rental_rate, price
+    global \
+        user_contact, \
+        tariff, \
+        is_sauna_included, \
+        is_secret_room_included, \
+        is_additional_bedroom_included, \
+        rental_rate, \
+        price
     user_contact = None
     tariff = None
     is_sauna_included = None

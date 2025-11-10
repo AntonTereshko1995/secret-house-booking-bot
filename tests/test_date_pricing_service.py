@@ -5,7 +5,9 @@ from datetime import date
 from unittest.mock import patch, MagicMock
 
 # Add src to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
 
 from models.date_pricing_rule import DatePricingRule
 from services.date_pricing_service import DatePricingService
@@ -21,7 +23,7 @@ class TestDatePricingRule:
             name="Test Rule",
             start_date="2024-12-25",
             end_date="2024-12-25",
-            price_override=1500
+            price_override=1500,
         )
         assert rule.rule_id == "test_rule"
         assert rule.price_override == 1500
@@ -34,7 +36,7 @@ class TestDatePricingRule:
                 name="Invalid Rule",
                 start_date="invalid-date",
                 end_date="2024-12-25",
-                price_override=1000
+                price_override=1000,
             )
 
     def test_start_date_after_end_date_raises_error(self):
@@ -45,7 +47,7 @@ class TestDatePricingRule:
                 name="Invalid Rule",
                 start_date="2024-12-31",
                 end_date="2024-12-25",
-                price_override=1000
+                price_override=1000,
             )
 
     def test_negative_price_raises_error(self):
@@ -56,7 +58,7 @@ class TestDatePricingRule:
                 name="Negative Price Rule",
                 start_date="2024-12-25",
                 end_date="2024-12-25",
-                price_override=-100
+                price_override=-100,
             )
 
     def test_applies_to_date_single_date(self):
@@ -66,7 +68,7 @@ class TestDatePricingRule:
             name="Single Date Rule",
             start_date="2024-12-25",
             end_date="2024-12-25",
-            price_override=1500
+            price_override=1500,
         )
 
         assert rule.applies_to_date(date(2024, 12, 25))
@@ -80,14 +82,14 @@ class TestDatePricingRule:
             name="Range Rule",
             start_date="2024-12-25",
             end_date="2024-12-31",
-            price_override=1000
+            price_override=1000,
         )
 
         assert rule.applies_to_date(date(2024, 12, 25))  # Start date
         assert rule.applies_to_date(date(2024, 12, 28))  # Middle date
         assert rule.applies_to_date(date(2024, 12, 31))  # End date
         assert not rule.applies_to_date(date(2024, 12, 24))  # Before range
-        assert not rule.applies_to_date(date(2025, 1, 1))   # After range
+        assert not rule.applies_to_date(date(2025, 1, 1))  # After range
 
     def test_inactive_rule_does_not_apply(self):
         """Test inactive rule does not apply to any date."""
@@ -97,7 +99,7 @@ class TestDatePricingRule:
             start_date="2024-12-25",
             end_date="2024-12-25",
             price_override=1500,
-            is_active=False
+            is_active=False,
         )
 
         assert not rule.applies_to_date(date(2024, 12, 25))
@@ -109,7 +111,7 @@ class TestDatePricingRule:
             name="Single Day Rule",
             start_date="2024-12-25",
             end_date="2024-12-25",
-            price_override=1500
+            price_override=1500,
         )
 
         assert rule.get_price_for_duration(24) == 1500
@@ -121,7 +123,7 @@ class TestDatePricingRule:
             rule_id="no_override_rule",
             name="No Override Rule",
             start_date="2024-12-25",
-            end_date="2024-12-25"
+            end_date="2024-12-25",
         )
 
         assert rule.get_price_for_duration(24) is None
@@ -139,14 +141,14 @@ class TestDatePricingService:
                 name="Christmas Day Premium",
                 start_date="2024-12-25",
                 end_date="2024-12-25",
-                price_override=1500
+                price_override=1500,
             ),
             DatePricingRule(
                 rule_id="new_year_week_2025",
                 name="New Year Week Special",
                 start_date="2024-12-31",
                 end_date="2025-01-07",
-                price_override=1200
+                price_override=1200,
             ),
             DatePricingRule(
                 rule_id="disabled_rule",
@@ -154,11 +156,11 @@ class TestDatePricingService:
                 start_date="2024-12-01",
                 end_date="2024-12-01",
                 price_override=800,
-                is_active=False
-            )
+                is_active=False,
+            ),
         ]
 
-        with patch('services.date_pricing_service.FileService') as mock_service:
+        with patch("services.date_pricing_service.FileService") as mock_service:
             mock_service.return_value.get_date_pricing_rules.return_value = test_rules
             yield mock_service
 

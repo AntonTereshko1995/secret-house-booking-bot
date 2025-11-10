@@ -44,6 +44,7 @@ from src.constants import (
     CASH_PAY,
     INCOGNITO_WINE,
     INCOGNITO_TRANSFER,
+    PROMOCODE_INPUT,
 )
 
 MAX_PEOPLE = 6
@@ -100,6 +101,7 @@ def get_handler():
         CallbackQueryHandler(
             handle_transfer_skip, pattern=f"^BOOKING-TRANSFER_({SKIP}|{END})$"
         ),
+        CallbackQueryHandler(skip_promocode, pattern=f"^BOOKING-PROMO_({SKIP}|{END})$"),
     ]
 
 
@@ -725,7 +727,115 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ):
         return await wine_preference_message(update, context)
     else:
+        # Route to promocode entry for non-incognito flows
+        return await promocode_entry_message(update, context)
+
+
+async def promocode_entry_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show promo code entry prompt with SKIP option"""
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.PROMOCODE)
+
+    keyboard = [
+        [InlineKeyboardButton("Пропустить", callback_data=f"BOOKING-PROMO_{SKIP}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-PROMO_{END}")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        "🎟️ <b>Есть промокод?</b>\n\n"
+        "Введите промокод, чтобы получить скидку.\n"
+        "Или нажмите <b>Пропустить</b>, если у вас нет промокода."
+    )
+
+    if update.callback_query:
+        await update.callback_query.answer()
+        await navigation_service.safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
+            reply_markup=reply_markup,
+        )
+    elif update.message:
+        await update.message.reply_text(
+            text=message, parse_mode="HTML", reply_markup=reply_markup
+        )
+
+    LoggerService.info(__name__, "Promocode entry message displayed", update)
+    return PROMOCODE_INPUT
+
+
+async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle text input for promo code"""
+    if not update.message or not update.message.text:
+        return PROMOCODE_INPUT
+
+    promo_code = update.message.text.strip().upper()
+    booking = redis_service.get_booking(update)
+
+    # Validate against booking start_date and tariff
+    is_valid, message_text, promo = database_service.validate_promocode(
+        promo_code, booking.start_booking_date.date(), booking.tariff
+    )
+
+    if is_valid:
+        # Store promocode_id in redis, will be saved to DB later
+        redis_service.update_booking_field(update, "promocode_id", promo.id)
+        redis_service.update_booking_field(
+            update, "promocode_discount", promo.discount_percentage
+        )
+
+        await update.message.reply_text(
+            f"✅ {message_text}\n"
+            f"🎉 Скидка <b>{promo.discount_percentage}%</b> будет применена!",
+            parse_mode="HTML",
+        )
+
+        LoggerService.info(
+            __name__,
+            "Promocode applied",
+            update,
+            kwargs={
+                "promocode": promo_code,
+                "discount": promo.discount_percentage,
+            },
+        )
+
+        # Progress to next step
         return await confirm_pay(update, context)
+    else:
+        # Show error with skip button, stay in same state for retry
+        keyboard = [
+            [InlineKeyboardButton("Пропустить", callback_data=f"BOOKING-PROMO_{SKIP}")],
+            [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-PROMO_{END}")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            f"{message_text}\n\n"
+            "Попробуйте ввести другой код или нажмите <b>Пропустить</b>.",
+            reply_markup=reply_markup,
+            parse_mode="HTML",
+        )
+
+        LoggerService.warning(
+            __name__,
+            "Invalid promocode",
+            update,
+            kwargs={"promocode": promo_code, "error": message_text},
+        )
+
+        return PROMOCODE_INPUT
+
+
+async def skip_promocode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Skip promocode entry"""
+    await update.callback_query.answer()
+
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if data == str(END):
+        return await back_navigation(update, context)
+
+    LoggerService.info(__name__, "Promocode skipped", update)
+    return await confirm_pay(update, context)
 
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -757,6 +867,21 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_photoshoot=booking.is_photoshoot_included,
         count_people=booking.number_of_guests,
     )
+
+    # Apply promocode discount if available
+    promocode_info = ""
+    if hasattr(booking, "promocode_id") and booking.promocode_id:
+        if hasattr(booking, "promocode_discount") and booking.promocode_discount:
+            discount_percentage = booking.promocode_discount
+            discount_amount = int(price * (discount_percentage / 100))
+            price = price - discount_amount
+            # Save discounted price to Redis
+            redis_service.update_booking_field(update, "price", price)
+            promocode_info = (
+                f"\n🎟️ <b>Промокод:</b> скидка {discount_percentage}% "
+                f"(-{discount_amount} руб.)\n"
+            )
+
     extra_hours = duration_booking_hours - booking.rental_rate.duration_hours
     categories = rate_service.get_price_categories(
         booking.rental_rate,
@@ -791,7 +916,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         payed_price = gift.price if gift else booking.rental_rate.price
         price = int(price - payed_price)
         message = (
-            f"💰 <b>Доплата: {price} руб.</b>\n{special_pricing_info}\n"
+            f"💰 <b>Доплата: {price} руб.</b>\n{special_pricing_info}{promocode_info}\n"
             f"📌 <b>Что включено:</b> {categories}{photoshoot_text}\n"
             f"📅 <b>Заезд:</b> {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"📅 <b>Выезд:</b> {booking.finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -800,7 +925,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         message = (
-            f"💰 <b>Итоговая сумма:</b> {price} руб.\n{special_pricing_info}\n"
+            f"💰 <b>Итоговая сумма:</b> {price} руб.\n{special_pricing_info}{promocode_info}\n"
             f"📌 <b>Включено:</b> {categories}{photoshoot_text}.\n"
             f"📅 <b>Заезд:</b> {booking.start_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
             f"📅 <b>Выезд:</b> {booking.finish_booking_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -1797,6 +1922,7 @@ def save_booking_information(
         cache_booking.price,
         cache_booking.booking_comment,
         cache_booking.gift_id,
+        getattr(cache_booking, "promocode_id", None),
         cache_booking.wine_preference,
         cache_booking.transfer_address,
     )

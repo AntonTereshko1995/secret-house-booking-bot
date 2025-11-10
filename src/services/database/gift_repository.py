@@ -110,3 +110,63 @@ class GiftRepository(BaseRepository):
         except Exception as e:
             print(f"Error in get_gift_by_id: {e}")
             LoggerService.error(__name__, "get_gift_by_id", e)
+
+    def get_total_gifts_count(self) -> int:
+        """Get total count of gift certificates."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+
+                count = session.scalar(select(func.count(GiftBase.id)))
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_total_gifts_count: {e}")
+            LoggerService.error(__name__, "get_total_gifts_count", e)
+            return 0
+
+    def get_paid_gifts_count(self) -> int:
+        """Get count of paid gift certificates."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+
+                count = session.scalar(
+                    select(func.count(GiftBase.id)).where(GiftBase.is_paymented == True)
+                )
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_paid_gifts_count: {e}")
+            LoggerService.error(__name__, "get_paid_gifts_count", e)
+            return 0
+
+    def get_used_gifts_count(self) -> int:
+        """Get count of used gift certificates."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+
+                count = session.scalar(
+                    select(func.count(GiftBase.id)).where(GiftBase.is_done == True)
+                )
+                return int(count) if count else 0
+        except Exception as e:
+            print(f"Error in get_used_gifts_count: {e}")
+            LoggerService.error(__name__, "get_used_gifts_count", e)
+            return 0
+
+    def get_gift_revenue(self) -> float:
+        """Get total revenue from paid gift certificates."""
+        try:
+            with self.Session() as session:
+                from sqlalchemy import func
+
+                revenue = session.scalar(
+                    select(func.sum(GiftBase.price)).where(
+                        GiftBase.is_paymented == True
+                    )
+                )
+                return float(revenue) if revenue else 0.0
+        except Exception as e:
+            print(f"Error in get_gift_revenue: {e}")
+            LoggerService.error(__name__, "get_gift_revenue", e)
+            return 0.0

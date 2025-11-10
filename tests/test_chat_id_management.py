@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from telegram.error import Forbidden, BadRequest
 
 # Add project root to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.services.database_service import DatabaseService
 from src.services.chat_validation_service import ChatValidationService
@@ -25,7 +25,12 @@ class TestDatabaseServiceChatMethods:
         try:
             # Remove test users
             with self.db_service.Session() as session:
-                test_contacts = ["test_user_1", "test_user_2", "test_user_3", "test_user_4"]
+                test_contacts = [
+                    "test_user_1",
+                    "test_user_2",
+                    "test_user_3",
+                    "test_user_4",
+                ]
                 for contact in test_contacts:
                     user = session.query(UserBase).filter_by(contact=contact).first()
                     if user:
@@ -134,8 +139,7 @@ class TestChatValidationService:
 
         assert result is True
         mock_bot.send_chat_action.assert_called_once_with(
-            chat_id=chat_id,
-            action="typing"
+            chat_id=chat_id, action="typing"
         )
 
     @pytest.mark.asyncio
@@ -171,15 +175,19 @@ class TestChatValidationService:
         mock_bot = AsyncMock()
 
         # First chat is valid, second is forbidden, third is bad request
-        mock_bot.send_chat_action = AsyncMock(side_effect=[
-            True,  # Valid
-            Forbidden("Blocked"),  # Blocked
-            BadRequest("Not found"),  # Not found
-        ])
+        mock_bot.send_chat_action = AsyncMock(
+            side_effect=[
+                True,  # Valid
+                Forbidden("Blocked"),  # Blocked
+                BadRequest("Not found"),  # Not found
+            ]
+        )
 
         chat_ids = [111, 222, 333]
 
-        results = await self.validation_service.validate_all_chat_ids(mock_bot, chat_ids)
+        results = await self.validation_service.validate_all_chat_ids(
+            mock_bot, chat_ids
+        )
 
         assert results["total_checked"] == 3
         assert results["valid"] == 1

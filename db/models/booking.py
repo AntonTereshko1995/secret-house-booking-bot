@@ -38,10 +38,12 @@ class BookingBase(Base):
     comment: Mapped[str] = mapped_column(String, nullable=True)
     calendar_event_id: Mapped[str] = mapped_column(String, nullable=True)
     gift_id: Mapped[int] = mapped_column(ForeignKey("gift.id"), nullable=True)
+    promocode_id: Mapped[int] = mapped_column(ForeignKey("promocode.id"), nullable=True)
     wine_preference: Mapped[str] = mapped_column(String, nullable=True)
     transfer_address: Mapped[str] = mapped_column(String, nullable=True)
     user = relationship("UserBase")
     gift = relationship("GiftBase")
+    promocode = relationship("PromocodeBase")
 
     def __repr__(self) -> str:
         return f"BookingBase(id={self.id}, user={self.user_id}, tariff={self.tariff}, start_date={self.start_date}, end_date={self.end_date})"
