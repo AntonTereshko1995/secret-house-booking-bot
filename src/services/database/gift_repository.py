@@ -116,6 +116,7 @@ class GiftRepository(BaseRepository):
         try:
             with self.Session() as session:
                 from sqlalchemy import func
+
                 count = session.scalar(select(func.count(GiftBase.id)))
                 return int(count) if count else 0
         except Exception as e:
@@ -128,6 +129,7 @@ class GiftRepository(BaseRepository):
         try:
             with self.Session() as session:
                 from sqlalchemy import func
+
                 count = session.scalar(
                     select(func.count(GiftBase.id)).where(GiftBase.is_paymented == True)
                 )
@@ -142,6 +144,7 @@ class GiftRepository(BaseRepository):
         try:
             with self.Session() as session:
                 from sqlalchemy import func
+
                 count = session.scalar(
                     select(func.count(GiftBase.id)).where(GiftBase.is_done == True)
                 )
@@ -156,8 +159,11 @@ class GiftRepository(BaseRepository):
         try:
             with self.Session() as session:
                 from sqlalchemy import func
+
                 revenue = session.scalar(
-                    select(func.sum(GiftBase.price)).where(GiftBase.is_paymented == True)
+                    select(func.sum(GiftBase.price)).where(
+                        GiftBase.is_paymented == True
+                    )
                 )
                 return float(revenue) if revenue else 0.0
         except Exception as e:

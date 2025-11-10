@@ -1,6 +1,11 @@
 """Helper functions for formatting statistics messages."""
 
-from src.services.statistics_service import Statistics, BookingStats, UserStats, GiftStats
+from src.services.statistics_service import (
+    Statistics,
+    BookingStats,
+    UserStats,
+    GiftStats,
+)
 
 
 def format_statistics_message(stats: Statistics) -> str:

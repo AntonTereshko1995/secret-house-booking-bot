@@ -11,6 +11,7 @@ from db.models.booking import BookingBase
 from src.models.enum.tariff import Tariff
 from singleton_decorator import singleton
 from sqlalchemy import and_, distinct, func, or_, select
+from sqlalchemy.orm import joinedload
 
 
 @singleton
@@ -36,6 +37,7 @@ class BookingRepository(BaseRepository):
         price: float,
         comment: str,
         gift_id: int = None,
+        promocode_id: int = None,
         wine_preference: str = None,
         transfer_address: str = None,
     ) -> BookingBase:
@@ -62,6 +64,9 @@ class BookingRepository(BaseRepository):
 
                 if gift_id:
                     new_booking.gift_id = gift_id
+
+                if promocode_id:
+                    new_booking.promocode_id = promocode_id
 
                 session.add(new_booking)
                 session.commit()
@@ -298,12 +303,17 @@ class BookingRepository(BaseRepository):
             LoggerService.error(__name__, "is_booking_between_dates", e)
 
     def get_booking_by_id(self, booking_id: int) -> BookingBase:
-        """Get booking by ID."""
+        """Get booking by ID with eagerly loaded user relationship."""
         try:
             with self.Session() as session:
                 booking = session.scalar(
-                    select(BookingBase).where(BookingBase.id == booking_id)
+                    select(BookingBase)
+                    .options(joinedload(BookingBase.user))
+                    .where(BookingBase.id == booking_id)
                 )
+                if booking:
+                    # Detach from session to avoid lazy load errors
+                    session.expunge(booking)
                 return booking
         except Exception as e:
             print(f"Error in get_booking_by_id: {e}")
@@ -381,11 +391,13 @@ class BookingRepository(BaseRepository):
         is_done: bool = None,
         prepayment: float = None,
     ) -> BookingBase:
-        """Update booking fields."""
+        """Update booking fields and return with eagerly loaded user."""
         with self.Session() as session:
             try:
                 booking = session.scalar(
-                    select(BookingBase).where(BookingBase.id == booking_id)
+                    select(BookingBase)
+                    .options(joinedload(BookingBase.user))
+                    .where(BookingBase.id == booking_id)
                 )
                 if not booking:
                     print(f"Booking with id {booking_id} not found.")
@@ -414,6 +426,9 @@ class BookingRepository(BaseRepository):
                     booking.prepayment_price = prepayment
 
                 session.commit()
+                session.refresh(booking)
+                # Detach from session to avoid lazy load errors
+                session.expunge(booking)
                 print(f"Booking updated: {booking}")
                 return booking
             except Exception as e:
@@ -422,7 +437,10 @@ class BookingRepository(BaseRepository):
                 LoggerService.error(__name__, "update_booking", e)
 
     def get_bookings_count_by_period(
-        self, start_date: datetime = None, end_date: datetime = None, is_completed: bool = None
+        self,
+        start_date: datetime = None,
+        end_date: datetime = None,
+        is_completed: bool = None,
     ) -> int:
         """Get count of bookings in a period with optional completion filter."""
         try:
@@ -440,14 +458,14 @@ class BookingRepository(BaseRepository):
                     query = query.where(
                         and_(
                             BookingBase.is_done == True,
-                            BookingBase.is_canceled == False
+                            BookingBase.is_canceled == False,
                         )
                     )
                 elif is_completed is False:
                     query = query.where(
                         and_(
                             BookingBase.is_done == False,
-                            BookingBase.is_canceled == False
+                            BookingBase.is_canceled == False,
                         )
                     )
 
@@ -493,7 +511,7 @@ class BookingRepository(BaseRepository):
                 query = select(func.count(BookingBase.id)).where(
                     and_(
                         BookingBase.is_canceled == True,
-                        BookingBase.is_prepaymented == True
+                        BookingBase.is_prepaymented == True,
                     )
                 )
 

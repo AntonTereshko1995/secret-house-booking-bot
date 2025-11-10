@@ -33,6 +33,7 @@ from src.constants import (
     GIFT_CERTIFICATE,
     MENU,
     PRICE,
+    PROMOCODE_INPUT,
     QUESTIONS,
     SKIP,
     USER_BOOKING,
@@ -142,6 +143,16 @@ def get_handler() -> ConversationHandler:
                     filters.TEXT & ~filters.COMMAND, booking_handler.write_comment
                 ),
             ],
+            PROMOCODE_INPUT: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    booking_handler.handle_promocode_input,
+                ),
+                CallbackQueryHandler(
+                    booking_handler.skip_promocode,
+                    pattern=f"^BOOKING-PROMO_({SKIP}|{END})$",
+                ),
+            ],
             INCOGNITO_WINE: [
                 CallbackQueryHandler(
                     booking_handler.handle_wine_preference,
@@ -203,16 +214,14 @@ def _capture_and_store_user_chat_id(update: Update) -> None:
         database_service = DatabaseService()
         database_service.update_user_chat_id(user_name, chat_id)
         LoggerService.info(
-            __name__,
-            "Chat ID stored for user",
-            kwargs={"chat_id": chat_id}
+            __name__, "Chat ID stored for user", kwargs={"chat_id": chat_id}
         )
     except Exception as e:
         LoggerService.error(
             __name__,
             "Failed to store chat_id",
             exception=e,
-            kwargs={"chat_id": chat_id}
+            kwargs={"chat_id": chat_id},
         )
 
 

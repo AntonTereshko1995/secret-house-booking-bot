@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from alembic.config import Config
 from alembic import command, script
@@ -8,6 +9,7 @@ from src.config.config import DATABASE_URL
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine
 import os
+
 
 def run_migrations_if_needed():
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

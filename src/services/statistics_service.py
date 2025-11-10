@@ -85,7 +85,9 @@ class StatisticsService:
         ytd = self._get_booking_stats(start_date=year_start, end_date=year_end)
 
         # Current month (full month, not just to date)
-        current_month = self._get_booking_stats(start_date=month_start, end_date=month_end)
+        current_month = self._get_booking_stats(
+            start_date=month_start, end_date=month_end
+        )
 
         # User stats
         user_stats = self._get_user_stats()

@@ -28,6 +28,7 @@ from src.services.logger_service import LoggerService
 from src.services.navigation_service import NavigatonService
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID
+from datetime import date, timedelta
 
 redis_service = RedisService()
 navigation_service = NavigatonService()
@@ -367,8 +368,8 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
         redis_service.update_feedback_field(update, "public_review", text)
         LoggerService.info(__name__, "Q9 answer received", update)
 
-        # Send to admin
-        await send_feedback_to_admin(update, context)
+        # Send to admin and get promocode
+        promocode_name = await send_feedback_to_admin(update, context)
 
         # Thank user and show menu button
         keyboard = [
@@ -376,10 +377,23 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update.message.reply_text(
+        # Build message with promocode
+        thank_you_message = (
             "Спасибо за ваш отзыв! 🌟\n"
             "Ваше мнение очень важно для нас.\n\n"
-            "После получения фидбека мы дарим Вам <b>10% скидки</b> для следующей поездки.",
+        )
+
+        if promocode_name:
+            thank_you_message += (
+                f"🎁 <b>Ваш промокод на 10% скидку:</b> <code>{promocode_name}</code>\n\n"
+                "Промокод действителен <b>3 месяца</b> и применим ко всем тарифам.\n"
+                "Используйте его при следующем бронировании! 🏡"
+            )
+        else:
+            thank_you_message += "После получения фидбека мы дарим Вам <b>10% скидки</b> для следующей поездки."
+
+        await update.message.reply_text(
+            thank_you_message,
             parse_mode="HTML",
             reply_markup=reply_markup,
         )
@@ -394,12 +408,12 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Send complete feedback to ADMIN_CHAT_ID (NO database storage)"""
+    """Send complete feedback to ADMIN_CHAT_ID and create feedback promocode"""
     feedback_data = redis_service.get_feedback(update)
 
     if not feedback_data:
         LoggerService.error(__name__, "No feedback data to send", update)
-        return
+        return None
 
     # Get user contact from database
     database_service = DatabaseService()
@@ -428,9 +442,42 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     # Mark feedback as submitted in database
+    promocode_name = None
     if booking:
         booking.feedback_submitted = True
         database_service.update_booking(booking)
+
+        # Create feedback promocode valid for 3 months
+        promocode_name = f"ОТЗЫВ-{feedback_data.booking_id}"
+        today = date.today()
+        expiry_date = today + timedelta(days=90)  # 3 months
+
+        try:
+            promocode = database_service.add_promocode(
+                name=promocode_name,
+                date_from=today,
+                date_to=expiry_date,
+                discount_percentage=10.0,
+                applicable_tariffs=None  # Applies to all tariffs
+            )
+            LoggerService.info(
+                __name__,
+                "Feedback promocode created",
+                update,
+                kwargs={
+                    "booking_id": feedback_data.booking_id,
+                    "promocode": promocode_name,
+                    "expiry_date": str(expiry_date)
+                },
+            )
+        except Exception as e:
+            LoggerService.error(
+                __name__,
+                "Failed to create feedback promocode",
+                exception=e,
+                kwargs={"booking_id": feedback_data.booking_id}
+            )
+
         LoggerService.info(
             __name__,
             "Booking marked as feedback submitted",
@@ -444,6 +491,8 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
         update,
         kwargs={"booking_id": feedback_data.booking_id, "user_contact": user_contact},
     )
+
+    return promocode_name
 
 
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):

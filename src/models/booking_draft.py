@@ -31,3 +31,5 @@ class BookingDraft:
     rental_rate: Optional[RentalPrice] = None
     wine_preference: Optional[str] = None
     transfer_address: Optional[str] = None
+    promocode_id: Optional[int] = None
+    promocode_discount: Optional[float] = None

@@ -845,7 +845,16 @@ def get_special_date_info_for_day(target_date: date) -> str:
 
 
 def reset_variables():
-    global user_contact, old_booking_date, start_booking_date, finish_booking_date, max_date_booking, min_date_booking, booking, rental_price, selected_bookings
+    global \
+        user_contact, \
+        old_booking_date, \
+        start_booking_date, \
+        finish_booking_date, \
+        max_date_booking, \
+        min_date_booking, \
+        booking, \
+        rental_price, \
+        selected_bookings
     user_contact = ""
     old_booking_date = date.today()
     start_booking_date = datetime.today()

@@ -185,19 +185,30 @@ def generate_booking_info_message(
             if booking.wine_preference
             else "Не указано"
         )
-        message += f"🍷 Вино: {wine_text}\n"
+        message += f"Вино: {wine_text}\n"
 
         transfer_text = (
             booking.transfer_address if booking.transfer_address else "Не нужно"
         )
-        message += f"🚗 Трансфер: {transfer_text}\n"
-        
+        message += f"Трансфер: {transfer_text}\n"
+
         # Add transfer time information if transfer is requested
         if booking.transfer_address:
             # Transfer time is 30 minutes before check-in time
             from datetime import timedelta
+
             transfer_time = booking.start_date - timedelta(minutes=30)
-            message += f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
+            message += (
+                f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
+            )
+
+    # Add promocode info if used
+    if booking.promocode_id:
+        from src.services.database_service import DatabaseService
+        database_service = DatabaseService()
+        promocode = database_service.get_promocode_by_id(booking.promocode_id)
+        if promocode:
+            message += f"Промокод: {promocode.name} (-{promocode.discount_percentage}%)\n"
 
     if booking.gift_id:
         message += (

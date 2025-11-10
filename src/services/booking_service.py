@@ -37,6 +37,7 @@ class BookingService(BaseDatabaseService):
         comment: str,
         chat_id: int,
         gift_id: int = None,
+        promocode_id: int = None,
         wine_preference: str = None,
         transfer_address: str = None,
     ) -> BookingBase:
@@ -64,6 +65,9 @@ class BookingService(BaseDatabaseService):
 
                 if gift_id:
                     new_booking.gift_id = gift_id
+
+                if promocode_id:
+                    new_booking.promocode_id = promocode_id
 
                 session.add(new_booking)
                 session.commit()
@@ -334,13 +338,15 @@ class BookingService(BaseDatabaseService):
         try:
             with self.Session() as session:
                 bookings = session.scalars(
-                    select(BookingBase).where(
+                    select(BookingBase)
+                    .where(
                         and_(
                             BookingBase.is_prepaymented == False,
                             BookingBase.is_canceled == False,
                             BookingBase.is_done == False,
                         )
-                    ).order_by(BookingBase.start_date)
+                    )
+                    .order_by(BookingBase.start_date)
                 ).all()
                 return bookings
         except Exception as e:
@@ -354,9 +360,7 @@ class BookingService(BaseDatabaseService):
             with self.Session() as session:
                 # Use distinct() to get unique chat_ids
                 # Some users may have multiple bookings
-                chat_ids = session.scalars(
-                    select(distinct(BookingBase.chat_id))
-                ).all()
+                chat_ids = session.scalars(select(distinct(BookingBase.chat_id))).all()
 
                 # Convert to list and return
                 return list(chat_ids)
@@ -364,7 +368,6 @@ class BookingService(BaseDatabaseService):
             print(f"Error in get_all_chat_ids: {e}")
             LoggerService.error(__name__, "get_all_chat_ids", e)
             return []  # Return empty list on error
-
 
     def update_booking(
         self,

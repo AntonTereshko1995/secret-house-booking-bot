@@ -7,7 +7,7 @@ from src.services.logger_service import LoggerService
 import logging
 from flask import Flask
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 from src.handlers import menu_handler, admin_handler, feedback_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
@@ -29,6 +29,8 @@ async def set_commands(application: Application):
         BotCommand("broadcast_with_bookings", "Рассылка c бронями"),
         BotCommand("broadcast_without_bookings", "Рассылка БЕЗ броней"),
         BotCommand("statistics", "Статистика"),
+        BotCommand("create_promocode", "➕ Создать промокод"),
+        BotCommand("list_promocodes", "📋 Список промокодов"),
     ]
 
     await application.bot.set_my_commands(user_commands)
@@ -53,6 +55,7 @@ if __name__ == "__main__":
     application.add_error_handler(error_handler)
     application.add_handler(admin_handler.get_password_handler())
     application.add_handler(admin_handler.get_purchase_handler())
+    application.add_handler(admin_handler.get_create_promocode_handler())
     application.add_handler(admin_handler.get_broadcast_handler())
     application.add_handler(admin_handler.get_broadcast_with_bookings_handler())
     application.add_handler(admin_handler.get_broadcast_without_bookings_handler())
@@ -66,6 +69,15 @@ if __name__ == "__main__":
         CommandHandler("unpaid_bookings", admin_handler.get_unpaid_bookings)
     )
     application.add_handler(CommandHandler("statistics", admin_handler.get_statistics))
+    application.add_handler(
+        CommandHandler("list_promocodes", admin_handler.list_promocodes)
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            admin_handler.handle_delete_promocode_callback,
+            pattern="^delete_promo_\d+$",
+        )
+    )
 
     job = job_service.JobService()
     job.set_application(application)
