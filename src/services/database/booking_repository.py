@@ -131,7 +131,9 @@ class BookingRepository(BaseRepository):
         try:
             with self.Session() as session:
                 bookings = session.scalars(
-                    select(BookingBase).where(
+                    select(BookingBase)
+                    .options(joinedload(BookingBase.user))
+                    .where(
                         and_(
                             func.date(BookingBase.end_date) == end_date,
                             BookingBase.is_canceled == False,
@@ -154,6 +156,7 @@ class BookingRepository(BaseRepository):
                 if not is_admin:
                     bookings = session.scalars(
                         select(BookingBase)
+                        .options(joinedload(BookingBase.user))
                         .where(
                             and_(
                                 BookingBase.start_date >= from_date,
@@ -168,6 +171,7 @@ class BookingRepository(BaseRepository):
                 else:
                     bookings = session.scalars(
                         select(BookingBase)
+                        .options(joinedload(BookingBase.user))
                         .where(
                             and_(
                                 BookingBase.start_date >= from_date,
