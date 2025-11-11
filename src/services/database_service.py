@@ -68,9 +68,9 @@ class DatabaseService:
         """Get user by chat_id."""
         return self.user_repository.get_user_by_chat_id(chat_id)
 
-    def update_user_contact(self, user_id: int, contact: str) -> UserBase:
+    def update_user_contact(self, chat_id: int, contact: str) -> UserBase:
         """Update user's contact (phone/email)."""
-        return self.user_repository.update_user_contact(user_id, contact)
+        return self.user_repository.update_user_contact(chat_id, contact)
 
     def update_user_chat_id(self, contact: str, chat_id: int) -> UserBase:
         """Update or set chat_id for user. Handles duplicates gracefully."""

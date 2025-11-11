@@ -275,13 +275,12 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Save contact to database
             try:
                 chat_id = navigation_service.get_chat_id(update)
-                user = database_service.get_user_by_chat_id(chat_id)
-                database_service.update_user_contact(user.id, cleaned_contact)
+                database_service.update_user_contact(chat_id, cleaned_contact)
                 LoggerService.info(
                     __name__,
                     "User contact saved to database",
                     update,
-                    kwargs={"user_id": user.id, "contact": cleaned_contact},
+                    kwargs={"chat_id": chat_id, "contact": cleaned_contact},
                 )
             except Exception as e:
                 LoggerService.error(
