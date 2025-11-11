@@ -150,23 +150,21 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
             # Save contact to database
             try:
-                chat_id = update.effective_chat.id
+                chat_id = navigation_service.get_chat_id(update)
                 user = database_service.get_user_by_chat_id(chat_id)
 
                 if user:
-                    database_service.update_user_contact(user.id, cleaned_contact)
+                    database_service.update_user_contact(chat_id, cleaned_contact)
                     LoggerService.info(
                         __name__,
                         "User contact saved to database",
                         update,
-                        kwargs={"user_id": user.id, "contact": cleaned_contact},
+                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
                     )
                 else:
                     user_name = update.effective_user.username or cleaned_contact
                     database_service.update_user_chat_id(user_name, chat_id)
-                    user = database_service.get_user_by_chat_id(chat_id)
-                    if user:
-                        database_service.update_user_contact(user.id, cleaned_contact)
+                    database_service.update_user_contact(chat_id, cleaned_contact)
                     LoggerService.warning(
                         __name__,
                         "User not found by chat_id, created new user",

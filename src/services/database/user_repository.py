@@ -79,13 +79,32 @@ class UserRepository(BaseRepository):
             LoggerService.error(__name__, "get_user_by_chat_id", e)
             return None
 
-    def update_user_contact(self, user_id: int, contact: str) -> UserBase:
+    def update_user_contact(self, chat_id: int, contact: str) -> UserBase:
         """Update user's contact (phone/email)."""
         with self.Session() as session:
             try:
-                user = session.scalar(select(UserBase).where(UserBase.id == user_id))
+                user = session.scalar(select(UserBase).where(UserBase.chat_id == chat_id))
                 if not user:
-                    raise ValueError(f"User with id {user_id} not found")
+                    raise ValueError(f"User with chat_id {chat_id} not found")
+
+                # Check if contact is already assigned to another user
+                existing_user = session.scalar(
+                    select(UserBase).where(UserBase.contact == contact)
+                )
+                if existing_user and existing_user.chat_id != chat_id:
+                    # Update existing user's chat_id to current chat_id
+                    existing_user.chat_id = chat_id
+                    session.commit()
+                    LoggerService.info(
+                        __name__,
+                        "Contact found for another user, updated chat_id",
+                        kwargs={
+                            "old_chat_id": existing_user.chat_id,
+                            "new_chat_id": chat_id,
+                            "contact": contact,
+                        },
+                    )
+                    return existing_user
 
                 user.contact = contact
                 session.commit()
@@ -93,7 +112,7 @@ class UserRepository(BaseRepository):
                 LoggerService.info(
                     __name__,
                     "Updated user contact",
-                    kwargs={"user_id": user_id, "contact": contact},
+                    kwargs={"chat_id": chat_id, "contact": contact},
                 )
                 return user
 
