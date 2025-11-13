@@ -92,15 +92,25 @@ class UserRepository(BaseRepository):
                     select(UserBase).where(UserBase.contact == contact)
                 )
                 if existing_user and existing_user.chat_id != chat_id:
-                    # Update existing user's chat_id to current chat_id
+                    # Merge data from user into existing_user
                     existing_user.chat_id = chat_id
+                    existing_user.user_name = user.user_name or existing_user.user_name
+                    existing_user.has_bookings = max(user.has_bookings or 0, existing_user.has_bookings or 0)
+                    existing_user.total_bookings = (user.total_bookings or 0) + (existing_user.total_bookings or 0)
+                    existing_user.completed_bookings = (user.completed_bookings or 0) + (existing_user.completed_bookings or 0)
+                    existing_user.is_active = user.is_active if user.is_active else existing_user.is_active
+
+                    # Delete the duplicate user
+                    session.delete(user)
                     session.commit()
+
                     LoggerService.info(
                         __name__,
-                        "Contact found for another user, updated chat_id",
+                        "Contact found for another user, merged data and deleted duplicate",
                         kwargs={
-                            "old_chat_id": existing_user.chat_id,
-                            "new_chat_id": chat_id,
+                            "deleted_user_id": user.id,
+                            "kept_user_id": existing_user.id,
+                            "chat_id": chat_id,
                             "contact": contact,
                         },
                     )
