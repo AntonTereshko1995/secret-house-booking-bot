@@ -1,9 +1,8 @@
 import sys
 import os
 from src.models.enum.booking_step import BookingStep
-from src.services.navigation_service import NavigatonService
+from src.services.navigation_service import NavigationService
 from src.services.redis_service import RedisService
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from matplotlib.dates import relativedelta
@@ -53,7 +52,7 @@ rate_service = CalculationRateService()
 date_pricing_service = DatePricingService()
 database_service = DatabaseService()
 redis_service = RedisService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def get_handler():

@@ -2,8 +2,7 @@ import calendar
 from datetime import datetime, timedelta
 import sys
 import os
-from src.services.navigation_service import NavigatonService
-
+from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.database_service import DatabaseService
@@ -15,7 +14,7 @@ from src.constants import END, MENU, AVAILABLE_DATES, BACK
 from src.config.config import PERIOD_IN_MONTHS
 
 database_service = DatabaseService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def get_handler():

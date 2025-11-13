@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ENV=debug python3:*)"
+      "Bash(ENV=debug python3:*)",
+      "Bash(tree:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(gh pr:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

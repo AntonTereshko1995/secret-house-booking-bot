@@ -1,8 +1,6 @@
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackQueryHandler,
@@ -25,13 +23,13 @@ from src.constants import (
 )
 from src.services.redis_service import RedisService
 from src.services.logger_service import LoggerService
-from src.services.navigation_service import NavigatonService
+from src.services.navigation_service import NavigationService
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID
 from datetime import date, timedelta
 
 redis_service = RedisService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def get_handler():

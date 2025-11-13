@@ -2,8 +2,7 @@ import sys
 import os
 from src.services.database_service import DatabaseService
 from src.services.logger_service import LoggerService
-from src.services.navigation_service import NavigatonService
-
+from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.rental_price import RentalPrice
 from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
@@ -23,7 +22,7 @@ from src.constants import (
     GIFT_PHOTO_UPLOAD,
 )
 
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 user_contact: str
 tariff: Tariff

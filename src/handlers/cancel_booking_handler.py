@@ -1,8 +1,7 @@
 import sys
 import os
 from src.services.logger_service import LoggerService
-from src.services.navigation_service import NavigatonService
-
+from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.calendar_service import CalendarService
 from datetime import date
@@ -22,7 +21,7 @@ from src.constants import (
 user_contact = ""
 database_service = DatabaseService()
 calendar_service = CalendarService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 selected_bookings = []
 
 
