@@ -4,9 +4,8 @@ import sys
 import os
 from typing import Sequence
 from src.services.logger_service import LoggerService
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.services.navigation_service import NavigatonService
+from src.services.navigation_service import NavigationService
 from src.services.settings_service import SettingsService
 from src.services.file_service import FileService
 from src.services.calculation_rate_service import CalculationRateService
@@ -54,7 +53,7 @@ calendar_service = CalendarService()
 calculation_rate_service = CalculationRateService()
 file_service = FileService()
 settings_service = SettingsService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def entry_points():
@@ -1172,6 +1171,21 @@ async def inform_message(
 async def send_booking_details(
     context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
 ):
+    # Проверка наличия chat_id у пользователя
+    if not booking.user or not booking.user.chat_id:
+        LoggerService.warning(
+            __name__,
+            "Cannot send booking details: user or chat_id is missing",
+            kwargs={
+                "booking_id": booking.id,
+                "user_id": booking.user_id if booking.user else None,
+                "has_user": booking.user is not None,
+                "chat_id": booking.user.chat_id if booking.user else None,
+                "action": "send_booking_details_skipped",
+            },
+        )
+        return
+
     try:
         # Отправка маршрута
         await context.bot.send_message(

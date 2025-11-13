@@ -6,7 +6,7 @@ from telegram import Update
 from src.models.booking_draft import BookingDraft
 from src.models.feedback import Feedback
 from src.models.enum.tariff import Tariff
-from src.services.navigation_service import NavigatonService
+from src.services.navigation_service import NavigationService
 from src.config.config import REDIS_URL, REDIS_PORT, REDIS_SSL
 
 
@@ -21,7 +21,7 @@ class RedisService:
             ssl_cert_reqs=None,
         )
         self.__ttl = timedelta(hours=ttl_hours)
-        self.__navigaton_service = NavigatonService()
+        self.__navigaton_service = NavigationService()
 
     def init_booking(self, update: Update):
         self.clear_booking(update)

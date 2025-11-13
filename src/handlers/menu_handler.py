@@ -1,7 +1,7 @@
 import sys
 import os
 
-from src.services.navigation_service import NavigatonService
+from src.services.navigation_service import NavigationService
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
@@ -54,7 +54,7 @@ from src.handlers import (
 )
 
 job = job_service.JobService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def get_handler() -> ConversationHandler:
@@ -206,7 +206,7 @@ def get_handler() -> ConversationHandler:
 
 def _capture_and_store_user_chat_id(update: Update) -> None:
     """Capture and store user's chat_id in the database."""
-    navigation_service = NavigatonService()
+    navigation_service = NavigationService()
     chat_id = navigation_service.get_chat_id(update)
     user_name = update.effective_user.username
 

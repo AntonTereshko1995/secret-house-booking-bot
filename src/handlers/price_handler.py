@@ -1,8 +1,6 @@
 import sys
 import os
-
-from src.services.navigation_service import NavigatonService
-
+from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.calculation_rate_service import CalculationRateService
@@ -12,7 +10,7 @@ from telegram.ext import ContextTypes, CallbackQueryHandler, CallbackContext
 from src.handlers import menu_handler
 from src.constants import END, MENU, PRICE
 
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def get_handler():

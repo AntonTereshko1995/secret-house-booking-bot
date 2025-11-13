@@ -1,8 +1,7 @@
 import sys
 import os
 from src.services.logger_service import LoggerService
-from src.services.navigation_service import NavigatonService
-
+from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -13,7 +12,7 @@ from src.constants import END, MENU, USER_BOOKING_VALIDATE_USER, USER_BOOKING
 
 user_contact: str
 database_service = DatabaseService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def get_handler():

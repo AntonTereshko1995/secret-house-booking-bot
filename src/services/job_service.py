@@ -90,7 +90,7 @@ class JobService:
                     "Failed to send booking details to user",
                     exception=e,
                     kwargs={
-                        "chat_id": booking.user.chat_id,
+                        "chat_id": booking.user.chat_id if booking.user else None,
                         "booking_id": booking.id,
                         "action": "send_booking_details",
                     },

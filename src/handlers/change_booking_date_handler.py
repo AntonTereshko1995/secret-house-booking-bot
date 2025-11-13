@@ -1,8 +1,7 @@
 import sys
 import os
 
-from src.services.navigation_service import NavigatonService
-
+from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.models.enum.tariff import Tariff
@@ -32,7 +31,7 @@ from src.constants import (
 database_service = DatabaseService()
 calculation_rate_service = CalculationRateService()
 calendar_service = CalendarService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 date_pricing_service = DatePricingService()
 
 user_contact = ""

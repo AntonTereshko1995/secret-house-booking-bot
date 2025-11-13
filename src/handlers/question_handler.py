@@ -1,7 +1,6 @@
 import sys
 import os
-from src.services.navigation_service import NavigatonService
-
+from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services.gpt_service import GptService
@@ -12,7 +11,7 @@ from src.handlers import menu_handler
 from src.constants import END, MENU, QUESTIONS
 
 gpt_service = GptService()
-navigation_service = NavigatonService()
+navigation_service = NavigationService()
 
 
 def get_handler():
