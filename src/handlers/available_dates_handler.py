@@ -5,6 +5,7 @@ import os
 from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from src.services.database_service import DatabaseService
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler, CallbackContext
@@ -28,6 +29,7 @@ def get_handler():
     ]
 
 
+@safe_callback_query()
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, "Back to menu", update)

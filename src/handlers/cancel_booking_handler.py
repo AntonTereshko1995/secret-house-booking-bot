@@ -1,6 +1,7 @@
 import sys
 import os
 from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.calendar_service import CalendarService
@@ -41,6 +42,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU
 
 
+@safe_callback_query()
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_variables()
     LoggerService.info(__name__, "Enter user contact", update)
@@ -110,6 +112,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return CANCEL_BOOKING_VALIDATE_USER
 
 
+@safe_callback_query()
 async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -124,6 +127,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await confirm_message(update, context)
 
 
+@safe_callback_query()
 async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -175,6 +179,7 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
     return CANCEL_BOOKING
 
 
+@safe_callback_query()
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [

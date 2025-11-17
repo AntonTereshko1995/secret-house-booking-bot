@@ -5,6 +5,7 @@ from src.services.navigation_service import NavigationService
 from src.services.redis_service import RedisService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from matplotlib.dates import relativedelta
 from db.models.booking import BookingBase
 from src.date_time_picker import calendar_picker, hours_picker
@@ -104,6 +105,7 @@ def get_handler():
     ]
 
 
+@safe_callback_query()
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, "Back to menu", update)
@@ -111,6 +113,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU
 
 
+@safe_callback_query()
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # await update.callback_query.answer()
     # return await send_approving_to_admin(update, context, None, is_cash=True)
@@ -182,6 +185,7 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     return BOOKING
 
 
+@safe_callback_query()
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         await update.callback_query.answer()
@@ -234,6 +238,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await count_of_people_message(update, context)
 
 
+@safe_callback_query()
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Enter user contact", update)
     redis_service.update_booking_field(update, "navigation_step", BookingStep.CONTACT)
@@ -314,6 +319,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return BOOKING_VALIDATE_USER
 
 
+@safe_callback_query()
 async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -333,6 +339,7 @@ async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return await count_of_people_message(update, context)
 
 
+@safe_callback_query()
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -357,6 +364,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await count_of_people_message(update, context)
 
 
+@safe_callback_query()
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -380,6 +388,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
     return await sauna_message(update, context)
 
 
+@safe_callback_query()
 async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -403,6 +412,7 @@ async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await additional_bedroom_message(update, context)
 
 
+@safe_callback_query()
 async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -431,6 +441,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
     return await secret_room_message(update, context)
 
 
+@safe_callback_query()
 async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -448,6 +459,7 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
     return await start_date_message(update, context)
 
 
+@safe_callback_query()
 async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message == None:
         await update.callback_query.answer()
@@ -459,6 +471,7 @@ async def write_secret_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await init_gift_code(update, context)
 
 
+@safe_callback_query()
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
@@ -540,6 +553,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return BOOKING
 
 
+@safe_callback_query()
 async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     selected, time, is_action = await hours_picker.process_hours_selection(
@@ -568,6 +582,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return BOOKING
 
 
+@safe_callback_query()
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     booking = redis_service.get_booking(update)
@@ -636,6 +651,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return BOOKING
 
 
+@safe_callback_query()
 async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     selected, time, is_action = await hours_picker.process_hours_selection(
@@ -824,6 +840,7 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
         return PROMOCODE_INPUT
 
 
+@safe_callback_query()
 async def skip_promocode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Skip promocode entry"""
     await update.callback_query.answer()
@@ -947,6 +964,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return BOOKING
 
 
+@safe_callback_query()
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_booking_field(update, "navigation_step", BookingStep.PAY)
     booking = redis_service.get_booking(update)
@@ -1014,6 +1032,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await back_navigation(update, context)
 
 
+@safe_callback_query()
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Confirm booking", update)
 
@@ -1602,6 +1621,7 @@ async def wine_preference_message(update: Update, context: ContextTypes.DEFAULT_
     return INCOGNITO_WINE
 
 
+@safe_callback_query()
 async def handle_wine_preference(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle wine preference button click.
@@ -1656,6 +1676,7 @@ async def transfer_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return INCOGNITO_TRANSFER
 
 
+@safe_callback_query()
 async def handle_transfer_skip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle "Не нужно" button click for transfer.

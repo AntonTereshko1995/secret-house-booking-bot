@@ -4,6 +4,7 @@ import sys
 import os
 from typing import Sequence
 from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.navigation_service import NavigationService
 from src.services.settings_service import SettingsService
@@ -265,6 +266,7 @@ async def handle_password_input(update: Update, context: ContextTypes.DEFAULT_TY
     return END
 
 
+@safe_callback_query()
 async def cancel_password_change(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel password change"""
     await update.callback_query.answer()
@@ -510,6 +512,7 @@ async def handle_broadcast_input(update: Update, context: ContextTypes.DEFAULT_T
     return END
 
 
+@safe_callback_query()
 async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel broadcast operation"""
     await update.callback_query.answer()
@@ -923,6 +926,7 @@ async def handle_price_input(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return END
 
 
+@safe_callback_query()
 async def cancel_price_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel price input and return to booking menu"""
     await update.callback_query.answer()
@@ -1017,6 +1021,7 @@ async def handle_prepayment_input(update: Update, context: ContextTypes.DEFAULT_
     return END
 
 
+@safe_callback_query()
 async def cancel_prepayment_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel prepayment input and return to booking menu"""
     await update.callback_query.answer()
@@ -1639,6 +1644,7 @@ async def handle_promo_tariff_selection(
     return END
 
 
+@safe_callback_query()
 async def cancel_promo_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel promocode creation"""
     if update.callback_query:

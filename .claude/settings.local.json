@@ -5,7 +5,13 @@
       "Bash(tree:*)",
       "Bash(python -m py_compile:*)",
       "Bash(gh pr:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(mkdir:*)",
+      "Bash(git checkout:*)",
+      "Bash(for handler in gift_certificate_handler feedback_handler cancel_booking_handler change_booking_date_handler available_dates_handler question_handler admin_handler)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

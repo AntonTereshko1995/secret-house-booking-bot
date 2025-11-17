@@ -4,6 +4,7 @@ import os
 from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from src.models.enum.tariff import Tariff
 from src.services.calendar_service import CalendarService
 from src.models.rental_price import RentalPrice
@@ -73,6 +74,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU
 
 
+@safe_callback_query()
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_variables()
     LoggerService.info(__name__, "Enter user contact", update)
@@ -142,6 +144,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return CHANGE_BOOKING_DATE_VALIDATE_USER
 
 
+@safe_callback_query()
 async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -167,6 +170,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await start_date_message(update, context)
 
 
+@safe_callback_query()
 async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
@@ -247,6 +251,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CHANGE_BOOKING_DATE
 
 
+@safe_callback_query()
 async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     selected, time, is_action = await hours_picker.process_hours_selection(
@@ -272,6 +277,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CHANGE_BOOKING_DATE
 
 
+@safe_callback_query()
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
@@ -338,6 +344,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CHANGE_BOOKING_DATE
 
 
+@safe_callback_query()
 async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     selected, time, is_action = await hours_picker.process_hours_selection(
@@ -420,6 +427,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CHANGE_BOOKING_DATE
 
 
+@safe_callback_query()
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -574,6 +582,7 @@ async def start_date_message(
     return CHANGE_BOOKING_DATE
 
 
+@safe_callback_query()
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_period(
         start_booking_date.date() - timedelta(days=2),
@@ -618,6 +627,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return CHANGE_BOOKING_DATE
 
 
+@safe_callback_query()
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
@@ -658,6 +668,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     return CHANGE_BOOKING_DATE
 
 
+@safe_callback_query()
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feature_booking = database_service.get_booking_by_period(
         finish_booking_date.date() - timedelta(days=2),

@@ -2,6 +2,7 @@ import sys
 import os
 from src.services.database_service import DatabaseService
 from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.rental_price import RentalPrice
@@ -66,6 +67,7 @@ async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU
 
 
+@safe_callback_query()
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -87,6 +89,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return GIFT_VALIDATE_USER
 
 
+@safe_callback_query()
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "generate tariff menu", update)
     reset_variables()
@@ -190,6 +193,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return GIFT_VALIDATE_USER
 
 
+@safe_callback_query()
 async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -219,6 +223,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await additional_bedroom_message(update, context)
 
 
+@safe_callback_query()
 async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -236,6 +241,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
     return await secret_room_message(update, context)
 
 
+@safe_callback_query()
 async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -253,6 +259,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
     return await sauna_message(update, context)
 
 
+@safe_callback_query()
 async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = string_helper.get_callback_data(update.callback_query.data)
@@ -270,6 +277,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await confirm_pay(update, context)
 
 
+@safe_callback_query()
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         await update.callback_query.answer()
@@ -296,6 +304,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return GIFT_PHOTO_UPLOAD
 
 
+@safe_callback_query()
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     if update.callback_query:
@@ -337,6 +346,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return GIFT_CERTIFICATE
 
 
+@safe_callback_query()
 async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
@@ -357,6 +367,7 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     return GIFT_CERTIFICATE
 
 
+@safe_callback_query()
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"GIFT-SAUNA_{str(True)}")],
@@ -376,6 +387,7 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return GIFT_CERTIFICATE
 
 
+@safe_callback_query()
 async def confirm_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Confirm gift", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]

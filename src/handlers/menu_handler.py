@@ -277,9 +277,10 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     elif update.callback_query:
         try:
             context.drop_callback_data(update.callback_query)
-            await update.callback_query.answer()
         except:
             pass
+        # Use safe method to handle expired queries
+        await navigation_service.safe_answer_callback_query(update.callback_query)
         await navigation_service.safe_edit_message_text(
             callback_query=update.callback_query,
             text=text,
