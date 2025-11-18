@@ -172,6 +172,7 @@ def get_handler() -> ConversationHandler:
             ],
             # MENU navigation flow
             MENU: [
+                CallbackQueryHandler(show_menu, pattern=f"^{MENU}$"),
                 CallbackQueryHandler(
                     booking_handler.generate_tariff_menu, pattern=f"^{BOOKING}$"
                 ),
@@ -199,9 +200,58 @@ def get_handler() -> ConversationHandler:
                 ),
             ],
         },
-        fallbacks=[CommandHandler("start", show_menu)],
+        fallbacks=[
+            CommandHandler("start", show_menu),
+            # Global fallback for menu callbacks when conversation state is lost
+            CallbackQueryHandler(handle_menu_callback_fallback),
+        ],
+        name="main_menu_conversation",
+        persistent=True,
     )
     return handler
+
+
+async def handle_menu_callback_fallback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """
+    Fallback handler for menu callbacks when conversation state is lost.
+    This handles cases when bot restarts and users try to use old buttons.
+    """
+    LoggerService.info(__name__, "Menu callback fallback triggered", update)
+
+    if not update.callback_query:
+        return ConversationHandler.END
+
+    callback_data = update.callback_query.data
+
+    # Map callback data to appropriate handlers
+    if callback_data == BOOKING:
+        return await booking_handler.generate_tariff_menu(update, context)
+    elif callback_data == CANCEL_BOOKING:
+        return await cancel_booking_handler.enter_user_contact(update, context)
+    elif callback_data == CHANGE_BOOKING_DATE:
+        return await change_booking_date_handler.enter_user_contact(update, context)
+    elif callback_data == AVAILABLE_DATES:
+        return await available_dates_handler.select_month(update, context)
+    elif callback_data == PRICE:
+        return await price_handler.send_prices(update, context)
+    elif callback_data == GIFT_CERTIFICATE:
+        return await gift_certificate_handler.generate_tariff_menu(update, context)
+    elif callback_data == QUESTIONS:
+        return await question_handler.start_conversation(update, context)
+    elif callback_data == USER_BOOKING:
+        return await user_booking.enter_user_contact(update, context)
+    elif callback_data == MENU:
+        return await show_menu(update, context)
+    else:
+        # Unknown callback - show menu
+        LoggerService.warning(
+            __name__,
+            f"Unknown callback in fallback: {callback_data}",
+            update
+        )
+        return await show_menu(update, context)
 
 
 def _capture_and_store_user_chat_id(update: Update) -> None:
@@ -277,9 +327,10 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     elif update.callback_query:
         try:
             context.drop_callback_data(update.callback_query)
-            await update.callback_query.answer()
         except:
             pass
+        # Use safe method to handle expired queries
+        await navigation_service.safe_answer_callback_query(update.callback_query)
         await navigation_service.safe_edit_message_text(
             callback_query=update.callback_query,
             text=text,

@@ -6,11 +6,12 @@
       "Bash(python -m py_compile:*)",
       "Bash(gh pr:*)",
       "Bash(python3:*)",
-      "Bash(python -m alembic revision:*)",
-      "Bash(python:*)",
-      "Bash(export ENV=debug)",
-      "Bash(sqlite3:*)",
-      "Bash(ENV=debug python test_chat_id_fix.py)"
+      "Bash(mkdir:*)",
+      "Bash(git checkout:*)",
+      "Bash(for handler in gift_certificate_handler feedback_handler cancel_booking_handler change_booking_date_handler available_dates_handler question_handler admin_handler)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

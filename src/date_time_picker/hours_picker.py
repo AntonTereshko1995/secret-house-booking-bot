@@ -3,7 +3,8 @@ from datetime import datetime, time, timedelta
 from src.helpers import string_helper
 from src.constants import HOURS_CALLBACK, ACTION
 
-HOURS = map(chr, range(1))
+# Convert map to string to avoid exhaustion issues
+HOURS = "".join(map(chr, range(1)))
 
 
 def create_callback_data(action, time: time, prefix: str):
