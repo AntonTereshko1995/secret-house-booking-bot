@@ -1833,3 +1833,47 @@ async def handle_delete_promocode_callback(
             f"❌ Ошибка при деактивации промокода: {str(e)}", parse_mode="HTML"
         )
         LoggerService.error(__name__, "Error deactivating promocode", e)
+
+
+async def get_users_without_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """TEST: Admin command to show all users without chat_id"""
+    chat_id = update.effective_chat.id
+    if chat_id != ADMIN_CHAT_ID:
+        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
+        return END
+
+    # Send loading message
+    loading_msg = await update.message.reply_text("⏳ Загрузка данных...")
+
+    try:
+        # Get statistics
+        users_without_chat_id = database_service.get_users_without_chat_id()
+        total_users = database_service.get_total_users_count()
+        users_with_chat_id = total_users - len(users_without_chat_id)
+
+        # Delete loading message
+        await loading_msg.delete()
+
+        # Send summary first
+        summary = (
+            f"📊 <b>Статистика пользователей:</b>\n\n"
+            f"👥 Всего пользователей: {total_users}\n"
+            f"✅ С chat_id: {users_with_chat_id}\n"
+            f"❌ Без chat_id: {len(users_without_chat_id)}\n"
+        )
+        await update.message.reply_text(summary, parse_mode="HTML")
+
+    except Exception as e:
+        # Try to delete loading message if it still exists
+        try:
+            await loading_msg.delete()
+        except:
+            pass
+
+        error_msg = str(e).replace('<', '&lt;').replace('>', '&gt;')
+        await update.message.reply_text(
+            f"❌ Ошибка при получении списка пользователей: {error_msg}"
+        )
+        LoggerService.error(__name__, "Error listing users without chat_id", e)
+
+    return END

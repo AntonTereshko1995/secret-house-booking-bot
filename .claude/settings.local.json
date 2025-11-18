@@ -5,7 +5,12 @@
       "Bash(tree:*)",
       "Bash(python -m py_compile:*)",
       "Bash(gh pr:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(python -m alembic revision:*)",
+      "Bash(python:*)",
+      "Bash(export ENV=debug)",
+      "Bash(sqlite3:*)",
+      "Bash(ENV=debug python test_chat_id_fix.py)"
     ],
     "deny": [],
     "ask": []
