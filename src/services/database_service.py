@@ -362,6 +362,10 @@ class DatabaseService:
         """Get count of deactivated users."""
         return self.user_repository.get_deactivated_users_count()
 
+    def get_users_without_chat_id(self) -> list:
+        """Get all users without chat_id."""
+        return self.user_repository.get_users_without_chat_id()
+
     # ========== Gift Statistics ==========
 
     def get_total_gifts_count(self) -> int:
