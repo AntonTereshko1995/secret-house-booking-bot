@@ -145,13 +145,16 @@ class UserRepository(BaseRepository):
                 )
                 if existing_user:
                     # Merge data from existing_user into user (keep the one with chat_id)
-                    user.contact = contact
                     user.has_bookings = max(user.has_bookings or 0, existing_user.has_bookings or 0)
                     user.total_bookings = (user.total_bookings or 0) + (existing_user.total_bookings or 0)
                     user.completed_bookings = (user.completed_bookings or 0) + (existing_user.completed_bookings or 0)
 
-                    # Delete the duplicate user without chat_id
+                    # Delete the duplicate user first to avoid UNIQUE constraint violation
                     session.delete(existing_user)
+                    session.flush()  # Flush delete before setting contact
+
+                    # Now set contact after duplicate is deleted
+                    user.contact = contact
                     session.commit()
                     session.refresh(user)
 
