@@ -34,6 +34,7 @@ async def set_commands(application: Application):
         BotCommand("statistics", "Статистика"),
         BotCommand("create_promocode", "➕ Создать промокод"),
         BotCommand("list_promocodes", "📋 Список промокодов"),
+        BotCommand("users_without_chat_id", "🧪 Пользователи без chat_id"),
     ]
 
     await application.bot.set_my_commands(user_commands)
@@ -121,6 +122,9 @@ if __name__ == "__main__":
             admin_handler.handle_delete_promocode_callback,
             pattern="^delete_promo_\d+$",
         )
+    )
+    application.add_handler(
+        CommandHandler("users_without_chat_id", admin_handler.get_users_without_chat_id)
     )
 
     job = job_service.JobService()
