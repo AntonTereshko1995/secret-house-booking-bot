@@ -3,8 +3,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from src.services.logger_service import LoggerService
 from src.services.navigation_service import NavigationService
-from src.services.redis_service import RedisService
 from src.constants import MENU
+from src.services.redis import RedisSessionService
 
 
 @singleton
@@ -16,7 +16,7 @@ class CallbackRecoveryService:
 
     def __init__(self):
         self.navigation_service = NavigationService()
-        self.redis_service = RedisService()
+        self.redis_service = RedisSessionService()
 
     async def handle_stale_callback(
         self,

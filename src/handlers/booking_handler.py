@@ -2,7 +2,7 @@ import sys
 import os
 from src.models.enum.booking_step import BookingStep
 from src.services.navigation_service import NavigationService
-from src.services.redis_service import RedisService
+from src.services.redis import RedisSessionService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
@@ -52,7 +52,7 @@ MAX_PEOPLE = 6
 rate_service = CalculationRateService()
 date_pricing_service = DatePricingService()
 database_service = DatabaseService()
-redis_service = RedisService()
+redis_service = RedisSessionService()
 navigation_service = NavigationService()
 
 
@@ -555,6 +555,11 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @safe_callback_query()
 async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    LoggerService.info(
+        __name__,
+        f"enter_start_time called with callback_data: {update.callback_query.data}",
+        update
+    )
     await update.callback_query.answer()
     selected, time, is_action = await hours_picker.process_hours_selection(
         update, context

@@ -4,6 +4,7 @@ from src.services.database_service import DatabaseService
 from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
+from src.services.redis import RedisSessionService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.models.rental_price import RentalPrice
 from src.config.config import BANK_PHONE_NUMBER, BANK_CARD_NUMBER
@@ -24,16 +25,9 @@ from src.constants import (
 )
 
 navigation_service = NavigationService()
-
-user_contact: str
-tariff: Tariff
-is_sauna_included: bool
-is_secret_room_included: bool
-is_additional_bedroom_included: bool
+redis_service = RedisSessionService()
 rate_service = CalculationRateService()
 database_service = DatabaseService()
-rental_rate: RentalPrice
-price: int
 
 
 def get_handler():
@@ -63,6 +57,7 @@ def get_handler():
 
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Back to menu", update)
+    redis_service.clear_gift_certificate(update)
     await menu_handler.show_menu(update, context)
     return MENU
 
@@ -92,7 +87,7 @@ async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
 @safe_callback_query()
 async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "generate tariff menu", update)
-    reset_variables()
+    redis_service.init_gift_certificate(update)
     keyboard = [
         [
             InlineKeyboardButton(
@@ -147,8 +142,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_input = update.message.text
         is_valid, cleaned_contact = string_helper.is_valid_user_contact(user_input)
         if is_valid:
-            global user_contact
-            user_contact = cleaned_contact
+            redis_service.update_gift_certificate_field(update, "user_contact", cleaned_contact)
 
             # Save contact to database
             try:
@@ -200,24 +194,22 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == str(END):
         return await back_navigation(update, context)
 
-    global \
-        tariff, \
-        rental_rate, \
-        is_sauna_included, \
-        is_secret_room_included, \
-        is_additional_bedroom_included
     tariff = tariff_helper.get_by_str(data)
     rental_rate = rate_service.get_by_tariff(tariff)
+
+    redis_service.update_gift_certificate_field(update, "tariff", tariff)
+    redis_service.update_gift_certificate_field(update, "rental_rate", rental_rate)
+
     LoggerService.info(__name__, "select tariff", update, kwargs={"tariff": tariff})
 
     if tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
-        is_sauna_included = True
-        is_secret_room_included = True
-        is_additional_bedroom_included = True
+        redis_service.update_gift_certificate_field(update, "is_sauna_included", True)
+        redis_service.update_gift_certificate_field(update, "is_secret_room_included", True)
+        redis_service.update_gift_certificate_field(update, "is_additional_bedroom_included", True)
         return await confirm_pay(update, context)
     elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
-        is_secret_room_included = True
-        is_additional_bedroom_included = True
+        redis_service.update_gift_certificate_field(update, "is_secret_room_included", True)
+        redis_service.update_gift_certificate_field(update, "is_additional_bedroom_included", True)
         return await sauna_message(update, context)
     elif tariff == Tariff.HOURS_12 or tariff == Tariff.WORKER:
         return await additional_bedroom_message(update, context)
@@ -230,8 +222,9 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
     if data == str(END):
         return await back_navigation(update, context)
 
-    global is_additional_bedroom_included
     is_additional_bedroom_included = eval(data)
+    redis_service.update_gift_certificate_field(update, "is_additional_bedroom_included", is_additional_bedroom_included)
+
     LoggerService.info(
         __name__,
         "select additional bedroom",
@@ -248,8 +241,9 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
     if data == str(END):
         return await back_navigation(update, context)
 
-    global is_secret_room_included
     is_secret_room_included = eval(data)
+    redis_service.update_gift_certificate_field(update, "is_secret_room_included", is_secret_room_included)
+
     LoggerService.info(
         __name__,
         "include secret room",
@@ -266,8 +260,9 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == str(END):
         return await back_navigation(update, context)
 
-    global is_sauna_included
     is_sauna_included = eval(data)
+    redis_service.update_gift_certificate_field(update, "is_sauna_included", is_sauna_included)
+
     LoggerService.info(
         __name__,
         "include sauna",
@@ -285,11 +280,12 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if data == str(END):
             return await back_navigation(update, context)
 
-    LoggerService.info(__name__, "pay", update)
+    draft = redis_service.get_gift_certificate(update)
+    LoggerService.info(__name__, "pay", update, kwargs={"price": draft.price})
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n\n"
+        text=f"💰 <b>Общая сумма оплаты:</b> {draft.price} руб.\n\n"
         "📌 <b>Информация для оплаты (Альфа-Банк):</b>\n"
         f"📱 По номеру телефона: <b>{BANK_PHONE_NUMBER}</b>\n"
         "или\n"
@@ -322,18 +318,20 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    global price
+    draft = redis_service.get_gift_certificate(update)
     price = rate_service.calculate_price(
-        rental_rate,
-        is_sauna_included,
-        is_secret_room_included,
-        is_additional_bedroom_included,
+        draft.rental_rate,
+        draft.is_sauna_included,
+        draft.is_secret_room_included,
+        draft.is_additional_bedroom_included,
     )
+    redis_service.update_gift_certificate_field(update, "price", price)
+
     categories = rate_service.get_price_categories(
-        rental_rate,
-        is_sauna_included,
-        is_secret_room_included,
-        is_additional_bedroom_included,
+        draft.rental_rate,
+        draft.is_sauna_included,
+        draft.is_secret_room_included,
+        draft.is_additional_bedroom_included,
     )
     LoggerService.info(__name__, "confirm pay", update, kwargs={"price": price})
     await navigation_service.safe_edit_message_text(
@@ -349,6 +347,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @safe_callback_query()
 async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
+    draft = redis_service.get_gift_certificate(update)
 
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"GIFT-SECRET_{str(True)}")],
@@ -360,8 +359,8 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="🔞 <b>Планируете ли вы пользоваться 'Секретной комнатой'?</b>\n\n"
-        f"💰 <b>Стоимость:</b> {rental_rate.secret_room_price} руб. \n"
-        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
+        f"💰 <b>Стоимость:</b> {draft.rental_rate.secret_room_price} руб. \n"
+        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(draft.tariff)}",
         reply_markup=reply_markup,
     )
     return GIFT_CERTIFICATE
@@ -369,6 +368,8 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 @safe_callback_query()
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    draft = redis_service.get_gift_certificate(update)
+
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"GIFT-SAUNA_{str(True)}")],
         [InlineKeyboardButton("Нет", callback_data=f"GIFT-SAUNA_{str(False)}")],
@@ -380,8 +381,8 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="🧖‍♂️ <b>Планируете ли вы пользоваться сауной?</b>\n\n"
-        f"💰 <b>Стоимость:</b> {rental_rate.sauna_price} руб.\n"
-        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
+        f"💰 <b>Стоимость:</b> {draft.rental_rate.sauna_price} руб.\n"
+        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(draft.tariff)}",
         reply_markup=reply_markup,
     )
     return GIFT_CERTIFICATE
@@ -405,6 +406,8 @@ async def confirm_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def additional_bedroom_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
+    draft = redis_service.get_gift_certificate(update)
+
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"GIFT-ADD-BEDROOM_{str(True)}")],
         [InlineKeyboardButton("Нет", callback_data=f"GIFT-ADD-BEDROOM_{str(False)}")],
@@ -416,43 +419,27 @@ async def additional_bedroom_message(
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="🛏 <b>Планируете ли вы пользоваться второй спальней комнатой?</b>\n\n"
-        f"💰 <b>Стоимость:</b> {rental_rate.second_bedroom_price} руб.\n"
-        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(tariff)}",
+        f"💰 <b>Стоимость:</b> {draft.rental_rate.second_bedroom_price} руб.\n"
+        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(draft.tariff)}",
         reply_markup=reply_markup,
     )
     return GIFT_CERTIFICATE
 
 
-def save_gift_information():
+def save_gift_information(update: Update):
+    """Save gift certificate information from Redis to database"""
+    draft = redis_service.get_gift_certificate(update)
     code = string_helper.get_generated_code()
     gift = database_service.add_gift(
-        user_contact,
-        tariff,
-        is_sauna_included,
-        is_secret_room_included,
-        is_additional_bedroom_included,
-        price,
+        draft.user_contact,
+        draft.tariff,
+        draft.is_sauna_included,
+        draft.is_secret_room_included,
+        draft.is_additional_bedroom_included,
+        draft.price,
         code,
     )
     return gift
-
-
-def reset_variables():
-    global \
-        user_contact, \
-        tariff, \
-        is_sauna_included, \
-        is_secret_room_included, \
-        is_additional_bedroom_included, \
-        rental_rate, \
-        price
-    user_contact = None
-    tariff = None
-    is_sauna_included = None
-    is_secret_room_included = None
-    is_additional_bedroom_included = None
-    rental_rate = None
-    price = None
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -467,9 +454,10 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         photo = update.message.photo[-1].file_id
 
-    gift = save_gift_information()
+    gift = save_gift_information(update)
     LoggerService.info(__name__, "handle photo", update)
     await admin_handler.accept_gift_payment(
         update, context, gift, chat_id, photo, document
     )
+    redis_service.clear_gift_certificate(update)
     return await confirm_gift(update, context)

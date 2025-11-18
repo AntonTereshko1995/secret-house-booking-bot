@@ -21,7 +21,7 @@ from src.constants import (
     FEEDBACK_Q8,
     FEEDBACK_Q9,
 )
-from src.services.redis_service import RedisService
+from src.services.redis import RedisSessionService
 from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
@@ -29,7 +29,7 @@ from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID
 from datetime import date, timedelta
 
-redis_service = RedisService()
+redis_service = RedisSessionService()
 navigation_service = NavigationService()
 
 

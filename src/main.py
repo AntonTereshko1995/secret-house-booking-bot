@@ -13,6 +13,7 @@ from src.handlers import menu_handler, admin_handler, feedback_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
 from src.services.callback_recovery_service import CallbackRecoveryService
+from src.services.redis import RedisPersistence
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -76,8 +77,21 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 if __name__ == "__main__":
+    # Initialize Redis persistence for conversation states
+    persistence = RedisPersistence()
+
+    # Build application with persistence
     application = (
-        Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+        Application.builder()
+        .token(TELEGRAM_TOKEN)
+        .post_init(set_commands)
+        .persistence(persistence)
+        .build()
+    )
+
+    LoggerService.info(
+        __name__,
+        "Application initialized with Redis persistence for conversation states"
     )
 
     # Register handlers
