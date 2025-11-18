@@ -8,9 +8,12 @@ import logging
 from flask import Flask
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
+from telegram.error import BadRequest
 from src.handlers import menu_handler, admin_handler, feedback_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
+from src.services.callback_recovery_service import CallbackRecoveryService
+from src.services.redis import RedisPersistence
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -41,14 +44,55 @@ async def set_commands(application: Application):
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Enhanced error handler with callback query recovery"""
+
+    # Check if it's a callback query expiration error
+    if isinstance(context.error, BadRequest):
+        error_msg = str(context.error).lower()
+        if "query is too old" in error_msg or "query id is invalid" in error_msg:
+            LoggerService.info(
+                __name__,
+                "Callback query expired - attempting recovery",
+                update,
+                kwargs={"error": str(context.error)}
+            )
+
+            # Attempt recovery if update is valid
+            if isinstance(update, Update) and update.callback_query:
+                recovery_service = CallbackRecoveryService()
+                try:
+                    await recovery_service.handle_stale_callback(update, context)
+                    return  # Recovery successful, don't log as error
+                except Exception as recovery_error:
+                    LoggerService.error(
+                        __name__,
+                        "Recovery from stale callback failed",
+                        exception=recovery_error,
+                        update=update
+                    )
+
+    # Log all other errors normally
     LoggerService.error(
         __name__, f"Update {update} caused error {context.error}", update
     )
 
 
 if __name__ == "__main__":
+    # Initialize Redis persistence for conversation states
+    persistence = RedisPersistence()
+
+    # Build application with persistence
     application = (
-        Application.builder().token(TELEGRAM_TOKEN).post_init(set_commands).build()
+        Application.builder()
+        .token(TELEGRAM_TOKEN)
+        .post_init(set_commands)
+        .persistence(persistence)
+        .build()
+    )
+
+    LoggerService.info(
+        __name__,
+        "Application initialized with Redis persistence for conversation states"
     )
 
     # Register handlers

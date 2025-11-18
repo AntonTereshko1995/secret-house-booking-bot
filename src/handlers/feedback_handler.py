@@ -21,14 +21,15 @@ from src.constants import (
     FEEDBACK_Q8,
     FEEDBACK_Q9,
 )
-from src.services.redis_service import RedisService
+from src.services.redis import RedisSessionService
 from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID
 from datetime import date, timedelta
 
-redis_service = RedisService()
+redis_service = RedisSessionService()
 navigation_service = NavigationService()
 
 
@@ -75,6 +76,7 @@ def get_handler():
     return handler
 
 
+@safe_callback_query()
 async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Entry point: Initialize feedback and show Q1"""
     await update.callback_query.answer()
@@ -117,6 +119,7 @@ async def show_question_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+@safe_callback_query()
 async def handle_q1_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle Q1 rating button click"""
     await update.callback_query.answer()
@@ -149,6 +152,7 @@ async def show_question_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+@safe_callback_query()
 async def handle_q2_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle Q2 rating button click"""
     await update.callback_query.answer()
@@ -181,6 +185,7 @@ async def show_question_3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+@safe_callback_query()
 async def handle_q3_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle Q3 rating button click"""
     await update.callback_query.answer()
@@ -213,6 +218,7 @@ async def show_question_4(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+@safe_callback_query()
 async def handle_q4_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle Q4 rating button click"""
     await update.callback_query.answer()
@@ -246,6 +252,7 @@ async def show_question_5(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+@safe_callback_query()
 async def handle_q5_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle Q5 rating button click"""
     await update.callback_query.answer()
@@ -278,6 +285,7 @@ async def show_question_6(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+@safe_callback_query()
 async def handle_q6_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle Q6 rating (last rating question)"""
     await update.callback_query.answer()
@@ -493,6 +501,7 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
     return promocode_name
 
 
+@safe_callback_query()
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Return to main menu after feedback completion"""
     await update.callback_query.answer()
