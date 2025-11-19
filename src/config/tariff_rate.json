@@ -41,7 +41,7 @@
         "secret_room_price": 0,
         "second_bedroom_price": 0,
         "extra_hour_price": 30,
-        "extra_people_price": 70,
+        "extra_people_price": 200,
         "photoshoot_price": 100,
         "max_people": 2,
         "is_check_in_time_limit": false,
