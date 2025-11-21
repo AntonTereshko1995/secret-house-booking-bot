@@ -1397,7 +1397,7 @@ async def handle_promo_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✅ Название: <b>{promo_name}</b>\n\n"
         "Шаг 2 из 5: Введите дату начала действия\n"
         "Формат: ДД.ММ.ГГГГ\n\n"
-        "Пример: 01.12.2024"
+        f"Пример: {date.today().strftime('%d.%m.%Y')}"
     )
 
     await update.message.reply_text(

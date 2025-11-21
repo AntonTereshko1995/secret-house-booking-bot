@@ -453,6 +453,10 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Confirm booking", update)
 
     draft = redis_service.get_change_booking(update)
+    if not draft or not draft.selected_booking_id:
+        LoggerService.warning(__name__, "Draft is None or booking_id is missing (double click protection)", update)
+        return await back_navigation(update, context)
+
     booking = database_service.get_booking_by_id(draft.selected_booking_id)
 
     # Calculate new price based on new dates
