@@ -263,9 +263,6 @@ def _capture_and_store_user_chat_id(update: Update) -> None:
     try:
         database_service = DatabaseService()
         database_service.update_user_chat_id(user_name, chat_id)
-        LoggerService.info(
-            __name__, "Chat ID stored for user", kwargs={"chat_id": chat_id}
-        )
     except Exception as e:
         LoggerService.error(
             __name__,

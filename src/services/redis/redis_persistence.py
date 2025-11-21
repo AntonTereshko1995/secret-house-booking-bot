@@ -29,7 +29,7 @@ class RedisPersistence(BasePersistence):
         self._redis = RedisConnection()
         self._conversations: Dict[str, ConversationDict] = {}
         self._conversation_key_prefix = "conversation_state"
-        self._ttl = 86400  # 24 hours
+        self._ttl = 259200  # 3 dayes
 
     async def get_conversations(self, name: str) -> ConversationDict:
         """Retrieve conversation states from Redis"""
@@ -89,17 +89,9 @@ class RedisPersistence(BasePersistence):
             if new_state is None:
                 # Remove conversation
                 conversations.pop(key_str, None)
-                LoggerService.info(
-                    __name__,
-                    f"Removed conversation state: key={key}, name='{name}'"
-                )
             else:
                 # Update conversation state
                 conversations[key_str] = new_state
-                LoggerService.info(
-                    __name__,
-                    f"Saved conversation state: key={key}, state={new_state}, name='{name}'"
-                )
 
             # Save back to Redis with TTL
             self._redis.client.setex(
