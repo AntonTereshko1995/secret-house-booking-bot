@@ -238,11 +238,19 @@ class DatabaseService:
         """Get all bookings ending on a specific date."""
         return self.booking_repository.get_booking_by_finish_date(end_date)
 
-    def get_booking_by_period(
+    def get_booking_by_start_date_period(
         self, from_date: date, to_date: date, is_admin: bool = False
     ) -> Sequence[BookingBase]:
-        """Get bookings within a date range."""
-        return self.booking_repository.get_booking_by_period(
+        """Get bookings within a date range based on start_date."""
+        return self.booking_repository.get_booking_by_start_date_period(
+            from_date, to_date, is_admin
+        )
+
+    def get_booking_by_finish_date_period(
+        self, from_date: date, to_date: date, is_admin: bool = False
+    ) -> Sequence[BookingBase]:
+        """Get bookings within a date range based on end_date."""
+        return self.booking_repository.get_booking_by_finish_date_period(
             from_date, to_date, is_admin
         )
 

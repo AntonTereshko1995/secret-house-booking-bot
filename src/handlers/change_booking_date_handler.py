@@ -227,7 +227,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif is_next_month or is_prev_month:
         query = update.callback_query
         start_period, end_period = date_time_helper.month_bounds(selected_date)
-        feature_booking = database_service.get_booking_by_period(
+        feature_booking = database_service.get_booking_by_start_date_period(
             start_period, end_period
         )
         available_days = date_time_helper.get_free_dayes_slots(
@@ -319,7 +319,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif is_next_month or is_prev_month:
         query = update.callback_query
         start_period, end_period = date_time_helper.month_bounds(selected_date)
-        feature_booking = database_service.get_booking_by_period(
+        feature_booking = database_service.get_booking_by_start_date_period(
             start_period, end_period
         )
         available_days = date_time_helper.get_free_dayes_slots(
@@ -376,7 +376,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         booking = database_service.get_booking_by_id(draft.selected_booking_id)
-        created_bookings = database_service.get_booking_by_period(
+        created_bookings = database_service.get_booking_by_start_date_period(
             draft.start_booking_date, finish_booking_date
         )
 
@@ -576,7 +576,7 @@ async def start_date_message(
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = today
     start_period, end_period = date_time_helper.month_bounds(today)
-    feature_booking = database_service.get_booking_by_period(start_period, end_period)
+    feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking, target_month=today.month, target_year=today.year
     )
@@ -616,7 +616,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     draft = redis_service.get_change_booking(update)
     booking = database_service.get_booking_by_id(draft.selected_booking_id)
 
-    feature_booking = database_service.get_booking_by_period(
+    feature_booking = database_service.get_booking_by_start_date_period(
         draft.start_booking_date.date() - timedelta(days=2),
         draft.start_booking_date.date() + timedelta(days=2),
     )
@@ -667,7 +667,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     min_date_booking = (draft.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
 
     start_period, end_period = date_time_helper.month_bounds(draft.start_booking_date.date())
-    feature_booking = database_service.get_booking_by_period(start_period, end_period)
+    feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking, target_month=start_period.month, target_year=start_period.year
     )
@@ -704,7 +704,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 @safe_callback_query()
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     draft = redis_service.get_change_booking(update)
-    feature_booking = database_service.get_booking_by_period(
+    feature_booking = database_service.get_booking_by_start_date_period(
         draft.finish_booking_date.date() - timedelta(days=2),
         draft.finish_booking_date.date() + timedelta(days=2),
     )

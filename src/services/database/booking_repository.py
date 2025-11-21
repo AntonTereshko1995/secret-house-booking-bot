@@ -147,10 +147,10 @@ class BookingRepository(BaseRepository):
             print(f"Error in get_booking_by_finish_date: {e}")
             LoggerService.error(__name__, "get_booking_by_finish_date", e)
 
-    def get_booking_by_period(
+    def get_booking_by_start_date_period(
         self, from_date: date, to_date: date, is_admin: bool = False
     ) -> Sequence[BookingBase]:
-        """Get bookings within a date range."""
+        """Get bookings within a date range based on start_date."""
         try:
             with self.Session() as session:
                 if not is_admin:
@@ -183,8 +183,47 @@ class BookingRepository(BaseRepository):
 
                 return bookings
         except Exception as e:
-            print(f"Error in get_booking_by_period: {e}")
-            LoggerService.error(__name__, "get_booking_by_period", e)
+            print(f"Error in get_booking_by_start_date_period: {e}")
+            LoggerService.error(__name__, "get_booking_by_start_date_period", e)
+
+    def get_booking_by_finish_date_period(
+        self, from_date: date, to_date: date, is_admin: bool = False
+    ) -> Sequence[BookingBase]:
+        """Get bookings within a date range based on end_date."""
+        try:
+            with self.Session() as session:
+                if not is_admin:
+                    bookings = session.scalars(
+                        select(BookingBase)
+                        .options(joinedload(BookingBase.user))
+                        .where(
+                            and_(
+                                BookingBase.end_date >= from_date,
+                                BookingBase.end_date <= to_date,
+                                BookingBase.is_canceled == False,
+                                BookingBase.is_done == False,
+                                BookingBase.is_prepaymented == True,
+                            )
+                        )
+                        .order_by(BookingBase.end_date)
+                    ).all()
+                else:
+                    bookings = session.scalars(
+                        select(BookingBase)
+                        .options(joinedload(BookingBase.user))
+                        .where(
+                            and_(
+                                BookingBase.end_date >= from_date,
+                                BookingBase.end_date <= to_date,
+                            )
+                        )
+                        .order_by(BookingBase.end_date)
+                    ).all()
+
+                return bookings
+        except Exception as e:
+            print(f"Error in get_booking_by_finish_date_period: {e}")
+            LoggerService.error(__name__, "get_booking_by_finish_date_period", e)
 
     def get_booking_by_day(
         self, target_date: date, except_booking_id: int = None
@@ -324,7 +363,7 @@ class BookingRepository(BaseRepository):
             LoggerService.error(__name__, "get_booking_by_id", e)
 
     def get_booking_by_user_contact(self, user_contact: str) -> list[BookingBase]:
-        """Get all active bookings for a user."""
+        """Get all active bookings for a user. """
         user = self.user_service.get_user_by_contact(user_contact)
         if not user:
             return []

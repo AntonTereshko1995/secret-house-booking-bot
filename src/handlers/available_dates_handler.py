@@ -102,5 +102,5 @@ def get_booking(month, year):
         hour=23,
         minute=59,
     ) + timedelta(days=1)
-    booking = database_service.get_booking_by_period(from_date.date(), to_date.date())
+    booking = database_service.get_booking_by_start_date_period(from_date.date(), to_date.date())
     return (from_date, to_date, booking)
