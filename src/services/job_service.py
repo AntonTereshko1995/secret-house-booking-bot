@@ -64,8 +64,7 @@ class JobService:
 
     async def send_booking_details(self, context: CallbackContext):
         tomorrow = date.today() + timedelta(days=1)
-        # bookings = database_service.get_booking_by_start_date(tomorrow)
-        bookings = database_service.get_booking_by_period(date.today(), tomorrow)
+        bookings = database_service.get_booking_by_start_date_period(date.today(), tomorrow)
         LoggerService.info(
             __name__,
             f"Found {len(bookings)} bookings for {tomorrow}",
@@ -97,20 +96,21 @@ class JobService:
                 )
 
     async def send_feeback(self, context: CallbackContext):
-        yesterday = date.today() - timedelta(days=1)
-        bookings = database_service.get_booking_by_finish_date(yesterday)
+        today = date.today()
+        seven_days_ago = today - timedelta(days=7)
+        bookings = database_service.get_booking_by_finish_date_period(seven_days_ago, today)
         if not bookings:
             LoggerService.info(
                 __name__,
-                f"No completed bookings found for {yesterday}",
-                kwargs={"date": str(yesterday)},
+                f"No completed bookings found for period {seven_days_ago} - {today}",
+                kwargs={"from_date": str(seven_days_ago), "to_date": str(today)},
             )
             return
 
         LoggerService.info(
             __name__,
-            f"Found {len(bookings)} completed bookings for {yesterday}",
-            kwargs={"bookings_count": len(bookings), "date": str(yesterday)},
+            f"Found {len(bookings)} completed bookings for period {seven_days_ago} - {today}",
+            kwargs={"bookings_count": len(bookings), "from_date": str(seven_days_ago), "to_date": str(today)},
         )
 
         for booking in bookings:

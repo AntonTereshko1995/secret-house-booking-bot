@@ -517,7 +517,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
     elif is_next_month or is_prev_month:
         start_period, end_period = date_time_helper.month_bounds(selected_date)
-        feature_booking = database_service.get_booking_by_period(
+        feature_booking = database_service.get_booking_by_start_date_period(
             start_period, end_period
         )
         available_days = date_time_helper.get_free_dayes_slots(
@@ -618,7 +618,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await start_time_message(update, context)
     elif is_next_month or is_prev_month:
         start_period, end_period = date_time_helper.month_bounds(selected_date)
-        feature_booking = database_service.get_booking_by_period(
+        feature_booking = database_service.get_booking_by_start_date_period(
             start_period, end_period
         )
         available_days = date_time_helper.get_free_dayes_slots(
@@ -1321,7 +1321,7 @@ async def start_date_message(
         reference_date = today
 
     start_period, end_period = date_time_helper.month_bounds(reference_date)
-    feature_booking = database_service.get_booking_by_period(start_period, end_period)
+    feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking,
         target_month=reference_date.month,
@@ -1366,7 +1366,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
     booking = redis_service.get_booking(update)
 
-    feature_booking = database_service.get_booking_by_period(
+    feature_booking = database_service.get_booking_by_start_date_period(
         booking.start_booking_date.date() - timedelta(days=2),
         booking.start_booking_date.date() + timedelta(days=2),
     )
@@ -1428,7 +1428,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         reference_date = booking.start_booking_date.date()
 
     start_period, end_period = date_time_helper.month_bounds(reference_date)
-    feature_booking = database_service.get_booking_by_period(start_period, end_period)
+    feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking,
         target_month=reference_date.month,
@@ -1471,7 +1471,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
     booking = redis_service.get_booking(update)
 
-    feature_booking = database_service.get_booking_by_period(
+    feature_booking = database_service.get_booking_by_start_date_period(
         booking.finish_booking_date.date() - timedelta(days=2),
         booking.finish_booking_date.date() + timedelta(days=2),
     )

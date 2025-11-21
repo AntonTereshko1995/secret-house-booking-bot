@@ -1142,7 +1142,7 @@ async def cancel_gift(
 def get_future_bookings() -> Sequence[BookingBase]:
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
-    booking_list = database_service.get_booking_by_period(today, max_date_booking, True)
+    booking_list = database_service.get_booking_by_start_date_period(today, max_date_booking, True)
     return booking_list
 
 
