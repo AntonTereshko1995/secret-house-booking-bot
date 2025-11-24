@@ -310,11 +310,13 @@ def _get_booking_list_data():
         label = string_helper.format_booking_button_label(booking)
         user = database_service.get_user_by_id(booking.user_id)
         # Add user contact to button for context
+        # Handle case when user is None
+        user_contact = user.contact if user and user.contact else "N/A"
         # Add emoji for canceled bookings
         cancel_emoji = "❌ " if booking.is_canceled else ""
         # Add emoji for unpaid bookings (waiting for confirmation)
         unpaid_emoji = "⏳ " if not booking.is_prepaymented and not booking.is_canceled else ""
-        button_text = f"{cancel_emoji}{unpaid_emoji}{label} - {user.contact}"
+        button_text = f"{cancel_emoji}{unpaid_emoji}{label} - {user_contact}"
         keyboard.append([
             InlineKeyboardButton(button_text, callback_data=f"MBD_{booking.id}")
         ])
