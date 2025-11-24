@@ -433,6 +433,8 @@ class BookingRepository(BaseRepository):
         calendar_event_id: str = None,
         is_done: bool = None,
         prepayment: float = None,
+        prepayment_price: float = None,
+        tariff: Tariff = None,
     ) -> BookingBase:
         """Update booking fields and return with eagerly loaded user."""
         with self.Session() as session:
@@ -465,8 +467,13 @@ class BookingRepository(BaseRepository):
                     # Increment completed bookings counter when marking as done
                     if is_done and not booking.is_canceled:
                         self.user_service.increment_completed_bookings(booking.user_id)
-                if prepayment is not None and prepayment >= 0:
+                # Support both prepayment and prepayment_price for backward compatibility
+                if prepayment_price is not None and prepayment_price >= 0:
+                    booking.prepayment_price = prepayment_price
+                elif prepayment is not None and prepayment >= 0:
                     booking.prepayment_price = prepayment
+                if tariff is not None:
+                    booking.tariff = tariff
 
                 session.commit()
                 session.refresh(booking)

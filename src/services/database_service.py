@@ -305,6 +305,8 @@ class DatabaseService:
         calendar_event_id: str = None,
         is_done: bool = None,
         prepayment: float = None,
+        prepayment_price: float = None,
+        tariff: Tariff = None,
     ) -> BookingBase:
         """Update booking fields."""
         return self.booking_repository.update_booking(
@@ -318,6 +320,8 @@ class DatabaseService:
             calendar_event_id,
             is_done,
             prepayment,
+            prepayment_price,
+            tariff,
         )
 
     # Statistics methods

@@ -11,7 +11,8 @@
       "Bash(for handler in gift_certificate_handler feedback_handler cancel_booking_handler change_booking_date_handler available_dates_handler question_handler admin_handler)",
       "Bash(do)",
       "Bash(echo:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(xargs ls:*)"
     ],
     "deny": [],
     "ask": []
