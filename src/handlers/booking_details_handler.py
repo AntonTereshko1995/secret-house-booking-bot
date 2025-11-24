@@ -199,7 +199,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
         )
 
     # Notify customer
-    if user.chat_id:
+    if user and user.chat_id:
         try:
             await context.bot.send_message(
                 chat_id=user.chat_id,
@@ -211,7 +211,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
                 __name__,
                 "Failed to notify customer of booking approval",
                 exception=e,
-                kwargs={"booking_id": booking_id, "chat_id": user.chat_id}
+                kwargs={"booking_id": booking_id, "chat_id": user.chat_id if user else None}
             )
 
     # Update admin message
@@ -248,11 +248,11 @@ async def notify_customer_cancellation(
     user: UserBase
 ):
     """Send cancellation notification to customer"""
-    if not user.chat_id:
+    if not user or not user.chat_id:
         LoggerService.warning(
             __name__,
-            "Cannot notify customer - no chat_id",
-            kwargs={"booking_id": booking.id, "user_id": user.id}
+            "Cannot notify customer - no chat_id or user is None",
+            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -392,11 +392,11 @@ async def notify_customer_price_change(
     old_price: float
 ):
     """Notify customer of price change"""
-    if not user.chat_id:
+    if not user or not user.chat_id:
         LoggerService.warning(
             __name__,
-            "Cannot notify customer - no chat_id",
-            kwargs={"booking_id": booking.id, "user_id": user.id}
+            "Cannot notify customer - no chat_id or user is None",
+            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -538,11 +538,11 @@ async def notify_customer_prepayment_change(
     old_prepayment: float
 ):
     """Notify customer of prepayment change"""
-    if not user.chat_id:
+    if not user or not user.chat_id:
         LoggerService.warning(
             __name__,
-            "Cannot notify customer - no chat_id",
-            kwargs={"booking_id": booking.id, "user_id": user.id}
+            "Cannot notify customer - no chat_id or user is None",
+            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -697,11 +697,11 @@ async def notify_customer_tariff_change(
     old_tariff: Tariff
 ):
     """Notify customer of tariff change"""
-    if not user.chat_id:
+    if not user or not user.chat_id:
         LoggerService.warning(
             __name__,
-            "Cannot notify customer - no chat_id",
-            kwargs={"booking_id": booking.id, "user_id": user.id}
+            "Cannot notify customer - no chat_id or user is None",
+            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -1300,11 +1300,11 @@ async def notify_customer_reschedule(
     old_start_date: datetime
 ):
     """Notify customer of booking reschedule"""
-    if not user.chat_id:
+    if not user or not user.chat_id:
         LoggerService.warning(
             __name__,
-            "Cannot notify customer - no chat_id",
-            kwargs={"booking_id": booking.id, "user_id": user.id}
+            "Cannot notify customer - no chat_id or user is None",
+            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 

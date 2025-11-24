@@ -142,8 +142,13 @@ def generate_booking_info_message(
     user: UserBase,
     is_additional_payment_by_cash=False,
 ) -> str:
+    # Handle case when user is None
+    user_contact = user.contact if user and user.contact else "N/A"
+    user_total_bookings = user.total_bookings if user else 0
+    user_completed_bookings = user.completed_bookings if user else 0
+    
     message = (
-        f"Пользователь: {user.contact}\n"
+        f"Пользователь: {user_contact}\n"
         f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
@@ -155,8 +160,8 @@ def generate_booking_info_message(
         f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
         f"Количество гостей: {booking.number_of_guests}\n"
         f"Комментарий: {booking.comment if booking.comment else ''}\n"
-        f"Всего бронирований: {user.total_bookings}\n"
-        f"Завершенных бронирований: {user.completed_bookings}\n"
+        f"Всего бронирований: {user_total_bookings}\n"
+        f"Завершенных бронирований: {user_completed_bookings}\n"
     )
 
     # Add incognito questionnaire info for incognito tariffs
