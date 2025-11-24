@@ -284,3 +284,34 @@ def parse_gift_callback_data(callback_data: str):
         }
     else:
         return None
+
+
+def parse_manage_booking_callback(data: str) -> dict:
+    """Parse callback data from booking management buttons
+
+    Formats:
+      - MBL: Back to list
+      - MBD_{booking_id}: View detail
+      - MBA_{action}_{booking_id}: Action
+      - MBT_{tariff}_{booking_id}: Tariff selection
+      - MBB_{booking_id}: Back to detail
+    """
+    parts = data.split("_")
+
+    if data == "MBL":
+        return {"type": "list"}
+    elif parts[0] == "MBD":
+        return {"type": "detail", "booking_id": int(parts[1])}
+    elif parts[0] == "MBA":
+        return {"type": "action", "action": parts[1], "booking_id": int(parts[2])}
+    elif parts[0] == "MBT":
+        return {"type": "tariff_select", "tariff": int(parts[1]), "booking_id": int(parts[2])}
+    elif parts[0] == "MBB":
+        return {"type": "back_detail", "booking_id": int(parts[1])}
+    else:
+        raise ValueError(f"Unknown callback format: {data}")
+
+
+def format_booking_button_label(booking: BookingBase) -> str:
+    """Format booking for button label: 'DD.MM.YYYY HH:MM'"""
+    return booking.start_date.strftime("%d.%m.%Y %H:%M")

@@ -278,49 +278,99 @@ async def cancel_password_change(update: Update, context: ContextTypes.DEFAULT_T
     return END
 
 
+def _get_booking_list_data():
+    """Get booking list data (bookings, keyboard, message) - shared logic"""
+    # Get future bookings
+    future_bookings = get_future_bookings()
+    
+    # Get unpaid bookings (waiting for admin confirmation)
+    unpaid_bookings = database_service.get_unpaid_bookings()
+    
+    # Combine and deduplicate by booking ID
+    all_bookings_dict = {}
+    for booking in future_bookings:
+        all_bookings_dict[booking.id] = booking
+    for booking in unpaid_bookings:
+        all_bookings_dict[booking.id] = booking
+    
+    bookings = list(all_bookings_dict.values())
+    
+    # Sort by start_date
+    bookings.sort(key=lambda b: b.start_date)
+
+    if not bookings:
+        return None, None, None
+
+    # Telegram limit: max 100 buttons
+    bookings = bookings[:100]
+
+    # Create inline keyboard (max 8 buttons per row, 1 per row for readability)
+    keyboard = []
+    for booking in bookings:
+        label = string_helper.format_booking_button_label(booking)
+        user = database_service.get_user_by_id(booking.user_id)
+        # Add user contact to button for context
+        # Add emoji for canceled bookings
+        cancel_emoji = "❌ " if booking.is_canceled else ""
+        # Add emoji for unpaid bookings (waiting for confirmation)
+        unpaid_emoji = "⏳ " if not booking.is_prepaymented and not booking.is_canceled else ""
+        button_text = f"{cancel_emoji}{unpaid_emoji}{label} - {user.contact}"
+        keyboard.append([
+            InlineKeyboardButton(button_text, callback_data=f"MBD_{booking.id}")
+        ])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        f"📋 <b>Управление бронированиями</b>\n\n"
+        f"Всего активных броней: {len(bookings)}\n"
+        f"⏳ - ожидают подтверждения\n"
+        f"❌ - отменены\n"
+        f"Выберите бронирование для просмотра и управления:"
+    )
+
+    return bookings, reply_markup, message
+
+
 async def get_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to show all future bookings and unpaid bookings as inline buttons"""
     chat_id = update.effective_chat.id
     if chat_id != ADMIN_CHAT_ID:
         await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
-    else:
-        bookings = get_future_bookings()
+        return END
 
-        if not bookings:
-            await update.message.reply_text("🔍 Не найдено бронирований.")
-            return END
+    bookings, reply_markup, message = _get_booking_list_data()
 
-        for booking in bookings:
-            user = database_service.get_user_by_id(booking.user_id)
-            message = "⛔ Отменен\n" if booking.is_canceled else ""
-            message += (
-                f"Пользователь: {user.contact}\n"
-                f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
-                f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
-                f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
-                f"Стоимость: {booking.price} руб.\n"
-                f"Предоплата: {booking.prepayment_price} руб.\n"
-            )
-            await update.message.reply_text(text=message)
+    if not bookings:
+        await update.message.reply_text("🔍 Не найдено активных бронирований.")
+        return END
+
+    await update.message.reply_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode="HTML"
+    )
+
+    LoggerService.info(__name__, "Admin opened booking management list", update)
     return END
 
 
-async def get_unpaid_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to show all unpaid bookings"""
-    chat_id = update.effective_chat.id
-    if chat_id != ADMIN_CHAT_ID:
-        await update.message.reply_text("⛔ Эта команда не доступна в этом чате.")
-        return END
+@safe_callback_query()
+async def back_to_booking_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Return to booking list from detail view"""
+    await update.callback_query.answer()
 
-    bookings = database_service.get_unpaid_bookings()
+    bookings, reply_markup, message = _get_booking_list_data()
 
     if not bookings:
-        await update.message.reply_text("🔍 Не найдено неоплаченных бронирований.")
+        await update.callback_query.edit_message_text("🔍 Не найдено активных бронирований.")
         return END
 
-    for booking in bookings:
-        await accept_booking_payment(
-            update, context, booking, booking.user.chat_id, None, None, False
-        )
+    await update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode="HTML"
+    )
 
     return END
 

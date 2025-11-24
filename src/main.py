@@ -9,7 +9,7 @@ from flask import Flask
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 from telegram.error import BadRequest
-from src.handlers import menu_handler, admin_handler, feedback_handler
+from src.handlers import menu_handler, admin_handler, feedback_handler, booking_details_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
 from src.services import job_service
 from src.services.callback_recovery_service import CallbackRecoveryService
@@ -25,16 +25,15 @@ app = Flask(__name__)
 async def set_commands(application: Application):
     user_commands = [BotCommand("start", "Открыть 'Главное меню'")]
     admin_commands = user_commands + [
-        BotCommand("booking_list", "Бронирования"),
+        BotCommand("booking_list", "Управление бронированиями"),
         BotCommand("change_password", "Изменить пароль"),
-        BotCommand("unpaid_bookings", "Неоплаченные бронирования"),
         BotCommand("broadcast", "Рассылка всем"),
         BotCommand("broadcast_with_bookings", "Рассылка c бронями"),
         BotCommand("broadcast_without_bookings", "Рассылка БЕЗ броней"),
         BotCommand("statistics", "Статистика"),
-        BotCommand("create_promocode", "➕ Создать промокод"),
-        BotCommand("list_promocodes", "📋 Список промокодов"),
-        BotCommand("users_without_chat_id", "🧪 Пользователи без chat_id"),
+        BotCommand("create_promocode", "Создать промокод"),
+        BotCommand("list_promocodes", "Список промокодов"),
+        BotCommand("users_without_chat_id", "Пользователи без chat_id"),
     ]
 
     await application.bot.set_my_commands(user_commands)
@@ -105,13 +104,11 @@ if __name__ == "__main__":
     application.add_handler(admin_handler.get_broadcast_with_bookings_handler())
     application.add_handler(admin_handler.get_broadcast_without_bookings_handler())
     application.add_handler(feedback_handler.get_handler())
+    application.add_handler(booking_details_handler.get_handler())
 
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
     application.add_handler(
         CommandHandler("booking_list", admin_handler.get_booking_list)
-    )
-    application.add_handler(
-        CommandHandler("unpaid_bookings", admin_handler.get_unpaid_bookings)
     )
     application.add_handler(CommandHandler("statistics", admin_handler.get_statistics))
     application.add_handler(
