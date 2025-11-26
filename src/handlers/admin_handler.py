@@ -1499,7 +1499,7 @@ async def handle_promo_date_from(update: Update, context: ContextTypes.DEFAULT_T
         f"✅ Дата начала: <b>{date_from.strftime('%d.%m.%Y')}</b>\n\n"
         "Шаг 3 из 5: Введите дату окончания действия\n"
         "Формат: ДД.ММ.ГГГГ\n\n"
-        "Пример: 31.12.2024"
+        f"Пример: {date.today().strftime('%d.%m.%Y')}"
     )
 
     await update.message.reply_text(

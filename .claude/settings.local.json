@@ -12,7 +12,9 @@
       "Bash(do)",
       "Bash(echo:*)",
       "Bash(done)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(python -m alembic revision:*)",
+      "Bash(ENV=debug python -m alembic revision --autogenerate -m \"add promocode_type field\")"
     ],
     "deny": [],
     "ask": []

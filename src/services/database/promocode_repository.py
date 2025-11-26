@@ -1,14 +1,17 @@
 import sys
 import os
 import json
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Optional
+from dateutil.relativedelta import relativedelta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database.base import BaseRepository
 from src.services.logger_service import LoggerService
 from db.models.promocode import PromocodeBase
 from src.models.enum.tariff import Tariff
+from src.models.enum.promocode_type import PromocodeType
+from src.config.config import PERIOD_IN_MONTHS
 from singleton_decorator import singleton
 from sqlalchemy import select
 
@@ -24,6 +27,7 @@ class PromocodeRepository(BaseRepository):
         date_to: date,
         discount_percentage: float,
         applicable_tariffs: Optional[list[int]] = None,
+        promocode_type: int = 1,
     ) -> PromocodeBase:
         """Add a new promocode to the database."""
         with self.Session() as session:
@@ -35,6 +39,7 @@ class PromocodeRepository(BaseRepository):
 
                 new_promocode = PromocodeBase(
                     name=name.upper(),  # Always store uppercase
+                    promocode_type=promocode_type,
                     date_from=date_from,
                     date_to=date_to,
                     discount_percentage=discount_percentage,
@@ -106,9 +111,27 @@ class PromocodeRepository(BaseRepository):
                 if not promo:
                     return (False, "❌ Промокод не найден", None)
 
-                # Date validation with booking_date (date object)
-                if not (promo.date_from <= booking_date <= promo.date_to):
-                    return (False, "❌ Промокод недействителен в выбранную дату", None)
+                today = date.today()
+
+                # Type 1: BOOKING_DATES - booking must be within promo dates
+                if promo.promocode_type == PromocodeType.BOOKING_DATES.value:
+                    if not (promo.date_from <= booking_date <= promo.date_to):
+                        return (False, "❌ Промокод недействителен в выбранную дату бронирования", None)
+
+                # Type 2: USAGE_PERIOD - booking can be any time, but promo must be used within period
+                elif promo.promocode_type == PromocodeType.USAGE_PERIOD.value:
+                    # Check if TODAY is within the promocode usage period
+                    if not (promo.date_from <= today <= promo.date_to):
+                        return (False, "❌ Промокод недействителен в данный период", None)
+
+                    # Check if booking date is within allowed future period (PERIOD_IN_MONTHS)
+                    max_booking_date = today + relativedelta(months=PERIOD_IN_MONTHS)
+                    if booking_date > max_booking_date:
+                        return (
+                            False,
+                            f"❌ Бронирование возможно только на {PERIOD_IN_MONTHS} месяцев вперед",
+                            None
+                        )
 
                 # Tariff validation - null/empty list means ALL tariffs
                 if promo.applicable_tariffs:

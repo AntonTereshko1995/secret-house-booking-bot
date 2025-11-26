@@ -737,17 +737,7 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__, "Write comment", update, kwargs={"comment": booking_comment}
         )
 
-    # Check if Incognito tariff and route to questionnaire
-    booking = redis_service.get_booking(update)
-    if (
-        booking.tariff == Tariff.INCOGNITA_DAY
-        or booking.tariff == Tariff.INCOGNITA_HOURS
-        or booking.tariff == Tariff.INCOGNITA_WORKER
-    ):
-        return await wine_preference_message(update, context)
-    else:
-        # Route to promocode entry for non-incognito flows
-        return await promocode_entry_message(update, context)
+    return await promocode_entry_message(update, context)
 
 
 async def promocode_entry_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -818,8 +808,16 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
             },
         )
 
-        # Progress to next step
-        return await confirm_pay(update, context)
+        # Check if Incognito tariff and route to questionnaire
+        booking = redis_service.get_booking(update)
+        if (
+            booking.tariff == Tariff.INCOGNITA_DAY
+            or booking.tariff == Tariff.INCOGNITA_HOURS
+            or booking.tariff == Tariff.INCOGNITA_WORKER
+        ):
+            return await wine_preference_message(update, context)
+        else:
+            return await confirm_pay(update, context)
     else:
         # Show error with skip button, stay in same state for retry
         keyboard = [

@@ -149,10 +149,11 @@ class DatabaseService:
         date_to: date,
         discount_percentage: float,
         applicable_tariffs: Optional[list[int]] = None,
+        promocode_type: int = 1,
     ) -> PromocodeBase:
         """Add a new promocode to the database."""
         return self.promocode_repository.add_promocode(
-            name, date_from, date_to, discount_percentage, applicable_tariffs
+            name, date_from, date_to, discount_percentage, applicable_tariffs, promocode_type
         )
 
     def get_promocode_by_name(self, name: str) -> Optional[PromocodeBase]:
