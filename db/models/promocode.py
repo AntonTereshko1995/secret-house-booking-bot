@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.base import Base
-from sqlalchemy import Boolean, Date, DateTime, Float, String, JSON
+from sqlalchemy import Boolean, Date, DateTime, Float, String, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -13,6 +13,9 @@ class PromocodeBase(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    promocode_type: Mapped[int] = mapped_column(
+        Integer, default=1, nullable=False
+    )  # 1 = BOOKING_DATES, 2 = USAGE_PERIOD
     date_from: Mapped[date] = mapped_column(Date, nullable=False)
     date_to: Mapped[date] = mapped_column(Date, nullable=False)
     discount_percentage: Mapped[float] = mapped_column(Float, nullable=False)
