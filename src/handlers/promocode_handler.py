@@ -43,9 +43,9 @@ async def create_promocode_start(update: Update, context: ContextTypes.DEFAULT_T
 
     message = (
         "📝 <b>Создание промокода</b>\n\n"
-        "Шаг 1 из 5: Введите название промокода\n"
-        "(только латинские буквы, цифры и дефис, макс. 50 символов)\n\n"
-        "Пример: SUMMER2024"
+        "Шаг 1 из 6: Введите название промокода\n"
+        "(буквы, цифры, дефис, подчеркивание, пробел; макс. 50 символов)\n\n"
+        "Примеры: SUMMER2024, Новый год, Скидка_10"
     )
 
     await update.message.reply_text(
@@ -61,14 +61,14 @@ async def handle_promo_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return CREATE_PROMO_NAME
 
-    promo_name = update.message.text.strip().upper()
+    promo_name = update.message.text.strip().lower()  # Convert to lowercase
 
-    # Validate format
+    # Validate format - allow cyrillic, latin, digits, dash, underscore, space
     import re
 
-    if not re.match(r"^[A-Z0-9\-]{1,50}$", promo_name):
+    if not re.match(r"^[А-ЯЁа-яёA-Za-z0-9\-_\s]{1,50}$", promo_name):
         await update.message.reply_text(
-            "❌ Неверный формат! Используйте только латинские буквы, цифры и дефис (макс. 50 символов).\n\n"
+            "❌ Неверный формат! Используйте только буквы (русские или латинские), цифры, дефис, подчеркивание и пробел (макс. 50 символов).\n\n"
             "Попробуйте снова:",
             parse_mode="HTML",
         )

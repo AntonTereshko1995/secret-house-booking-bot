@@ -38,7 +38,7 @@ class PromocodeRepository(BaseRepository):
                     tariffs_json = json.dumps(applicable_tariffs)
 
                 new_promocode = PromocodeBase(
-                    name=name.upper(),  # Always store uppercase
+                    name=name.lower(),  # Always store in lowercase
                     promocode_type=promocode_type,
                     date_from=date_from,
                     date_to=date_to,
@@ -60,11 +60,12 @@ class PromocodeRepository(BaseRepository):
                 raise
 
     def get_promocode_by_name(self, name: str) -> Optional[PromocodeBase]:
-        """Get promocode by name."""
+        """Get promocode by name (all names stored in lowercase)."""
         try:
             with self.Session() as session:
+                # All names are stored in lowercase, so search directly
                 promocode = session.scalar(
-                    select(PromocodeBase).where(PromocodeBase.name == name.upper())
+                    select(PromocodeBase).where(PromocodeBase.name == name.lower())
                 )
                 if promocode:
                     # Detach from session to avoid lazy load errors
@@ -100,10 +101,10 @@ class PromocodeRepository(BaseRepository):
         """
         try:
             with self.Session() as session:
-                # Case-insensitive name lookup, uppercase before query
+                # All names are stored in lowercase
                 promo = session.scalar(
                     select(PromocodeBase).where(
-                        PromocodeBase.name == name.upper(),
+                        PromocodeBase.name == name.lower(),
                         PromocodeBase.is_active,
                     )
                 )

@@ -14,7 +14,9 @@
       "Bash(done)",
       "Bash(xargs ls:*)",
       "Bash(python -m alembic revision:*)",
-      "Bash(ENV=debug python -m alembic revision --autogenerate -m \"add promocode_type field\")"
+      "Bash(ENV=debug python -m alembic revision --autogenerate -m \"add promocode_type field\")",
+      "Bash(ENV=debug python -m alembic revision -m \"add promocode_type field\")",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []
