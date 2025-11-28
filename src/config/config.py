@@ -32,6 +32,7 @@ if "secrets-production" in os.environ:
     GOOGLE_CREDENTIALS = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
     REDIS_URL = secret_manager_service.get_secret("REDIS_URL")
     REDIS_PORT = int(secret_manager_service.get_secret("REDIS_PORT"))
+    REDIS_SSL = secret_manager_service.get_secret("REDIS_SSL").strip().lower() in ("true", "1", "yes", "on")
     SETTINGS_PATH = secret_manager_service.get_secret("SETTINGS_PATH")
 else:
     if os.environ.get("AMVERA") != 1:
