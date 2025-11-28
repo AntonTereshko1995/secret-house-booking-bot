@@ -309,10 +309,13 @@ async def handle_promo_discount(update: Update, context: ContextTypes.DEFAULT_TY
 
     context.user_data["creating_promocode"]["discount"] = discount
 
+    # Initialize tariff selection
+    context.user_data["creating_promocode"]["selected_tariffs"] = set()
+
     # Show tariff selection
     keyboard = []
     keyboard.append(
-        [InlineKeyboardButton("✅ ВСЕ ТАРИФЫ", callback_data="promo_tariff_ALL")]
+        [InlineKeyboardButton("☐ ВСЕ ТАРИФЫ", callback_data="promo_tariff_ALL")]
     )
 
     # Add individual tariffs
@@ -320,7 +323,7 @@ async def handle_promo_discount(update: Update, context: ContextTypes.DEFAULT_TY
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    f"📋 {tariff.name}", callback_data=f"promo_tariff_{tariff.value}"
+                    f"☐ {tariff.name}", callback_data=f"promo_tariff_{tariff.value}"
                 )
             ]
         )
@@ -333,8 +336,9 @@ async def handle_promo_discount(update: Update, context: ContextTypes.DEFAULT_TY
     message = (
         f"✅ Скидка: <b>{discount}%</b>\n\n"
         "Шаг 6 из 6: Выберите тарифы, к которым применим промокод\n\n"
-        "Нажмите <b>ВСЕ ТАРИФЫ</b> для применения ко всем тарифам,\n"
-        "или выберите конкретный тариф:"
+        f"🎯 <b>Выбрано:</b> Не выбрано\n\n"
+        "Нажмите на тарифы для включения/выключения.\n"
+        "После выбора нажмите <b>✔️ Подтвердить выбор</b>."
     )
 
     await update.message.reply_text(
@@ -430,7 +434,7 @@ async def handle_promo_date_to_button(
 async def handle_promo_tariff_selection(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    """Handle tariff selection"""
+    """Handle tariff selection with toggle functionality"""
     await update.callback_query.answer()
 
     data = update.callback_query.data
@@ -438,19 +442,112 @@ async def handle_promo_tariff_selection(
     if data == "cancel_promo_create":
         return await cancel_promo_creation(update, context)
 
-    # Parse tariff selection
-    tariff_selection = data.replace("promo_tariff_", "")
+    # Initialize selected tariffs set if not exists
+    if "selected_tariffs" not in context.user_data["creating_promocode"]:
+        context.user_data["creating_promocode"]["selected_tariffs"] = set()
+
+    selected_tariffs = context.user_data["creating_promocode"]["selected_tariffs"]
+
+    # Handle tariff toggle
+    if data == "promo_tariff_ALL":
+        # Toggle all tariffs on/off
+        if len(selected_tariffs) == len(Tariff):
+            # All selected - deselect all
+            selected_tariffs.clear()
+        else:
+            # Not all selected - select all
+            selected_tariffs.clear()
+            for tariff in Tariff:
+                selected_tariffs.add(tariff.value)
+    elif data == "promo_tariff_confirm":
+        # User confirmed selection - create promocode
+        return await create_promocode_with_tariffs(update, context)
+    else:
+        # Toggle individual tariff
+        tariff_value = int(data.replace("promo_tariff_", ""))
+        if tariff_value in selected_tariffs:
+            selected_tariffs.remove(tariff_value)
+        else:
+            selected_tariffs.add(tariff_value)
+
+    # Update keyboard with current selection state
+    keyboard = []
+
+    # All tariffs button
+    all_selected = len(selected_tariffs) == len(Tariff)
+    all_button_text = "✅ ВСЕ ТАРИФЫ" if all_selected else "☐ ВСЕ ТАРИФЫ"
+    keyboard.append([InlineKeyboardButton(all_button_text, callback_data="promo_tariff_ALL")])
+
+    # Individual tariff buttons
+    for tariff in Tariff:
+        is_selected = tariff.value in selected_tariffs
+        icon = "✅" if is_selected else "☐"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{icon} {tariff.name}",
+                callback_data=f"promo_tariff_{tariff.value}"
+            )
+        ])
+
+    # Add confirm and cancel buttons
+    if selected_tariffs:
+        keyboard.append([
+            InlineKeyboardButton("✔️ Подтвердить выбор", callback_data="promo_tariff_confirm")
+        ])
+    keyboard.append([
+        InlineKeyboardButton("Отмена", callback_data="cancel_promo_create")
+    ])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # Create selection summary
+    if selected_tariffs:
+        if len(selected_tariffs) == len(Tariff):
+            tariff_text = "ВСЕ ТАРИФЫ"
+        else:
+            tariff_names = [Tariff(t).name for t in sorted(selected_tariffs)]
+            tariff_text = ", ".join(tariff_names)
+    else:
+        tariff_text = "Не выбрано"
 
     promo_data = context.user_data["creating_promocode"]
+    message = (
+        f"✅ Скидка: <b>{promo_data['discount']}%</b>\n\n"
+        "Шаг 6 из 6: Выберите тарифы, к которым применим промокод\n\n"
+        f"🎯 <b>Выбрано:</b> {tariff_text}\n\n"
+        "Нажмите на тарифы для включения/выключения.\n"
+        "После выбора нажмите <b>✔️ Подтвердить выбор</b>."
+    )
+
+    await update.callback_query.edit_message_text(
+        text=message, reply_markup=reply_markup, parse_mode="HTML"
+    )
+
+    return CREATE_PROMO_TARIFF
+
+
+async def create_promocode_with_tariffs(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Create promocode with selected tariffs"""
+    promo_data = context.user_data["creating_promocode"]
+    selected_tariffs = promo_data.get("selected_tariffs", set())
+
+    if not selected_tariffs:
+        await update.callback_query.answer(
+            "❌ Выберите хотя бы один тариф!",
+            show_alert=True
+        )
+        return CREATE_PROMO_TARIFF
 
     # Determine applicable tariffs
-    if tariff_selection == "ALL":
+    if len(selected_tariffs) == len(Tariff):
         applicable_tariffs = None  # None = all tariffs
         tariff_text = "ВСЕ ТАРИФЫ"
     else:
-        applicable_tariffs = [int(tariff_selection)]
-        tariff_name = Tariff(int(tariff_selection)).name
-        tariff_text = tariff_name
+        applicable_tariffs = sorted(list(selected_tariffs))
+        tariff_names = [Tariff(t).name for t in applicable_tariffs]
+        tariff_text = ", ".join(tariff_names)
 
     # Create promocode in database
     try:

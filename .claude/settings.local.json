@@ -16,7 +16,17 @@
       "Bash(python -m alembic revision:*)",
       "Bash(ENV=debug python -m alembic revision --autogenerate -m \"add promocode_type field\")",
       "Bash(ENV=debug python -m alembic revision -m \"add promocode_type field\")",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(cat:*)",
+      "Bash(ENV=debug python src/main.py)",
+      "Bash(export ENV=debug)",
+      "Bash(python:*)",
+      "Bash(ENV=debug python -c \"import sys; sys.path.append(''.''); from src.handlers import menu_handler; print(''Import successful'')\")",
+      "Bash(redis-cli:*)",
+      "Bash(test:*)",
+      "Bash(for file in gift_certificate_handler.py change_booking_date_handler.py cancel_booking_handler.py)",
+      "Bash(do echo \"=== $file ===\" grep -n \"admin_handler\\.\" /Users/a/secret-house-booking-bot/src/handlers/$file)",
+      "Bash(ENV=debug timeout 5 python -c \"import sys; sys.path.append(''.''); from src.handlers import menu_handler; print(''Import successful'')\")"
     ],
     "deny": [],
     "ask": []
