@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Telegram booking bot for a house rental service built with Python and the python-telegram-bot library. The bot automates the booking workflow, handles payments, integrates with Google Calendar, and includes AI-powered customer support via OpenAI GPT.
+This is a Telegram booking bot for a house rental service built with Python and the python-telegram_bot library. The bot automates the booking workflow, handles payments, integrates with Google Calendar, and includes AI-powered customer support via OpenAI GPT.
 
 ## Development Commands
 
@@ -67,7 +67,7 @@ docker run -p 8080:8080 secret-house-bot
 - Singleton DatabaseService pattern for connection management
 
 **Telegram Bot:**
-- Handler-based architecture using python-telegram-bot ConversationHandler
+- Handler-based architecture using python-telegram_bot ConversationHandler
 - State management through Redis for booking workflows
 - Admin commands and user commands with different permissions
 

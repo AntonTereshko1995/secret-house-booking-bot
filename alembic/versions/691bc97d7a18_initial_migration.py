@@ -14,8 +14,8 @@ import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from db.models.decorator.type_decorator import IntEnumType
-from src.models.enum.tariff import Tariff
+from backend.db.models.decorator.type_decorator import IntEnumType
+from backend.models.enum.tariff import Tariff
 
 
 # revision identifiers, used by Alembic.

@@ -1,0 +1,48 @@
+import json
+import os
+from singleton_decorator import singleton
+from backend.config.config import SETTINGS_PATH
+from backend.services.logger_service import LoggerService
+
+
+@singleton
+class SettingsService:
+    def __init__(self):
+        self._data = self._load_from_json()
+
+    def _load_from_json(self):
+        if os.path.exists(SETTINGS_PATH):
+            try:
+                with open(SETTINGS_PATH, "r", encoding="utf-8") as file:
+                    return json.load(file)
+            except json.JSONDecodeError as e:
+                LoggerService.error(__name__, "_load_from_json", e)
+                print(
+                    "⚠️ Ошибка при загрузке JSON, файл поврежден. Используем значения по умолчанию."
+                )
+                return {}
+        return {}
+
+    def _save_to_json(self):
+        try:
+            with open(SETTINGS_PATH, "w", encoding="utf-8") as file:
+                json.dump(self._data, file, indent=4, ensure_ascii=False)
+        except json.JSONDecodeError as e:
+            LoggerService.error(__name__, "_save_to_json", e)
+            return {}
+
+    @property
+    def password(self):
+        return self._data.get("password", "")
+
+    @password.setter
+    def password(self, value):
+        self._data["password"] = value
+        self._save_to_json()
+
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
+    def set(self, key, value):
+        self._data[key] = value
+        self._save_to_json()

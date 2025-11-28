@@ -1,22 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ENV=debug python3:*)",
-      "Bash(tree:*)",
-      "Bash(python -m py_compile:*)",
-      "Bash(gh pr:*)",
-      "Bash(python3:*)",
-      "Bash(mkdir:*)",
-      "Bash(git checkout:*)",
-      "Bash(for handler in gift_certificate_handler feedback_handler cancel_booking_handler change_booking_date_handler available_dates_handler question_handler admin_handler)",
-      "Bash(do)",
-      "Bash(echo:*)",
-      "Bash(done)",
-      "Bash(xargs ls:*)",
-      "Bash(python -m alembic revision:*)",
-      "Bash(ENV=debug python -m alembic revision --autogenerate -m \"add promocode_type field\")",
-      "Bash(ENV=debug python -m alembic revision -m \"add promocode_type field\")",
-      "Bash(sqlite3:*)"
+      "Bash(__NEW_LINE__ echo \"🔍 ФИНАЛЬНАЯ ПРОВЕРКА:\" echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\" echo \"\" echo \"✅ Структура проекта:\" ls -d backend telegram_bot db alembic)",
+      "Bash(then echo \"  ⚠️  src/ еще существует\" else echo \"  ✅ src/ успешно удалена\" fi)",
+      "Bash(if [ -d \"backend/db\" ])",
+      "Bash(then echo \"⚠️  backend/db уже существует\")",
+      "Bash(else echo \"✅ backend/db не существует, можно переносить\")",
+      "Bash(fi)",
+      "Bash(__NEW_LINE__ echo \"=== Testing syntax: ===\")"
     ],
     "deny": [],
     "ask": []

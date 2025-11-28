@@ -1,0 +1,8 @@
+python-telegram-bot[job-queue]
+aiohttp
+redis
+python-dotenv
+loguru
+singleton_decorator
+pytz
+dataclasses_json

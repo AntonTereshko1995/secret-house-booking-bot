@@ -2,16 +2,16 @@ import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from db.models.base import Base
-from db.models.user import UserBase
-from db.models.booking import BookingBase
-from db.models.gift import GiftBase
-from db.models.promocode import PromocodeBase
+from backend.db.models.base import Base
+from backend.db.models.user import UserBase
+from backend.db.models.booking import BookingBase
+from backend.db.models.gift import GiftBase
+from backend.db.models.promocode import PromocodeBase
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from src.config.config import DATABASE_URL
+from backend.config.config import DATABASE_URL
 
 config = context.config
 target_metadata = Base.metadata

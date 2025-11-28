@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: secret-house-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=${ENV:-debug}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/the_secret_house.db}
+      - REDIS_URL=redis
+      - REDIS_PORT=6379
+      - REDIS_SSL=0
+      - BACKEND_API_KEY=${BACKEND_API_KEY:-dev-api-key-12345}
+      - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
+      - CALENDAR_ID=${CALENDAR_ID}
+      - GPT_KEY=${GPT_KEY}
+      - GPT_PROMPT=${GPT_PROMPT}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - ADMIN_CHAT_ID=${ADMIN_CHAT_ID}
+      - INFORM_CHAT_ID=${INFORM_CHAT_ID}
+      - LOGTAIL_TOKEN=${LOGTAIL_TOKEN}
+      - LOGTAIL_SOURCE=${LOGTAIL_SOURCE}
+      - BANK_CARD_NUMBER=${BANK_CARD_NUMBER}
+      - BANK_PHONE_NUMBER=${BANK_PHONE_NUMBER}
+      - ADMINISTRATION_CONTACT=${ADMINISTRATION_CONTACT}
+      - SETTINGS_PATH=${SETTINGS_PATH}
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/app/data
+      - ./settings:/app/settings
+    restart: unless-stopped
+    networks:
+      - secret-house-network
+
+  # Telegram Bot Service
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: telegram_bot/Dockerfile
+    container_name: secret-house-telegram-bot
+    environment:
+      - ENV=${ENV:-debug}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - BACKEND_API_URL=http://backend:8000
+      - BACKEND_API_KEY=${BACKEND_API_KEY:-dev-api-key-12345}
+      - REDIS_URL=redis
+      - REDIS_PORT=6379
+      - REDIS_SSL=0
+      - ADMIN_CHAT_ID=${ADMIN_CHAT_ID}
+      - INFORM_CHAT_ID=${INFORM_CHAT_ID}
+      - DEBUG=${DEBUG:-true}
+    depends_on:
+      - backend
+      - redis
+    restart: unless-stopped
+    networks:
+      - secret-house-network
+
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: secret-house-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - secret-house-network
+    volumes:
+      - redis-data:/data
+
+networks:
+  secret-house-network:
+    driver: bridge
+
+volumes:
+  redis-data:
