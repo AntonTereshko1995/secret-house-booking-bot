@@ -60,12 +60,15 @@ class PromocodeRepository(BaseRepository):
                 raise
 
     def get_promocode_by_name(self, name: str) -> Optional[PromocodeBase]:
-        """Get promocode by name (all names stored in lowercase)."""
+        """Get active promocode by name (all names stored in lowercase)."""
         try:
             with self.Session() as session:
-                # All names are stored in lowercase, so search directly
+                # Search only among active promocodes
                 promocode = session.scalar(
-                    select(PromocodeBase).where(PromocodeBase.name == name.lower())
+                    select(PromocodeBase).where(
+                        PromocodeBase.name == name.lower(),
+                        PromocodeBase.is_active == True
+                    )
                 )
                 if promocode:
                     # Detach from session to avoid lazy load errors
