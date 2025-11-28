@@ -32,13 +32,28 @@ class PromocodeRepository(BaseRepository):
         """Add a new promocode to the database."""
         with self.Session() as session:
             try:
+                # Check if there's already an active promocode with the same name
+                name_lower = name.lower()
+                existing_active = session.scalar(
+                    select(PromocodeBase).where(
+                        PromocodeBase.name == name_lower,
+                        PromocodeBase.is_active == True
+                    )
+                )
+                
+                if existing_active:
+                    raise ValueError(
+                        f"Активный промокод с именем '{name}' уже существует. "
+                        f"Сначала деактивируйте существующий промокод или используйте другое имя."
+                    )
+
                 # Convert tariff list to JSON string if provided
                 tariffs_json = None
                 if applicable_tariffs is not None:
                     tariffs_json = json.dumps(applicable_tariffs)
 
                 new_promocode = PromocodeBase(
-                    name=name.lower(),  # Always store in lowercase
+                    name=name_lower,  # Always store in lowercase
                     promocode_type=promocode_type,
                     date_from=date_from,
                     date_to=date_to,
@@ -53,6 +68,9 @@ class PromocodeRepository(BaseRepository):
                 session.expunge(new_promocode)
                 print(f"Promocode added: {new_promocode}")
                 return new_promocode
+            except ValueError:
+                # Re-raise ValueError as-is (it's our validation error)
+                raise
             except Exception as e:
                 print(f"Error adding promocode: {e}")
                 session.rollback()
