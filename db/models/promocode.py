@@ -12,7 +12,7 @@ class PromocodeBase(Base):
     __tablename__ = "promocode"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
     promocode_type: Mapped[int] = mapped_column(
         Integer, default=1, nullable=False
     )  # 1 = BOOKING_DATES, 2 = USAGE_PERIOD
