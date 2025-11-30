@@ -7,7 +7,8 @@
       "Bash(then echo \"⚠️  backend/db уже существует\")",
       "Bash(else echo \"✅ backend/db не существует, можно переносить\")",
       "Bash(fi)",
-      "Bash(__NEW_LINE__ echo \"=== Testing syntax: ===\")"
+      "Bash(__NEW_LINE__ echo \"=== Testing syntax: ===\")",
+      "Bash(cp:*)"
     ],
     "deny": [],
     "ask": []
