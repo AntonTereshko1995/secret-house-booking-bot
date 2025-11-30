@@ -2,27 +2,26 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
-from telegram_bot.services.navigation_service import NavigationService
-from telegram_bot.services.logger_service import LoggerService
-from telegram_bot.decorators.callback_error_handler import safe_callback_query
-from backend.models.enum.tariff import Tariff
-from telegram_bot.services.calendar_service import CalendarService
-from telegram_bot.models.rental_price import RentalPrice
-from telegram_bot.services.calculation_rate_service import CalculationRateService
-from telegram_bot.services.date_pricing_service import DatePricingService
-from telegram_bot.services.redis import RedisSessionService
-from db.models.booking import BookingBase
+from src.client.backend_api import BackendAPIClient, APIError
+from src.services.navigation_service import NavigationService
+from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
+from src.models.enum.tariff import Tariff
+from src.services.calendar_service import CalendarService
+from src.models.rental_price import RentalPrice
+from src.services.calculation_rate_service import CalculationRateService
+from src.services.date_pricing_service import DatePricingService
+from src.services.redis import RedisSessionService
 from datetime import datetime, date, time, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
-from telegram_bot.handlers import admin_handler, menu_handler
-from telegram_bot.helpers import date_time_helper, string_helper, tariff_helper
-from telegram_bot.date_time_picker import calendar_picker, hours_picker
-from telegram_bot.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
+from src.handlers import admin_handler, menu_handler
+from src.helpers import date_time_helper, string_helper, tariff_helper
+from src.date_time_picker import calendar_picker, hours_picker
+from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
 from dateutil.relativedelta import relativedelta
 from typing import Optional
-from telegram_bot.constants import (
+from src.constants import (
     CHANGE_BOOKING_DATE_VALIDATE_USER,
     END,
     MENU,

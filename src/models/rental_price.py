@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from telegram_bot.models.enum.tariff import Tariff
+from src.models.enum.tariff import Tariff
 
 
 @dataclass_json

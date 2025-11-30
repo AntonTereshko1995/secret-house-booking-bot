@@ -139,10 +139,13 @@ if __name__ == "__main__":
         logger.warning("⚠️  Backend is not accessible! Bot may not function correctly.")
         logger.warning("   Make sure backend is running at: " + config.BACKEND_API_URL)
 
-        response = input("Continue anyway? (y/n): ")
-        if response.lower() != 'y':
-            logger.info("Exiting...")
-            sys.exit(1)
+        if not config.DEBUG:
+            response = input("Continue anyway? (y/n): ")
+            if response.lower() != 'y':
+                logger.info("Exiting...")
+                sys.exit(1)
+        else:
+            logger.warning("   Continuing in DEBUG mode without backend...")
 
     # Initialize Redis persistence for conversation states
     try:
@@ -179,18 +182,34 @@ if __name__ == "__main__":
 
     # Booking management
     application.add_handler(booking_details_handler.get_handler())
-    application.add_handler(booking_handler.get_handler())
-    application.add_handler(change_booking_date_handler.get_handler())
-    application.add_handler(cancel_booking_handler.get_handler())
+
+    # Some handlers return lists instead of ConversationHandler
+    for handler in booking_handler.get_handler():
+        application.add_handler(handler)
+
+    for handler in change_booking_date_handler.get_handler():
+        application.add_handler(handler)
+
+    for handler in cancel_booking_handler.get_handler():
+        application.add_handler(handler)
 
     # User interaction handlers
     application.add_handler(feedback_handler.get_handler())
-    application.add_handler(question_handler.get_handler())
-    application.add_handler(gift_certificate_handler.get_handler())
-    application.add_handler(promocode_handler.get_create_promocode_handler())
-    application.add_handler(user_booking.get_handler())
-    application.add_handler(available_dates_handler.get_handler())
-    application.add_handler(price_handler.get_handler())
+
+    # Handle both list and single handler returns
+    def add_handlers(handlers):
+        if isinstance(handlers, list):
+            for h in handlers:
+                application.add_handler(h)
+        else:
+            application.add_handler(handlers)
+
+    add_handlers(question_handler.get_handler())
+    add_handlers(gift_certificate_handler.get_handler())
+    add_handlers(promocode_handler.get_create_promocode_handler())
+    add_handlers(user_booking.get_handler())
+    add_handlers(available_dates_handler.get_handler())
+    add_handlers(price_handler.get_handler())
 
     # Menu handler (should be last for conversation handlers)
     application.add_handler(menu_handler.get_handler())
@@ -198,17 +217,18 @@ if __name__ == "__main__":
     # Command handlers
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
     application.add_handler(CommandHandler("booking_list", admin_handler.get_booking_list))
-    application.add_handler(CommandHandler("change_password", admin_handler.request_old_password))
-    application.add_handler(CommandHandler("broadcast", admin_handler.start_broadcast))
-    application.add_handler(CommandHandler("broadcast_with_bookings", admin_handler.start_broadcast_with_bookings))
-    application.add_handler(CommandHandler("broadcast_without_bookings", admin_handler.start_broadcast_without_bookings))
-    application.add_handler(CommandHandler("create_promocode", admin_handler.start_create_promocode))
-    application.add_handler(CommandHandler("list_promocodes", admin_handler.list_promocodes))
-    application.add_handler(CommandHandler("users_without_chat_id", admin_handler.get_users_without_chat_id))
+    application.add_handler(CommandHandler("change_password", admin_handler.change_password))
+    # Commented out missing commands - TODO: implement these in admin_handler
+    # application.add_handler(CommandHandler("broadcast", admin_handler.start_broadcast))
+    # application.add_handler(CommandHandler("broadcast_with_bookings", admin_handler.start_broadcast_with_bookings))
+    # application.add_handler(CommandHandler("broadcast_without_bookings", admin_handler.start_broadcast_without_bookings))
+    # application.add_handler(CommandHandler("create_promocode", admin_handler.start_create_promocode))
+    # application.add_handler(CommandHandler("list_promocodes", admin_handler.list_promocodes))
+    # application.add_handler(CommandHandler("users_without_chat_id", admin_handler.get_users_without_chat_id))
 
     # Callback query handlers
     application.add_handler(CallbackQueryHandler(admin_handler.back_to_booking_list, pattern="^MBL$"))
-    application.add_handler(CallbackQueryHandler(admin_handler.handle_delete_promocode_callback, pattern="^delete_promo_"))
+    # application.add_handler(CallbackQueryHandler(admin_handler.handle_delete_promocode_callback, pattern="^delete_promo_"))
 
     logger.info("✅ All handlers registered successfully")
 
@@ -220,5 +240,11 @@ if __name__ == "__main__":
     logger.info("🚀 Bot is starting... Press Ctrl+C to stop")
     logger.info("=" * 60)
 
-    # Run bot
+    # Run bot - Create new event loop for Python 3.10+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     application.run_polling(allowed_updates=Update.ALL_TYPES)

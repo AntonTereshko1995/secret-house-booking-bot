@@ -16,15 +16,15 @@ from telegram.ext import (
 from telegram.error import TelegramError
 from dateutil.relativedelta import relativedelta
 
-from telegram_bot.services.logger_service import LoggerService
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
-from telegram_bot.services.calculation_rate_service import CalculationRateService
-from telegram_bot.services.calendar_service import CalendarService
-from telegram_bot.decorators.callback_error_handler import safe_callback_query
-from telegram_bot.helpers import string_helper, tariff_helper, date_time_helper
-from telegram_bot.date_time_picker import calendar_picker, hours_picker
-from telegram_bot.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID, MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
-from telegram_bot.constants import (
+from src.services.logger_service import LoggerService
+from src.client.backend_api import BackendAPIClient, APIError
+from src.services.calculation_rate_service import CalculationRateService
+from src.services.calendar_service import CalendarService
+from src.decorators.callback_error_handler import safe_callback_query
+from src.helpers import string_helper, tariff_helper, date_time_helper
+from src.date_time_picker import calendar_picker, hours_picker
+from src.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID, MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
+from src.constants import (
     END,
     MANAGE_BOOKING_DETAIL,
     MANAGE_CHANGE_PRICE,
@@ -33,8 +33,8 @@ from telegram_bot.constants import (
     MANAGE_RESCHEDULE_DATE,
     MANAGE_RESCHEDULE_TIME,
 )
-from telegram_bot.models.enum.tariff import Tariff
-from telegram_bot.handlers.admin_handler import (
+from src.models.enum.tariff import Tariff
+from src.handlers.admin_handler import (
     get_future_bookings,
     prepare_approve_process,
     check_and_send_booking,
@@ -1462,7 +1462,7 @@ async def handle_reschedule_confirm(update: Update, context: ContextTypes.DEFAUL
     await notify_customer_reschedule(context, updated_booking, user, old_start_date)
 
     # Inform admin chat
-    from telegram_bot.handlers.admin_handler import inform_changing_booking_date
+    from src.handlers.admin_handler import inform_changing_booking_date
     await inform_changing_booking_date(
         update, context, updated_booking, old_start_date.date()
     )

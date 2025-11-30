@@ -4,16 +4,16 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
-from telegram_bot.services.navigation_service import NavigationService
-from telegram_bot.services.logger_service import LoggerService
-from telegram_bot.decorators.callback_error_handler import safe_callback_query
+from src.client.backend_api import BackendAPIClient, APIError
+from src.services.navigation_service import NavigationService
+from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler, CallbackContext
-from telegram_bot.handlers import menu_handler
-from telegram_bot.helpers import date_time_helper, string_helper
-from telegram_bot.constants import END, MENU, AVAILABLE_DATES, BACK
-from telegram_bot.config.config import PERIOD_IN_MONTHS
+from src.handlers import menu_handler
+from src.helpers import date_time_helper, string_helper
+from src.constants import END, MENU, AVAILABLE_DATES, BACK
+from src.config.config import PERIOD_IN_MONTHS
 import logging
 
 logger = logging.getLogger(__name__)

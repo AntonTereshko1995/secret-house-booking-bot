@@ -1,18 +1,19 @@
 from datetime import date, datetime, time, timedelta
+from typing import Dict, List, Optional
 import asyncio
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
-from telegram_bot.services.logger_service import LoggerService
-from telegram_bot.decorators.callback_error_handler import safe_callback_query
-from telegram_bot.services.navigation_service import NavigationService
-from telegram_bot.services.settings_service import SettingsService
-from telegram_bot.services.file_service import FileService
-from telegram_bot.services.calculation_rate_service import CalculationRateService
+from src.client.backend_api import BackendAPIClient, APIError
+from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
+from src.services.navigation_service import NavigationService
+from src.services.settings_service import SettingsService
+from src.services.file_service import FileService
+from src.services.calculation_rate_service import CalculationRateService
 from matplotlib.dates import relativedelta
-from telegram_bot.constants import (
+from src.constants import (
     END,
     SET_PASSWORD,
     ENTER_PRICE,
@@ -24,12 +25,12 @@ from telegram_bot.constants import (
     CREATE_PROMO_DISCOUNT,
     CREATE_PROMO_TARIFF,
 )
-from telegram_bot.services.calendar_service import CalendarService
-from backend.models.enum.tariff import Tariff
+from src.services.calendar_service import CalendarService
+from src.models.enum.tariff import Tariff
 import logging
 
 logger = logging.getLogger(__name__)
-from telegram_bot.config.config import (
+from src.config.config import (
     ADMIN_CHAT_ID,
     PERIOD_IN_MONTHS,
     INFORM_CHAT_ID,
@@ -47,7 +48,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from telegram_bot.helpers import string_helper, tariff_helper
+from src.helpers import string_helper, tariff_helper
 
 calendar_service = CalendarService()
 calculation_rate_service = CalculationRateService()
@@ -398,8 +399,8 @@ async def get_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         # Import services
-        from telegram_bot.services.statistics_service import StatisticsService
-        from telegram_bot.helpers.statistics_helper import format_statistics_message
+        from src.services.statistics_service import StatisticsService
+        from src.helpers.statistics_helper import format_statistics_message
 
         # Get statistics
         stats_service = StatisticsService()
@@ -733,7 +734,7 @@ async def _edit_message(
 async def accept_booking_payment(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    booking: BookingBase,
+    booking: Dict,
     user_chat_id: int,
     photo,
     document,
@@ -803,7 +804,7 @@ async def edit_accept_booking_payment(
 async def accept_gift_payment(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    gift: GiftBase,
+    gift: Dict,
     user_chat_id: int,
     photo,
     document,
@@ -840,7 +841,7 @@ async def accept_gift_payment(
 
 
 async def inform_cancel_booking(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
+    update: Update, context: ContextTypes.DEFAULT_TYPE, booking: Dict
 ):
     api_client = BackendAPIClient()
     try:
@@ -860,7 +861,7 @@ async def inform_cancel_booking(
 async def inform_changing_booking_date(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    booking: BookingBase,
+    booking: Dict,
     old_start_date: date,
 ):
     api_client = BackendAPIClient()
@@ -1356,15 +1357,15 @@ async def prepare_approve_process(
 async def inform_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    booking: BookingBase,
-    user: UserBase,
+    booking: Dict,
+    user: Dict,
 ):
     message = string_helper.generate_booking_info_message(booking, user)
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
 
 async def send_booking_details(
-    context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
+    context: ContextTypes.DEFAULT_TYPE, booking: Dict
 ):
     # Проверка наличия chat_id у пользователя
     if not booking.user or not booking.user.chat_id:
@@ -1454,7 +1455,7 @@ async def send_booking_details(
         raise
 
 
-async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
+async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: Dict):
     """Modified to trigger feedback conversation instead of sending Google Forms link"""
     try:
         # Create inline button to start feedback conversation
@@ -1957,7 +1958,7 @@ async def list_promocodes(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 import json
 
                 tariff_ids = json.loads(promo["applicable_tariffs"])
-                from telegram_bot.models.enum.tariff import Tariff
+                from src.models.enum.tariff import Tariff
 
                 tariff_names = [Tariff(t_id).name for t_id in tariff_ids]
                 tariffs_text = ", ".join(tariff_names)

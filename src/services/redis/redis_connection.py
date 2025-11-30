@@ -4,8 +4,8 @@ Provides a singleton Redis client for use across all Redis services.
 """
 import redis
 from singleton_decorator import singleton
-from telegram_bot.config.config import REDIS_URL, REDIS_PORT, REDIS_SSL
-from telegram_bot.services.logger_service import LoggerService
+from src.config.config import REDIS_URL, REDIS_PORT, REDIS_SSL
+from src.services.logger_service import LoggerService
 
 
 @singleton

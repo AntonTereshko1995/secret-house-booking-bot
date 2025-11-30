@@ -2,7 +2,7 @@ from functools import wraps
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
-from telegram_bot.services.logger_service import LoggerService
+from src.services.logger_service import LoggerService
 
 
 def safe_callback_query(recovery_function=None):
@@ -51,7 +51,7 @@ def safe_callback_query(recovery_function=None):
                         return await recovery_function(update, context)
 
                     # Default recovery: import and call show_menu
-                    from telegram_bot.handlers import menu_handler
+                    from src.handlers import menu_handler
                     return await menu_handler.show_menu(update, context)
                 else:
                     # Re-raise if it's a different BadRequest error

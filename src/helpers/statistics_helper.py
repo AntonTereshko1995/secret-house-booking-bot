@@ -1,6 +1,6 @@
 """Helper functions for formatting statistics messages."""
 
-from telegram_bot.services.statistics_service import (
+from src.services.statistics_service import (
     Statistics,
     BookingStats,
     UserStats,

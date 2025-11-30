@@ -1,16 +1,14 @@
 import re
 import sys
 import os
+from typing import Dict
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from db.models.gift import GiftBase
-from db.models.booking import BookingBase
-from db.models.user import UserBase
-from telegram_bot.helpers import tariff_helper
+from src.helpers import tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
-from telegram_bot.config.config import CLEANING_HOURS
+from src.config.config import CLEANING_HOURS
 
 
 def is_valid_user_contact(user_name: str) -> tuple[bool, str]:
@@ -138,8 +136,8 @@ def generate_available_slots(
 
 
 def generate_booking_info_message(
-    booking: BookingBase,
-    user: UserBase,
+    booking: Dict,
+    user: Dict,
     is_additional_payment_by_cash=False,
 ) -> str:
     # Handle case when user is None
@@ -165,7 +163,7 @@ def generate_booking_info_message(
     )
 
     # Add incognito questionnaire info for incognito tariffs
-    from telegram_bot.models.enum.tariff import Tariff
+    from src.models.enum.tariff import Tariff
 
     is_incognito = booking.tariff in (
         Tariff.INCOGNITA_DAY,
@@ -209,7 +207,7 @@ def generate_booking_info_message(
 
     # Add promocode info if used
     if booking.promocode_id:
-        from telegram_bot.services.database_service import DatabaseService
+        from src.services.database_service import DatabaseService
         database_service = DatabaseService()
         promocode = database_service.get_promocode_by_id(booking.promocode_id)
         if promocode:
@@ -226,7 +224,7 @@ def generate_booking_info_message(
     return message
 
 
-def generate_gift_info_message(gift: GiftBase) -> str:
+def generate_gift_info_message(gift: Dict) -> str:
     return (
         f"Подарочный сертификат!\n"
         f"Покупатель: {gift.buyer_contact}\n"
@@ -317,6 +315,6 @@ def parse_manage_booking_callback(data: str) -> dict:
         raise ValueError(f"Unknown callback format: {data}")
 
 
-def format_booking_button_label(booking: BookingBase) -> str:
+def format_booking_button_label(booking: Dict) -> str:
     """Format booking for button label: 'DD.MM.YYYY HH:MM'"""
     return booking.start_date.strftime("%d.%m.%Y %H:%M")

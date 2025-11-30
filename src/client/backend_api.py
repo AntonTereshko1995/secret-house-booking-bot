@@ -12,7 +12,7 @@ import os
 # Add parent path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from telegram_bot.config import config
+from src.config import config
 
 logger = logging.getLogger(__name__)
 

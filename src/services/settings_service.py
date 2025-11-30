@@ -1,8 +1,8 @@
 import json
 import os
 from singleton_decorator import singleton
-from backend.config.config import SETTINGS_PATH
-from backend.services.logger_service import LoggerService
+from src.config.config import SETTINGS_PATH
+from src.services.logger_service import LoggerService
 
 
 @singleton

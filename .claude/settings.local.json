@@ -8,7 +8,17 @@
       "Bash(else echo \"✅ backend/db не существует, можно переносить\")",
       "Bash(fi)",
       "Bash(__NEW_LINE__ echo \"=== Testing syntax: ===\")",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(python:*)",
+      "Bash(export ENV=debug)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(for file in src/handlers/*_handler.py)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)",
+      "Bash(pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(kill:*)"
     ],
     "deny": [],
     "ask": []

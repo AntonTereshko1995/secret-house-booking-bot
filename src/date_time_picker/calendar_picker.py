@@ -1,8 +1,8 @@
 from matplotlib.dates import relativedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from datetime import datetime, date, timedelta
-from telegram_bot.helpers import string_helper, date_time_helper
-from telegram_bot.constants import CALENDAR_CALLBACK, ACTION, IGNORE
+from src.helpers import string_helper, date_time_helper
+from src.constants import CALENDAR_CALLBACK, ACTION, IGNORE
 import calendar
 
 

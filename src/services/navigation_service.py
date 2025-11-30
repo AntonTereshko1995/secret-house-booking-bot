@@ -1,9 +1,9 @@
 from singleton_decorator import singleton
 from telegram import CallbackQuery, Update
 from telegram.error import BadRequest
-from backend.models.enum.booking_step import BookingStep
-from backend.models.enum.tariff import Tariff
-from backend.services.logger_service import LoggerService
+from src.models.enum.booking_step import BookingStep
+from src.models.enum.tariff import Tariff
+from src.services.logger_service import LoggerService
 
 
 @singleton

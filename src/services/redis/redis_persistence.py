@@ -6,8 +6,8 @@ import json
 from typing import Dict, Optional, Tuple
 from telegram.ext import BasePersistence, PersistenceInput
 from telegram.ext._utils.types import ConversationDict, CDCData
-from telegram_bot.services.redis.redis_connection import RedisConnection
-from telegram_bot.services.logger_service import LoggerService
+from src.services.redis.redis_connection import RedisConnection
+from src.services.logger_service import LoggerService
 
 
 class RedisPersistence(BasePersistence):

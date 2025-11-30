@@ -1,4 +1,4 @@
-from telegram_bot.models.enum.bedroom import Bedroom
+from src.models.enum.bedroom import Bedroom
 
 
 def get_by_value(value: int) -> Bedroom:

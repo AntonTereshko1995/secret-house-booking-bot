@@ -2,14 +2,14 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
-from telegram_bot.services.navigation_service import NavigationService
-from telegram_bot.services.logger_service import LoggerService
-from backend.models.enum.tariff import Tariff
+from src.client.backend_api import BackendAPIClient, APIError
+from src.services.navigation_service import NavigationService
+from src.services.logger_service import LoggerService
+from src.models.enum.tariff import Tariff
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler, CallbackContext
-from telegram_bot.handlers import menu_handler
-from telegram_bot.constants import END, MENU, PRICE
+from src.handlers import menu_handler
+from src.constants import END, MENU, PRICE
 import logging
 
 logger = logging.getLogger(__name__)

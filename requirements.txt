@@ -21,3 +21,10 @@ alembic
 driver
 dataclasses_json
 redis
+pytest
+pytest-asyncio
+pytest-mock
+pytest-cov
+pytest-env
+freezegun
+faker

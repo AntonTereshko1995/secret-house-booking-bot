@@ -1,7 +1,7 @@
 from datetime import datetime, time, date, timedelta
 from typing import Iterable, List, Tuple
 from matplotlib.dates import relativedelta
-from telegram_bot.config.config import CLEANING_HOURS
+from src.config.config import CLEANING_HOURS
 
 
 def get_month_name(month: int):
@@ -45,7 +45,7 @@ def parse_date(date_string: str, date_format="%d.%m.%Y") -> datetime:
     try:
         date = datetime.strptime(date_string, date_format)
         return date
-    except (ValueError, AttributeError) as e:
+    except (ValueError, AttributeError, TypeError) as e:
         print(e)
         return None
 

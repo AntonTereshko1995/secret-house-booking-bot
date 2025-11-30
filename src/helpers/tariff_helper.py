@@ -1,5 +1,5 @@
 from datetime import date, time
-from telegram_bot.models.enum.tariff import Tariff
+from src.models.enum.tariff import Tariff
 
 
 def get_name(tariff: Tariff) -> str:

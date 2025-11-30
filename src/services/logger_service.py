@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from typing import Any, Dict
 import logging
 from logtail import LogtailHandler
-from backend.config.config import LOGTAIL_TOKEN, LOGTAIL_SOURCE, DEBUG
+from src.config.config import LOGTAIL_TOKEN, LOGTAIL_SOURCE, DEBUG
 
 
 class LoggerService:

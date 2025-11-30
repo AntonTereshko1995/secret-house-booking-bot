@@ -48,6 +48,55 @@ docker build -t secret-house-bot .
 docker run -p 8080:8080 secret-house-bot
 ```
 
+### Testing
+```bash
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=src --cov-report=html
+
+# Run only unit tests
+pytest -m unit
+
+# Run only integration tests
+pytest -m integration
+
+# Run tests excluding slow ones
+pytest -m "not slow"
+
+# Run specific test file
+pytest tests/test_string_helper.py
+
+# Run tests with verbose output
+pytest -v
+
+# Run tests and stop on first failure
+pytest -x
+```
+
+**Test Organization:**
+- `tests/` - All test files
+- `tests/conftest.py` - Shared fixtures and configuration
+- `pytest.ini` - Pytest configuration
+
+**Test Markers:**
+- `@pytest.mark.unit` - Unit tests (fast, no external dependencies)
+- `@pytest.mark.integration` - Integration tests (require external services)
+- `@pytest.mark.slow` - Slow running tests
+- `@pytest.mark.requires_db` - Tests requiring database
+- `@pytest.mark.requires_redis` - Tests requiring Redis
+- `@pytest.mark.requires_external` - Tests requiring external APIs
+
+**VS Code Integration:**
+- Testing panel auto-discovers tests on save
+- Debug configurations for running tests with breakpoints
+- Tasks for quick test execution (`Cmd+Shift+B`)
+- See `.vscode/README.md` for detailed instructions
+
 ## Architecture
 
 ### Core Structure
@@ -110,7 +159,13 @@ Sophisticated pricing system in `src/services/calculation_rate_service.py` that 
 ### Database
 - **Development**: Uses SQLite database (`test_the_secret_house.db` for debug)
 - **Migrations**: Managed through Alembic, run automatically on startup via `run_migrations.py`
-- **No formal testing framework**: The codebase doesn't include unit tests or testing infrastructure
+
+### Testing
+- **Testing Framework**: pytest with pytest-asyncio, pytest-mock, pytest-cov
+- **Test Coverage**: Unit tests for helpers, services, and models
+- **Fixtures**: Shared test fixtures in `tests/conftest.py`
+- **Mocking**: External dependencies (Redis, Database, APIs) are mocked in unit tests
+- **Integration Tests**: Marked with `@pytest.mark.integration` and require actual services
 
 ### Bot Commands Structure
 - **User commands**: `/start` - opens main menu

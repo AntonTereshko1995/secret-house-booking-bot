@@ -12,12 +12,12 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
-from telegram_bot.services.logger_service import LoggerService
-from telegram_bot.decorators.callback_error_handler import safe_callback_query
-from backend.models.enum.tariff import Tariff
-from telegram_bot.config.config import ADMIN_CHAT_ID
-from telegram_bot.constants import (
+from src.client.backend_api import BackendAPIClient, APIError
+from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
+from src.models.enum.tariff import Tariff
+from src.config.config import ADMIN_CHAT_ID
+from src.constants import (
     END,
     CREATE_PROMO_NAME,
     CREATE_PROMO_TYPE,
@@ -26,7 +26,7 @@ from telegram_bot.constants import (
     CREATE_PROMO_DISCOUNT,
     CREATE_PROMO_TARIFF,
 )
-from telegram_bot.models.enum.promocode_type import PromocodeType
+from src.models.enum.promocode_type import PromocodeType
 import logging
 
 logger = logging.getLogger(__name__)

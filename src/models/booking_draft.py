@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from typing import Optional
 from datetime import datetime
 from telegram import Document, PhotoSize
-from telegram_bot.models.enum.booking_step import BookingStep
-from telegram_bot.models.enum.tariff import Tariff
-from telegram_bot.models.rental_price import RentalPrice
+from src.models.enum.booking_step import BookingStep
+from src.models.enum.tariff import Tariff
+from src.models.rental_price import RentalPrice
 from dataclasses_json import dataclass_json
 
 

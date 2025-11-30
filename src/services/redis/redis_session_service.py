@@ -6,16 +6,16 @@ from datetime import datetime, timedelta
 from typing import Optional
 from singleton_decorator import singleton
 from telegram import Update
-from telegram_bot.models.booking_draft import BookingDraft
-from telegram_bot.models.feedback import Feedback
-from telegram_bot.models.cancel_booking_draft import CancelBookingDraft
-from telegram_bot.models.change_booking_draft import ChangeBookingDraft
-from telegram_bot.models.gift_certificate_draft import GiftCertificateDraft
-from telegram_bot.models.user_booking_draft import UserBookingDraft
-from telegram_bot.models.enum.tariff import Tariff
-from telegram_bot.services.navigation_service import NavigationService
-from telegram_bot.services.redis.redis_connection import RedisConnection
-from telegram_bot.services.logger_service import LoggerService
+from src.models.booking_draft import BookingDraft
+from src.models.feedback import Feedback
+from src.models.cancel_booking_draft import CancelBookingDraft
+from src.models.change_booking_draft import ChangeBookingDraft
+from src.models.gift_certificate_draft import GiftCertificateDraft
+from src.models.user_booking_draft import UserBookingDraft
+from src.models.enum.tariff import Tariff
+from src.services.navigation_service import NavigationService
+from src.services.redis.redis_connection import RedisConnection
+from src.services.logger_service import LoggerService
 
 
 @singleton

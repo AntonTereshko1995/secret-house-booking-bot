@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
+from src.client.backend_api import BackendAPIClient, APIError
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackQueryHandler,
@@ -11,7 +11,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from telegram_bot.constants import (
+from src.constants import (
     END,
     FEEDBACK_Q1,
     FEEDBACK_Q2,
@@ -23,11 +23,11 @@ from telegram_bot.constants import (
     FEEDBACK_Q8,
     FEEDBACK_Q9,
 )
-from telegram_bot.services.redis import RedisSessionService
-from telegram_bot.services.logger_service import LoggerService
-from telegram_bot.decorators.callback_error_handler import safe_callback_query
-from telegram_bot.services.navigation_service import NavigationService
-from telegram_bot.config.config import ADMIN_CHAT_ID
+from src.services.redis import RedisSessionService
+from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
+from src.services.navigation_service import NavigationService
+from src.config.config import ADMIN_CHAT_ID
 from datetime import date, timedelta
 import logging
 
@@ -521,6 +521,6 @@ async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "User returned to menu after feedback", update)
 
     # Import here to avoid circular import
-    from telegram_bot.handlers import menu_handler
+    from src.handlers import menu_handler
 
     return await menu_handler.show_menu(update, context)

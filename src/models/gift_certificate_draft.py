@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 from dataclasses_json import dataclass_json
-from telegram_bot.models.enum.tariff import Tariff
-from telegram_bot.models.rental_price import RentalPrice
+from src.models.enum.tariff import Tariff
+from src.models.rental_price import RentalPrice
 
 
 @dataclass_json

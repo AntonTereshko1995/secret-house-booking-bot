@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from datetime import datetime, time, timedelta
-from telegram_bot.helpers import string_helper
-from telegram_bot.constants import HOURS_CALLBACK, ACTION
+from src.helpers import string_helper
+from src.constants import HOURS_CALLBACK, ACTION
 
 # Convert map to string to avoid exhaustion issues
 HOURS = "".join(map(chr, range(1)))

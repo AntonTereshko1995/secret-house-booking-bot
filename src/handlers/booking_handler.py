@@ -1,17 +1,17 @@
 import sys
 import os
+from typing import Dict, List, Optional
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from telegram_bot.client.backend_api import BackendAPIClient, APIError
-from telegram_bot.models.enum.booking_step import BookingStep
-from telegram_bot.services.navigation_service import NavigationService
-from telegram_bot.services.redis import RedisSessionService
-from telegram_bot.services.logger_service import LoggerService
-from telegram_bot.decorators.callback_error_handler import safe_callback_query
+from src.client.backend_api import BackendAPIClient, APIError
+from src.models.enum.booking_step import BookingStep
+from src.services.navigation_service import NavigationService
+from src.services.redis import RedisSessionService
+from src.services.logger_service import LoggerService
+from src.decorators.callback_error_handler import safe_callback_query
 from matplotlib.dates import relativedelta
-from db.models.booking import BookingBase
-from telegram_bot.date_time_picker import calendar_picker, hours_picker
-from telegram_bot.config.config import (
+from src.date_time_picker import calendar_picker, hours_picker
+from src.config.config import (
     MIN_BOOKING_HOURS,
     PERIOD_IN_MONTHS,
     PREPAYMENT,
@@ -19,21 +19,21 @@ from telegram_bot.config.config import (
     BANK_PHONE_NUMBER,
     BANK_CARD_NUMBER,
 )
-from telegram_bot.services.calculation_rate_service import CalculationRateService
-from telegram_bot.services.date_pricing_service import DatePricingService
+from src.services.calculation_rate_service import CalculationRateService
+from src.services.date_pricing_service import DatePricingService
 from datetime import date, time, timedelta, datetime
 from telegram import Document, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
-from telegram_bot.handlers import menu_handler
-from telegram_bot.helpers import date_time_helper, string_helper, tariff_helper, bedroom_halper
-from telegram_bot.handlers import admin_handler
-from telegram_bot.models.enum.bedroom import Bedroom
-from backend.models.enum.tariff import Tariff
+from src.handlers import menu_handler
+from src.helpers import date_time_helper, string_helper, tariff_helper, bedroom_halper
+from src.handlers import admin_handler
+from src.models.enum.bedroom import Bedroom
+from src.models.enum.tariff import Tariff
 from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
-from telegram_bot.constants import (
+from src.constants import (
     BACK,
     BOOKING_COMMENT,
     BOOKING_WRITE_CODE,
@@ -972,7 +972,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except APIError as e:
             logger.error(f"Failed to get gift: {e}")
             gift = None
-        payed_price = gift.price if gift else booking.rental_rate.price
+        payed_price = gift.get("price") if gift else booking.rental_rate.price
         price = int(price - payed_price)
         message = (
             f"💰 <b>Доплата: {price} руб.</b>\n{special_pricing_info}{promocode_info}\n"
@@ -1881,7 +1881,7 @@ async def additional_bedroom_message(
     return BOOKING
 
 
-def is_any_additional_payment(update: Update) -> bool:
+async def is_any_additional_payment(update: Update) -> bool:
     booking = redis_service.get_booking(update)
 
     if booking.gift_id:
@@ -1891,11 +1891,11 @@ def is_any_additional_payment(update: Update) -> bool:
         except APIError as e:
             logger.error(f"Failed to get gift: {e}")
             gift = None
-        if gift.has_secret_room != booking.is_secret_room_included:
+        if gift and gift.get("has_secret_room") != booking.is_secret_room_included:
             return True
-        elif gift.has_sauna != booking.is_sauna_included:
+        elif gift and gift.get("has_sauna") != booking.is_sauna_included:
             return True
-        elif gift.has_additional_bedroom != booking.is_additional_bedroom_included:
+        elif gift and gift.get("has_additional_bedroom") != booking.is_additional_bedroom_included:
             return True
         elif booking.number_of_guests > booking.rental_rate.max_people:
             return True
@@ -1929,7 +1929,8 @@ async def navigate_next_step_for_gift(
     if (
         booking.is_white_room_included == False
         and booking.is_green_room_included == False
-        and gift.has_additional_bedroom == False
+        and gift
+        and gift.get("has_additional_bedroom") == False
     ):
         return await bedroom_message(update, context)
     elif booking.is_additional_bedroom_included == None:
@@ -1942,7 +1943,7 @@ async def navigate_next_step_for_gift(
     return await count_of_people_message(update, context)
 
 
-def init_fields_for_gift(update: Update):
+async def init_fields_for_gift(update: Update):
     booking = redis_service.get_booking(update)
     if not booking.gift_id:
         return
@@ -1953,11 +1954,11 @@ def init_fields_for_gift(update: Update):
     except APIError as e:
         logger.error(f"Failed to get gift: {e}")
         gift = None
-    if gift.has_secret_room:
+    if gift and gift.get("has_secret_room"):
         redis_service.update_booking_field(update, "is_secret_room_included", True)
-    if gift.has_sauna:
+    if gift and gift.get("has_sauna"):
         redis_service.update_booking_field(update, "is_sauna_included", True)
-    if gift.has_additional_bedroom:
+    if gift and gift.get("has_additional_bedroom"):
         redis_service.update_booking_field(
             update, "is_additional_bedroom_included", True
         )
@@ -1997,9 +1998,9 @@ async def init_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await navigate_next_step_for_gift(update, context)
 
 
-def save_booking_information(
+async def save_booking_information(
     update: Update, chat_id: int, is_cash=False
-) -> BookingBase:
+) -> Dict:
     # booking = database_service.get_booking_by_id(1)
     # booking.start_date = datetime.today()
     # booking.end_date = datetime.today()
