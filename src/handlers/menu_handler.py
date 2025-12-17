@@ -41,8 +41,18 @@ from src.constants import (
     USER_BOOKING_VALIDATE_USER,
     INCOGNITO_WINE,
     INCOGNITO_TRANSFER,
+    FEEDBACK_Q1,
+    FEEDBACK_Q2,
+    FEEDBACK_Q3,
+    FEEDBACK_Q4,
+    FEEDBACK_Q5,
+    FEEDBACK_Q6,
+    FEEDBACK_Q7,
+    FEEDBACK_Q8,
+    FEEDBACK_Q9,
 )
 from src.handlers import (
+    admin_handler,
     booking_handler,
     change_booking_date_handler,
     cancel_booking_handler,
@@ -51,6 +61,7 @@ from src.handlers import (
     gift_certificate_handler,
     available_dates_handler,
     user_booking,
+    feedback_handler,
 )
 
 job = job_service.JobService()
@@ -198,6 +209,41 @@ def get_handler() -> ConversationHandler:
                 CallbackQueryHandler(
                     user_booking.enter_user_contact, pattern=f"^{USER_BOOKING}$"
                 ),
+                # Handle feedback button - start feedback conversation
+                CallbackQueryHandler(
+                    feedback_handler.start_feedback, pattern=r"^START_FEEDBACK_(\d+)$"
+                ),
+            ],
+            # Feedback conversation states
+            FEEDBACK_Q1: [
+                CallbackQueryHandler(feedback_handler.handle_q1_rating, pattern=r"^FBQ1_(\d+)$")
+            ],
+            FEEDBACK_Q2: [
+                CallbackQueryHandler(feedback_handler.handle_q2_rating, pattern=r"^FBQ2_(\d+)$")
+            ],
+            FEEDBACK_Q3: [
+                CallbackQueryHandler(feedback_handler.handle_q3_rating, pattern=r"^FBQ3_(\d+)$")
+            ],
+            FEEDBACK_Q4: [
+                CallbackQueryHandler(feedback_handler.handle_q4_rating, pattern=r"^FBQ4_(\d+)$")
+            ],
+            FEEDBACK_Q5: [
+                CallbackQueryHandler(feedback_handler.handle_q5_rating, pattern=r"^FBQ5_(\d+)$")
+            ],
+            FEEDBACK_Q6: [
+                CallbackQueryHandler(feedback_handler.handle_q6_rating, pattern=r"^FBQ6_(\d+)$")
+            ],
+            FEEDBACK_Q7: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, feedback_handler.handle_text_response),
+                CallbackQueryHandler(feedback_handler.back_to_menu, pattern=f"^FEEDBACK_{END}$"),
+            ],
+            FEEDBACK_Q8: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, feedback_handler.handle_text_response),
+                CallbackQueryHandler(feedback_handler.back_to_menu, pattern=f"^FEEDBACK_{END}$"),
+            ],
+            FEEDBACK_Q9: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, feedback_handler.handle_text_response),
+                CallbackQueryHandler(feedback_handler.back_to_menu, pattern=f"^FEEDBACK_{END}$"),
             ],
         },
         fallbacks=[
@@ -278,6 +324,11 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     # Capture and store user's chat_id
     _capture_and_store_user_chat_id(update)
+
+    # Testing code - commented out
+    # service = DatabaseService()
+    # booking = service.get_booking_by_id(234)
+    # await admin_handler.send_feedback(context, booking)
 
     buttons = [
         [InlineKeyboardButton("Забронировать дом 🏠", callback_data=BOOKING)],
