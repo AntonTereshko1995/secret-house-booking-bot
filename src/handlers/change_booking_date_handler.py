@@ -7,10 +7,10 @@ from src.services.navigation_service import NavigationService
 from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.models.enum.tariff import Tariff
-from src.services.calendar_service import CalendarService
+# from src.services.calendar_service import CalendarService
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
-from src.services.date_pricing_service import DatePricingService
+# from src.services.date_pricing_service import DatePricingService
 from src.services.redis import RedisSessionService
 from datetime import datetime, date, time, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -32,9 +32,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 calculation_rate_service = CalculationRateService()
-calendar_service = CalendarService()
+# calendar_service = CalendarService()
 navigation_service = NavigationService()
-date_pricing_service = DatePricingService()
+# date_pricing_service = DatePricingService()
 redis_service = RedisSessionService()
 
 
@@ -537,10 +537,10 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update, context, updated_booking, draft.old_booking_date
     )
 
-    if updated_booking.get("calendar_event_id"):
-        calendar_service.move_event(
-            updated_booking["calendar_event_id"], draft.start_booking_date, draft.finish_booking_date
-        )
+    # if updated_booking.get("calendar_event_id"):
+    #     calendar_service.move_event(
+    #         updated_booking["calendar_event_id"], draft.start_booking_date, draft.finish_booking_date
+    #     )
 
     # Prepare confirmation message
     message = (
@@ -698,7 +698,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.error(f"Failed to get booking data: {e}")
         return await back_navigation(update, context)
 
-    special_date_info = get_special_date_info_for_day(draft.start_booking_date.date())
+    # special_date_info = get_special_date_info_for_day(draft.start_booking_date.date())
 
     if len(available_slots) == 0:
         message = f"⏳ <b>К сожалению, все слоты заняты для {draft.start_booking_date.strftime('%d.%m.%Y')}.</b>\n"
@@ -717,8 +717,8 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "🌙 22:00 – 09:00"
             )
 
-    if special_date_info:
-        message += f"\n\n{special_date_info}"
+    # if special_date_info:
+    #     message += f"\n\n{special_date_info}"
 
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
@@ -808,7 +808,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         logger.error(f"Failed to get bookings: {e}")
         available_slots = []
 
-    special_date_info = get_special_date_info_for_day(draft.finish_booking_date.date())
+    # special_date_info = get_special_date_info_for_day(draft.finish_booking_date.date())
 
     if len(available_slots) == 0:
         message = f"⏳ <b>К сожалению, все слоты заняты для {draft.finish_booking_date.strftime('%d.%m.%Y')}.</b>\n"
@@ -821,8 +821,8 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             "⛔ - время уже забронировано\n"
         )
 
-    if special_date_info:
-        message += f"\n\n{special_date_info}"
+    # if special_date_info:
+    #     message += f"\n\n{special_date_info}"
 
     await update.callback_query.answer()
     await navigation_service.safe_edit_message_text(
@@ -925,36 +925,36 @@ def get_special_dates_info(target_month: int = None, target_year: int = None) ->
     if target_year is None:
         target_year = today.year
 
-    rules = date_pricing_service._try_load_rules()
-    special_dates = []
+    # rules = date_pricing_service._try_load_rules()
+    # special_dates = []
 
-    for rule in rules:
-        if not rule.is_active:
-            continue
+    # for rule in rules:
+    #     if not rule.is_active:
+    #         continue
 
-        # Check if rule overlaps with target month
-        rule_start = datetime.strptime(rule.start_date, "%Y-%m-%d").date()
-        rule_end = datetime.strptime(rule.end_date, "%Y-%m-%d").date()
-        month_start = date(target_year, target_month, 1)
+    #     # Check if rule overlaps with target month
+    #     rule_start = datetime.strptime(rule.start_date, "%Y-%m-%d").date()
+    #     rule_end = datetime.strptime(rule.end_date, "%Y-%m-%d").date()
+    #     month_start = date(target_year, target_month, 1)
 
-        # Get last day of month
-        if target_month == 12:
-            month_end = date(target_year + 1, 1, 1) - timedelta(days=1)
-        else:
-            month_end = date(target_year, target_month + 1, 1) - timedelta(days=1)
+    #     # Get last day of month
+    #     if target_month == 12:
+    #         month_end = date(target_year + 1, 1, 1) - timedelta(days=1)
+    #     else:
+    #         month_end = date(target_year, target_month + 1, 1) - timedelta(days=1)
 
-        # Check if rule overlaps with this month
-        if rule_end >= month_start and rule_start <= month_end:
-            # Collect dates that are in this month
-            current_date = max(rule_start, month_start)
-            end_date = min(rule_end, month_end)
+    #     # Check if rule overlaps with this month
+    #     if rule_end >= month_start and rule_start <= month_end:
+    #         # Collect dates that are in this month
+    #         current_date = max(rule_start, month_start)
+    #         end_date = min(rule_end, month_end)
 
-            while current_date <= end_date:
-                special_dates.append((current_date, rule))
-                current_date += timedelta(days=1)
+    #         while current_date <= end_date:
+    #             special_dates.append((current_date, rule))
+    #             current_date += timedelta(days=1)
 
-    if not special_dates:
-        return ""
+    # if not special_dates:
+    #     return ""
 
     # Group by rule and format
     formatted_dates = []
@@ -977,12 +977,12 @@ def get_special_dates_info(target_month: int = None, target_year: int = None) ->
     return "🎯 <b>Специальные цены:</b>\n" + "\n".join(formatted_dates)
 
 
-def get_special_date_info_for_day(target_date: date) -> str:
-    """Get special pricing info for a specific date."""
-    effective_rule = date_pricing_service.get_effective_rule(target_date)
-    if effective_rule:
-        description = (
-            effective_rule.description or effective_rule.name or "Специальная цена"
-        )
-        return f"🎯 <b>Специальная цена:</b> {description} ({effective_rule.price_override} руб.)"
-    return ""
+# def get_special_date_info_for_day(target_date: date) -> str:
+#     """Get special pricing info for a specific date."""
+#     effective_rule = date_pricing_service.get_effective_rule(target_date)
+#     if effective_rule:
+#         description = (
+#             effective_rule.description or effective_rule.name or "Специальная цена"
+#         )
+#         return f"🎯 <b>Специальная цена:</b> {description} ({effective_rule.price_override} руб.)"
+#     return ""

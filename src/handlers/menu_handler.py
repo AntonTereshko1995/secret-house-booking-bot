@@ -1,5 +1,7 @@
 import sys
 import os
+
+from src.services.job_service import JobService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.client.backend_api import BackendAPIClient, APIError
@@ -55,6 +57,7 @@ from src.handlers import (
 )
 
 navigation_service = NavigationService()
+job_service = JobService()
 
 
 def get_handler() -> ConversationHandler:
@@ -278,7 +281,7 @@ async def _capture_and_store_user_chat_id(update: Update) -> None:
 
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     LoggerService.info(__name__, "show menu", update)
-    await job.init_job(update, context)
+    await job_service.init_job(update, context)
 
     # Capture and store user's chat_id
     await _capture_and_store_user_chat_id(update)

@@ -25,7 +25,7 @@ from src.constants import (
     CREATE_PROMO_DISCOUNT,
     CREATE_PROMO_TARIFF,
 )
-from src.services.calendar_service import CalendarService
+# from src.services.calendar_service import CalendarService
 from src.models.enum.tariff import Tariff
 import logging
 
@@ -50,7 +50,7 @@ from telegram.ext import (
 )
 from src.helpers import string_helper, tariff_helper
 
-calendar_service = CalendarService()
+# calendar_service = CalendarService()
 calculation_rate_service = CalculationRateService()
 file_service = FileService()
 settings_service = SettingsService()
@@ -1335,7 +1335,8 @@ async def prepare_approve_process(
     except APIError as e:
         logger.error(f"Failed to get user: {e}")
         user = None
-    calendar_event_id = calendar_service.add_event(booking, user)
+
+    # calendar_event_id = calendar_service.add_event(booking, user)
     price = booking["price"] if isinstance(booking, dict) else booking.price
     api_client_update = BackendAPIClient()
     try:

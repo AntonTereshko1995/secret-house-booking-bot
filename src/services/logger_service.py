@@ -20,7 +20,8 @@ class LoggerService:
         logger = LoggerService.__get_logger__(file_name)
 
         if update:
-            kwargs["chat_id"] = LoggerService.__get_chat_id__(update)
+            from src.services.navigation_service import NavigationService
+            kwargs["chat_id"] = NavigationService().get_chat_id(update)
 
         logger.info(f"{message}", extra=kwargs)
 
@@ -39,7 +40,8 @@ class LoggerService:
         logger = LoggerService.__get_logger__(file_name)
 
         if update:
-            kwargs["chat_id"] = LoggerService.__get_chat_id__(update)
+            from src.services.navigation_service import NavigationService
+            kwargs["chat_id"] = NavigationService().get_chat_id(update)
 
         if exception:
             logger.exception(f"{message}", exc_info=exception, extra=kwargs)
@@ -55,16 +57,10 @@ class LoggerService:
         logger = LoggerService.__get_logger__(file_name)
 
         if update:
-            kwargs["chat_id"] = LoggerService.__get_chat_id__(update)
+            from src.services.navigation_service import NavigationService
+            kwargs["chat_id"] = NavigationService().get_chat_id(update)
 
         logger.warning(message, extra=kwargs)
-
-    @staticmethod
-    def __get_chat_id__(update):
-        if update.message:
-            return update.message.chat.id
-        else:
-            return update.callback_query.message.chat.id
 
     @staticmethod
     def __get_logger__(file_name: str) -> logging.Logger:

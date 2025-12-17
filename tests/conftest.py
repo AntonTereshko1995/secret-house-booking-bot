@@ -140,16 +140,6 @@ def mock_database_service():
 
 
 @pytest.fixture
-def mock_calendar_service():
-    """Mock CalendarService for testing."""
-    with patch("services.calendar_service.CalendarService") as mock:
-        instance = mock.return_value
-        instance.get_available_dates.return_value = []
-        instance.is_date_available.return_value = True
-        yield instance
-
-
-@pytest.fixture
 def mock_gpt_service():
     """Mock GPTService for testing."""
     with patch("services.gpt_service.GPTService") as mock:

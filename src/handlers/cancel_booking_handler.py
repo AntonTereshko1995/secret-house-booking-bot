@@ -6,7 +6,7 @@ from src.client.backend_api import BackendAPIClient, APIError
 from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
-from src.services.calendar_service import CalendarService
+# from src.services.calendar_service import CalendarService
 from src.services.redis import RedisSessionService
 from datetime import date
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -23,7 +23,7 @@ from src.constants import (
 import logging
 
 logger = logging.getLogger(__name__)
-calendar_service = CalendarService()
+# calendar_service = CalendarService()
 navigation_service = NavigationService()
 redis_service = RedisSessionService()
 
@@ -158,9 +158,9 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
         # Cancel booking via API
         await api_client.cancel_booking(booking["id"])
 
-        # Cancel calendar event
-        if booking.get("calendar_event_id"):
-            calendar_service.cancel_event(booking["calendar_event_id"])
+        # # Cancel calendar event
+        # if booking.get("calendar_event_id"):
+        #     calendar_service.cancel_event(booking["calendar_event_id"])
 
         # Inform admin
         await admin_handler.inform_cancel_booking(update, context, booking)

@@ -19,7 +19,7 @@ from dateutil.relativedelta import relativedelta
 from src.services.logger_service import LoggerService
 from src.client.backend_api import BackendAPIClient, APIError
 from src.services.calculation_rate_service import CalculationRateService
-from src.services.calendar_service import CalendarService
+# from src.services.calendar_service import CalendarService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.helpers import string_helper, tariff_helper, date_time_helper
 from src.date_time_picker import calendar_picker, hours_picker
@@ -44,7 +44,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 calculation_rate_service = CalculationRateService()
-calendar_service = CalendarService()
+# calendar_service = CalendarService()
 
 
 # Task 5: Show booking detail view
@@ -1446,12 +1446,12 @@ async def handle_reschedule_confirm(update: Update, context: ContextTypes.DEFAUL
         return END
 
     # Move calendar event
-    if updated_booking.get("calendar_event_id"):
-        calendar_service.move_event(
-            updated_booking["calendar_event_id"],
-            start_datetime,
-            finish_datetime
-        )
+    # if updated_booking.get("calendar_event_id"):
+    #     calendar_service.move_event(
+    #         updated_booking["calendar_event_id"],
+    #         start_datetime,
+    #         finish_datetime
+    #     )
 
     # Notify customer
     try:

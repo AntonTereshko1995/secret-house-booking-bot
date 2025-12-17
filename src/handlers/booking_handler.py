@@ -20,7 +20,7 @@ from src.config.config import (
     BANK_CARD_NUMBER,
 )
 from src.services.calculation_rate_service import CalculationRateService
-from src.services.date_pricing_service import DatePricingService
+# from src.services.date_pricing_service import DatePricingService
 from datetime import date, time, timedelta, datetime
 from telegram import Document, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
@@ -54,7 +54,7 @@ from src.constants import (
 MAX_PEOPLE = 6
 
 rate_service = CalculationRateService()
-date_pricing_service = DatePricingService()
+# date_pricing_service = DatePricingService()
 redis_service = RedisSessionService()
 navigation_service = NavigationService()
 
@@ -949,21 +949,21 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Check for special pricing information
     special_pricing_info = ""
-    if date_pricing_service.has_date_override(booking_start_date):
-        pricing_description = date_pricing_service.get_rule_description(
-            booking_start_date
-        )
-        if pricing_description:
-            special_pricing_info = (
-                f"\n🎯 <b>Специальная цена:</b> {pricing_description}\n"
-            )
+    # if date_pricing_service.has_date_override(booking_start_date):
+    #     pricing_description = date_pricing_service.get_rule_description(
+    #         booking_start_date
+    #     )
+    #     if pricing_description:
+    #         special_pricing_info = (
+    #             f"\n🎯 <b>Специальная цена:</b> {pricing_description}\n"
+    #         )
 
-    LoggerService.info(
-        __name__,
-        "Confirm pay",
-        update,
-        kwargs={"price": price, "has_special_pricing": bool(special_pricing_info)},
-    )
+    # LoggerService.info(
+    #     __name__,
+    #     "Confirm pay",
+    #     update,
+    #     kwargs={"price": price, "has_special_pricing": bool(special_pricing_info)},
+    # )
 
     if booking.gift_id:
         api_client = BackendAPIClient()
@@ -1253,16 +1253,16 @@ async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_
 
 def get_special_dates_info(target_month: int = None, target_year: int = None) -> str:
     """Get formatted information about special pricing dates for a specific month."""
-    rules = date_pricing_service._try_load_rules()
+    # rules = date_pricing_service._try_load_rules()
 
-    if not rules:
-        return ""
+    # if not rules:
+    #     return ""
 
-    active_rules = [
-        rule for rule in rules if rule.is_active and rule.price_override is not None
-    ]
-    if not active_rules:
-        return ""
+    # active_rules = [
+    #     rule for rule in rules if rule.is_active and rule.price_override is not None
+    # ]
+    # if not active_rules:
+    #     return ""
 
     # Filter rules by month if specified
     if target_month and target_year:
@@ -1322,24 +1322,24 @@ def get_special_dates_info(target_month: int = None, target_year: int = None) ->
     return "\n".join(info_lines) + "\n"
 
 
-def get_special_date_info_for_day(target_date: date) -> str:
-    """Get formatted information about special pricing for a specific date."""
-    if not date_pricing_service.has_date_override(target_date):
-        return ""
+# def get_special_date_info_for_day(target_date: date) -> str:
+#     """Get formatted information about special pricing for a specific date."""
+#     if not date_pricing_service.has_date_override(target_date):
+#         return ""
 
-    effective_rule = date_pricing_service.get_effective_rule(target_date)
-    if not effective_rule or not effective_rule.price_override:
-        return ""
+#     effective_rule = date_pricing_service.get_effective_rule(target_date)
+#     if not effective_rule or not effective_rule.price_override:
+#         return ""
 
-    # Format time range if specified
-    time_str = ""
-    if effective_rule.start_time and effective_rule.end_time:
-        time_str = f" ({effective_rule.start_time}-{effective_rule.end_time})"
+#     # Format time range if specified
+#     time_str = ""
+#     if effective_rule.start_time and effective_rule.end_time:
+#         time_str = f" ({effective_rule.start_time}-{effective_rule.end_time})"
 
-    price_str = f"{effective_rule.price_override} руб."
-    description = effective_rule.description or effective_rule.name
+#     price_str = f"{effective_rule.price_override} руб."
+#     description = effective_rule.description or effective_rule.name
 
-    return f"\n🎯 <b>Специальная цена{time_str}:</b> {price_str} - {description}\n"
+#     return f"\n🎯 <b>Специальная цена{time_str}:</b> {price_str} - {description}\n"
 
 
 async def start_date_message(
