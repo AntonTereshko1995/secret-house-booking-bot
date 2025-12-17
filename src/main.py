@@ -95,6 +95,9 @@ if __name__ == "__main__":
     )
 
     # Register handlers
+    # IMPORTANT: feedback is now integrated into menu_handler states
+    # No need to register feedback_handler separately
+    application.add_handler(booking_details_handler.get_handler())
     application.add_handler(menu_handler.get_handler())
     application.add_error_handler(error_handler)
     application.add_handler(admin_handler.get_password_handler())
@@ -103,8 +106,6 @@ if __name__ == "__main__":
     application.add_handler(admin_handler.get_broadcast_handler())
     application.add_handler(admin_handler.get_broadcast_with_bookings_handler())
     application.add_handler(admin_handler.get_broadcast_without_bookings_handler())
-    application.add_handler(feedback_handler.get_handler())
-    application.add_handler(booking_details_handler.get_handler())
 
     application.add_handler(CommandHandler("start", menu_handler.show_menu))
     application.add_handler(
