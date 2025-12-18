@@ -129,9 +129,10 @@ async def start_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYP
     await notify_customer_cancellation(context, booking, user)
 
     # Update admin message
+    user_contact = user.contact if user else "N/A"
     message = (
         f"✅ <b>Бронирование #{booking.id} отменено</b>\n\n"
-        f"Клиент уведомлен: {user.contact}"
+        f"Клиент уведомлен: {user_contact}"
     )
 
     keyboard = [
@@ -150,7 +151,7 @@ async def start_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYP
         __name__,
         "Admin canceled booking",
         update,
-        kwargs={"booking_id": booking_id, "user_contact": user.contact}
+        kwargs={"booking_id": booking_id, "user_contact": user.contact if user else None}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -215,9 +216,10 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
             )
 
     # Update admin message
+    user_contact = user.contact if user else "N/A"
     message = (
         f"✅ <b>Бронирование #{booking_id} подтверждено</b>\n\n"
-        f"Клиент уведомлен: {user.contact}"
+        f"Клиент уведомлен: {user_contact}"
     )
 
     keyboard = [
@@ -236,7 +238,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
         __name__,
         "Admin approved booking",
         update,
-        kwargs={"booking_id": booking_id, "user_contact": user.contact}
+        kwargs={"booking_id": booking_id, "user_contact": user.contact if user else None}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -299,7 +301,7 @@ async def start_change_price(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     # Store context
     context.user_data["manage_booking_id"] = booking_id
-    context.user_data["manage_user_chat_id"] = user.chat_id
+    context.user_data["manage_user_chat_id"] = user.chat_id if user else None
     context.user_data["manage_old_value"] = booking.price
 
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"MBB_{booking_id}")]]
@@ -351,11 +353,12 @@ async def handle_price_change_input(update: Update, context: ContextTypes.DEFAUL
     await notify_customer_price_change(context, booking, user, old_price)
 
     # Confirm to admin
+    user_contact = user.contact if user else "N/A"
     message = (
         f"✅ <b>Стоимость изменена</b>\n\n"
         f"Старая стоимость: {old_price} руб.\n"
         f"Новая стоимость: {new_price} руб.\n\n"
-        f"Клиент уведомлен: {user.contact}"
+        f"Клиент уведомлен: {user_contact}"
     )
 
     keyboard = [
@@ -445,7 +448,7 @@ async def start_change_prepayment(update: Update, context: ContextTypes.DEFAULT_
 
     # Store context
     context.user_data["manage_booking_id"] = booking_id
-    context.user_data["manage_user_chat_id"] = user.chat_id
+    context.user_data["manage_user_chat_id"] = user.chat_id if user else None
     context.user_data["manage_old_value"] = booking.prepayment_price
 
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=f"MBB_{booking_id}")]]
@@ -497,11 +500,12 @@ async def handle_prepayment_change_input(update: Update, context: ContextTypes.D
     await notify_customer_prepayment_change(context, booking, user, old_prepayment)
 
     # Confirm to admin
+    user_contact = user.contact if user else "N/A"
     message = (
         f"✅ <b>Предоплата изменена</b>\n\n"
         f"Старая предоплата: {old_prepayment} руб.\n"
         f"Новая предоплата: {new_prepayment} руб.\n\n"
-        f"Клиент уведомлен: {user.contact}"
+        f"Клиент уведомлен: {user_contact}"
     )
 
     keyboard = [
@@ -591,7 +595,7 @@ async def start_change_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # Store context
     context.user_data["manage_booking_id"] = booking_id
-    context.user_data["manage_user_chat_id"] = user.chat_id
+    context.user_data["manage_user_chat_id"] = user.chat_id if user else None
     context.user_data["manage_old_value"] = booking.tariff
 
     # Create tariff selection keyboard
@@ -651,12 +655,13 @@ async def handle_tariff_selection(update: Update, context: ContextTypes.DEFAULT_
     # Confirm to admin
     old_tariff_name = tariff_helper.get_name(old_tariff)
     new_tariff_name = tariff_helper.get_name(new_tariff)
+    user_contact = user.contact if user else "N/A"
 
     message = (
         f"✅ <b>Тариф изменен</b>\n\n"
         f"🎯 Старый тариф: {old_tariff_name}\n"
         f"🎯 Новый тариф: {new_tariff_name}\n\n"
-        f"Клиент уведомлен: {user.contact}"
+        f"Клиент уведомлен: {user_contact}"
     )
 
     keyboard = [
