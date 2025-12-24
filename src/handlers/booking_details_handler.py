@@ -41,6 +41,7 @@ from src.handlers.admin_handler import (
     prepare_approve_process,
     check_and_send_booking,
     back_to_booking_list,
+    send_feedback,
 )
 
 database_service = DatabaseService()
@@ -77,15 +78,19 @@ async def show_booking_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
     keyboard = [
         [InlineKeyboardButton("🔙 Назад к списку", callback_data="MBL")],
     ]
-    
+
     # Add approve button only if booking is not prepaid and not canceled
     if not booking.is_prepaymented and not booking.is_canceled:
         keyboard.append([InlineKeyboardButton("✅ Подтвердить бронь", callback_data=f"MBA_approve_{booking.id}")])
-    
+
     # Add cancel button only if booking is not canceled
     if not booking.is_canceled:
         keyboard.append([InlineKeyboardButton("❌ Отменить бронь", callback_data=f"MBA_cancel_{booking.id}")])
-    
+
+    # Add complete button only if booking is not done and not canceled
+    if not booking.is_done and not booking.is_canceled:
+        keyboard.append([InlineKeyboardButton("✅ Завершить бронь", callback_data=f"MBA_complete_{booking.id}")])
+
     keyboard.extend([
         [InlineKeyboardButton("📅 Перенести бронь", callback_data=f"MBA_reschedule_{booking.id}")],
         [InlineKeyboardButton("💰 Изменить стоимость", callback_data=f"MBA_price_{booking.id}")],
@@ -172,7 +177,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
         return END
 
     if booking.is_prepaymented:
-        await update.callback_query.edit_message_text("ℹ️ Бронирование уже подтверждено.")
+        await update.callback_query.edit_message_text("ℹ️ Бронирование ��же подтверждено.")
         return await show_booking_detail(update, context)
 
     user = database_service.get_user_by_id(booking.user_id)
@@ -239,6 +244,77 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
         "Admin approved booking",
         update,
         kwargs={"booking_id": booking_id, "user_contact": user.contact if user else None}
+    )
+
+    return MANAGE_BOOKING_DETAIL
+
+
+# Complete booking action
+@safe_callback_query()
+async def handle_complete_booking(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Complete booking and send feedback request"""
+    await update.callback_query.answer()
+
+    data = string_helper.parse_manage_booking_callback(update.callback_query.data)
+    booking_id = data["booking_id"]
+
+    booking = database_service.get_booking_by_id(booking_id)
+    if not booking:
+        await update.callback_query.edit_message_text("❌ Бронирование не найдено.")
+        return END
+
+    if booking.is_done:
+        await update.callback_query.edit_message_text("ℹ️ Бронирование уже завершено.")
+        return await show_booking_detail(update, context)
+
+    # Mark booking as done
+    booking = database_service.update_booking(booking_id, is_done=True)
+
+    # Send feedback request to customer
+    try:
+        await send_feedback(context, booking)
+        feedback_sent = True
+    except Exception as e:
+        LoggerService.error(
+            __name__,
+            "Failed to send feedback request",
+            exception=e,
+            kwargs={"booking_id": booking_id}
+        )
+        feedback_sent = False
+
+    # Update admin message
+    user = database_service.get_user_by_id(booking.user_id)
+    user_contact = user.contact if user else "N/A"
+
+    if feedback_sent:
+        message = (
+            f"✅ <b>Бронирование #{booking_id} завершено</b>\n\n"
+            f"Клиенту отправлен запрос на фидбек: {user_contact}"
+        )
+    else:
+        message = (
+            f"✅ <b>Бронирование #{booking_id} завершено</b>\n\n"
+            f"❌ Не удалось отправить запрос на фидбек клиенту: {user_contact}"
+        )
+
+    keyboard = [
+        [InlineKeyboardButton("🔙 Назад к деталям", callback_data=f"MBD_{booking_id}")],
+        [InlineKeyboardButton("📋 К списку бронирований", callback_data="MBL")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.callback_query.edit_message_text(
+        text=message,
+        reply_markup=reply_markup,
+        parse_mode="HTML"
+    )
+
+    LoggerService.info(
+        __name__,
+        "Admin completed booking",
+        update,
+        kwargs={"booking_id": booking_id, "feedback_sent": feedback_sent}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -1356,6 +1432,7 @@ def get_handler() -> ConversationHandler:
                 # Action handlers
                 CallbackQueryHandler(handle_approve_booking, pattern="^MBA_approve_\\d+$"),
                 CallbackQueryHandler(start_cancel_booking, pattern="^MBA_cancel_\\d+$"),
+                CallbackQueryHandler(handle_complete_booking, pattern="^MBA_complete_\\d+$"),
                 CallbackQueryHandler(start_reschedule_booking, pattern="^MBA_reschedule_\\d+$"),
                 CallbackQueryHandler(start_change_price, pattern="^MBA_price_\\d+$"),
                 CallbackQueryHandler(start_change_prepayment, pattern="^MBA_prepay_\\d+$"),

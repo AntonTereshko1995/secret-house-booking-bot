@@ -290,6 +290,9 @@ async def handle_menu_callback_fallback(
         return await user_booking.enter_user_contact(update, context)
     elif callback_data == MENU:
         return await show_menu(update, context)
+    elif callback_data.startswith("START_FEEDBACK_"):
+        # Handle feedback start button
+        return await feedback_handler.start_feedback(update, context)
     else:
         # Unknown callback - show menu
         LoggerService.warning(
