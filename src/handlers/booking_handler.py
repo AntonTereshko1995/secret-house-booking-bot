@@ -847,13 +847,21 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
 async def skip_promocode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Skip promocode entry"""
     await update.callback_query.answer()
-
     data = string_helper.get_callback_data(update.callback_query.data)
+    LoggerService.info(__name__, "Promcode skipped", update)
     if data == str(END):
         return await back_navigation(update, context)
 
-    LoggerService.info(__name__, "Promocode skipped", update)
-    return await confirm_pay(update, context)
+    # Check if Incognito tariff and route to questionnaire
+    booking = redis_service.get_booking(update)
+    if (
+        booking.tariff == Tariff.INCOGNITA_DAY
+        or booking.tariff == Tariff.INCOGNITA_HOURS
+        or booking.tariff == Tariff.INCOGNITA_WORKER
+    ):
+        return await wine_preference_message(update, context)
+    else:
+        return await confirm_pay(update, context)
 
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
