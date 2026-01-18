@@ -77,8 +77,18 @@ class CalendarService:
             LoggerService.error(__name__, "get_event_by_id", e)
 
     def move_event(
-        self, event_id: str, start_datetime: datetime, finish_datetime: datetime
+        self, event_id: str, start_datetime: datetime, finish_datetime: datetime,
+        booking: BookingBase = None, user: UserBase = None
     ):
+        """Move event to new time and optionally update description
+
+        Args:
+            event_id: Google Calendar event ID
+            start_datetime: New start date and time
+            finish_datetime: New end date and time
+            booking: Optional booking object to update description
+            user: Optional user object to update description
+        """
         try:
             event = self.get_event_by_id(event_id)
             if not event:
@@ -87,6 +97,14 @@ class CalendarService:
 
             event["start"]["dateTime"] = start_datetime.isoformat()
             event["end"]["dateTime"] = finish_datetime.isoformat()
+
+            # Update description and summary if booking and user provided
+            if booking and user:
+                event["summary"] = tariff_helper.get_name(booking.tariff)
+                event["description"] = string_helper.generate_booking_info_message(
+                    booking, user
+                )
+
             updated_event = (
                 self.service.events()
                 .update(calendarId=CALENDAR_ID, eventId=event["id"], body=event)
@@ -98,6 +116,37 @@ class CalendarService:
         except Exception as e:
             print(f"Error to move event: {e}")
             LoggerService.error(__name__, "move_event", e)
+
+    def update_event_info(self, event_id: str, booking: BookingBase, user: UserBase):
+        """Update event description and summary without changing time
+
+        Args:
+            event_id: Google Calendar event ID
+            booking: Booking object with updated information
+            user: User object
+        """
+        try:
+            event = self.get_event_by_id(event_id)
+            if not event:
+                return
+
+            # Update summary (tariff name) and description
+            event["summary"] = tariff_helper.get_name(booking.tariff)
+            event["description"] = string_helper.generate_booking_info_message(
+                booking, user
+            )
+
+            updated_event = (
+                self.service.events()
+                .update(calendarId=CALENDAR_ID, eventId=event["id"], body=event)
+                .execute()
+            )
+
+            print(f"✅ Информация события обновлена: {updated_event.get('htmlLink')}")
+            LoggerService.info(__name__, "update_event_info")
+        except Exception as e:
+            print(f"Error to update event info: {e}")
+            LoggerService.error(__name__, "update_event_info", e)
 
     def cancel_event(self, event_id: str):
         try:

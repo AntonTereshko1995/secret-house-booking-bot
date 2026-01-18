@@ -21,9 +21,9 @@ def safe_callback_query(recovery_function=None):
     """
     def decorator(handler_func):
         @wraps(handler_func)
-        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
             try:
-                return await handler_func(update, context)
+                return await handler_func(update, context, *args, **kwargs)
             except BadRequest as e:
                 error_msg = str(e).lower()
 
