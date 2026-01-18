@@ -58,7 +58,7 @@ navigation_service = NavigationService()
 
 def get_handler():
     return [
-        CallbackQueryHandler(select_tariff, pattern=f"^BOOKING-TARIFF_(\d+|{END})$"),
+        CallbackQueryHandler(select_tariff, pattern=rf"^BOOKING-TARIFF_(\d+|{END})$"),
         CallbackQueryHandler(
             include_photoshoot, pattern=f"^BOOKING-PHOTO_(?i:true|false|{END})$"
         ),
@@ -68,13 +68,13 @@ def get_handler():
         CallbackQueryHandler(
             include_sauna, pattern=f"^BOOKING-SAUNA_(?i:true|false|{END})$"
         ),
-        CallbackQueryHandler(select_bedroom, pattern=f"^BOOKING-BEDROOM_(\d+|{END})$"),
+        CallbackQueryHandler(select_bedroom, pattern=rf"^BOOKING-BEDROOM_(\d+|{END})$"),
         CallbackQueryHandler(
             select_additional_bedroom,
             pattern=f"^BOOKING-ADD-BEDROOM_(?i:true|false|{END})$",
         ),
         CallbackQueryHandler(
-            select_number_of_people, pattern=f"^BOOKING-PEOPLE_(\d+|{END})$"
+            select_number_of_people, pattern=rf"^BOOKING-PEOPLE_(\d+|{END})$"
         ),
         CallbackQueryHandler(
             enter_start_date, pattern=f"^CALENDAR-CALLBACK-START_(.+|{BACK})$"

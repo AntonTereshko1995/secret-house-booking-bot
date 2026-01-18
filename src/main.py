@@ -118,7 +118,7 @@ if __name__ == "__main__":
     application.add_handler(
         CallbackQueryHandler(
             promocode_handler.handle_delete_promocode_callback,
-            pattern="^delete_promo_\d+$",
+            pattern=r"^delete_promo_\d+$",
         )
     )
     application.add_handler(
@@ -129,6 +129,7 @@ if __name__ == "__main__":
     job.set_application(application)
 
     os.environ["TZ"] = "Europe/Minsk"
-    time.tzset()
+    if hasattr(time, 'tzset'):
+        time.tzset()
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)

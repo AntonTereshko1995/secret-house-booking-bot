@@ -168,3 +168,4 @@ src/config/.env.production
 the_secret_house.db
 *.db
 settings.json
+/.vs

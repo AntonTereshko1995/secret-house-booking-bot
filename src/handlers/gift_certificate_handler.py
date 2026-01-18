@@ -35,7 +35,7 @@ def get_handler():
         CallbackQueryHandler(
             enter_user_contact, pattern=f"^GIFT-USER_({SET_USER}|{END})$"
         ),
-        CallbackQueryHandler(select_tariff, pattern=f"^GIFT-TARIFF_(\d+|{END})$"),
+        CallbackQueryHandler(select_tariff, pattern=rf"^GIFT-TARIFF_(\d+|{END})$"),
         CallbackQueryHandler(
             include_secret_room, pattern=f"^GIFT-SECRET_(?i:true|false|{END})$"
         ),

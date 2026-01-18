@@ -131,6 +131,23 @@ class NavigationService:
                     kwargs={"error": str(e)}
                 )
                 # Don't raise - this is expected after bot restart
+            elif "no text in the message" in error_msg:
+                # Message contains media (photo, document, etc.) - send new message instead
+                LoggerService.info(
+                    __name__,
+                    "Cannot edit message text - message contains media, sending new message instead",
+                    kwargs={"error": str(e)}
+                )
+                try:
+                    await callback_query.message.reply_text(
+                        text=text, parse_mode="HTML", reply_markup=reply_markup
+                    )
+                except Exception as reply_error:
+                    LoggerService.error(
+                        __name__,
+                        "Failed to send reply message",
+                        exception=reply_error
+                    )
             else:
                 raise
 

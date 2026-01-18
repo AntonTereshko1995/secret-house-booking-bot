@@ -40,7 +40,7 @@ redis_service = RedisSessionService()
 
 def get_handler():
     return [
-        CallbackQueryHandler(choose_booking, pattern=f"^CHANGE-BOOKING_(\d+|{END})$"),
+        CallbackQueryHandler(choose_booking, pattern=rf"^CHANGE-BOOKING_(\d+|{END})$"),
         CallbackQueryHandler(
             enter_start_date, pattern=f"^CALENDAR-CALLBACK-START_(.+|{END})$"
         ),

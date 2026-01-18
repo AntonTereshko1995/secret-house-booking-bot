@@ -24,7 +24,7 @@ def run_migrations_if_needed():
         head_rev = script_dir.get_current_head()
 
         if current_rev != head_rev:
-            print(f"🟡 Migrating DB: {current_rev} → {head_rev}")
+            print(f"[MIGRATION] Migrating DB: {current_rev} -> {head_rev}")
             command.upgrade(alembic_cfg, "head")
         else:
-            print("✅ DB already up to date.")
+            print("[INFO] DB already up to date.")
