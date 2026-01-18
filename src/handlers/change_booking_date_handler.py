@@ -40,7 +40,7 @@ redis_service = RedisSessionService()
 
 def get_handler():
     return [
-        CallbackQueryHandler(choose_booking, pattern=f"^CHANGE-BOOKING_(\d+|{END})$"),
+        CallbackQueryHandler(choose_booking, pattern=rf"^CHANGE-BOOKING_(\d+|{END})$"),
         CallbackQueryHandler(
             enter_start_date, pattern=f"^CALENDAR-CALLBACK-START_(.+|{END})$"
         ),
@@ -230,6 +230,12 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         feature_booking = database_service.get_booking_by_start_date_period(
             start_period, end_period
         )
+
+        # Exclude current user's booking from occupied slots
+        draft = redis_service.get_change_booking(update)
+        if draft and draft.selected_booking_id:
+            feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
+
         available_days = date_time_helper.get_free_dayes_slots(
             feature_booking,
             target_month=start_period.month,
@@ -322,6 +328,12 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         feature_booking = database_service.get_booking_by_start_date_period(
             start_period, end_period
         )
+
+        # Exclude current user's booking from occupied slots
+        draft = redis_service.get_change_booking(update)
+        if draft and draft.selected_booking_id:
+            feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
+
         available_days = date_time_helper.get_free_dayes_slots(
             feature_booking,
             target_month=start_period.month,
@@ -329,7 +341,6 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Update special dates info for the new month
-        draft = redis_service.get_change_booking(update)
         special_dates_info = get_special_dates_info(
             selected_date.month, selected_date.year
         )
@@ -483,13 +494,23 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_date_changed=True,
         price=new_price,
     )
+
+    # Get user for calendar update
+    user = database_service.get_user_by_id(booking.user_id)
+
+    # Update Google Calendar event with new time and description
+    if updated_booking.calendar_event_id:
+        calendar_service.move_event(
+            updated_booking.calendar_event_id,
+            draft.start_booking_date,
+            draft.finish_booking_date,
+            booking=updated_booking,
+            user=user)
+
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await admin_handler.inform_changing_booking_date(
         update, context, updated_booking, draft.old_booking_date
-    )
-    calendar_service.move_event(
-        updated_booking.calendar_event_id, draft.start_booking_date, draft.finish_booking_date
     )
 
     # Prepare confirmation message
@@ -577,6 +598,12 @@ async def start_date_message(
     min_date_booking = today
     start_period, end_period = date_time_helper.month_bounds(today)
     feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
+
+    # Exclude current user's booking from occupied slots
+    draft = redis_service.get_change_booking(update)
+    if draft and draft.selected_booking_id:
+        feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
+
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking, target_month=today.month, target_year=today.year
     )
@@ -620,6 +647,11 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         draft.start_booking_date.date() - timedelta(days=2),
         draft.start_booking_date.date() + timedelta(days=2),
     )
+
+    # Exclude current user's booking from occupied slots
+    if draft and draft.selected_booking_id:
+        feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
+
     available_slots = date_time_helper.get_free_time_slots(
         feature_booking, draft.start_booking_date.date()
     )
@@ -668,6 +700,11 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     start_period, end_period = date_time_helper.month_bounds(draft.start_booking_date.date())
     feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
+
+    # Exclude current user's booking from occupied slots
+    if draft and draft.selected_booking_id:
+        feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
+
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking, target_month=start_period.month, target_year=start_period.year
     )
@@ -708,6 +745,11 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         draft.finish_booking_date.date() - timedelta(days=2),
         draft.finish_booking_date.date() + timedelta(days=2),
     )
+
+    # Exclude current user's booking from occupied slots
+    if draft and draft.selected_booking_id:
+        feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
+
     start_time = (
         time(0, 0)
         if draft.start_booking_date.date() != draft.finish_booking_date.date()

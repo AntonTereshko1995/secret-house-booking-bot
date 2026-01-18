@@ -38,7 +38,7 @@ class FileService:
             raise FileNotFoundError(f"Файл {self._TARIFF_JSON} не существует.")
 
         tariff_list = []
-        with open(self._TARIFF_JSON, "r") as file:
+        with open(self._TARIFF_JSON, "r", encoding="utf-8") as file:
             data = json.load(file)
             tariff_list = [RentalPrice(**item) for item in data["rental_prices"]]
         return tariff_list
@@ -60,7 +60,7 @@ class FileService:
             )
 
         rules_list = []
-        with open(self._DATE_PRICING_RULES_JSON, "r") as file:
+        with open(self._DATE_PRICING_RULES_JSON, "r", encoding="utf-8") as file:
             data = json.load(file)
             rules_list = [DatePricingRule(**item) for item in data["pricing_rules"]]
         return rules_list

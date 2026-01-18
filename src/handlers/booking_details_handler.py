@@ -51,12 +51,19 @@ calendar_service = CalendarService()
 
 # Task 5: Show booking detail view
 @safe_callback_query()
-async def show_booking_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show detailed booking information with action buttons"""
+async def show_booking_detail(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: Optional[int] = None) -> int:
+    """Show detailed booking information with action buttons
+
+    Args:
+        update: Telegram update object
+        context: Telegram context object
+        booking_id: Optional booking ID. If not provided, will be parsed from callback_query.data
+    """
     await update.callback_query.answer()
 
-    data = string_helper.parse_manage_booking_callback(update.callback_query.data)
-    booking_id = data["booking_id"]
+    if booking_id is None:
+        data = string_helper.parse_manage_booking_callback(update.callback_query.data)
+        booking_id = data["booking_id"]
 
     booking = database_service.get_booking_by_id(booking_id)
     if not booking:
@@ -130,8 +137,22 @@ async def start_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYP
     # Mark as canceled
     booking = database_service.update_booking(booking_id, is_canceled=True)
 
+    # Update Google Calendar event (change color to gray and add "ОТМЕНА")
+    if booking.calendar_event_id:
+        calendar_service.cancel_event(booking.calendar_event_id)
+
     # Notify customer
     await notify_customer_cancellation(context, booking, user)
+
+    # Send notification to INFORM_CHAT_ID
+    user_contact = user.contact if user and user.contact else "N/A"
+    inform_message = (
+        f"Отмена бронирования!\n"
+        f"Контакт клиента: {user_contact}\n"
+        f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+        f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+    )
+    await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=inform_message)
 
     # Update admin message
     user_contact = user.contact if user else "N/A"
@@ -178,7 +199,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
 
     if booking.is_prepaymented:
         await update.callback_query.edit_message_text("ℹ️ Бронирование ��же подтверждено.")
-        return await show_booking_detail(update, context)
+        return await show_booking_detail(update, context, booking_id=booking_id)
 
     user = database_service.get_user_by_id(booking.user_id)
 
@@ -265,7 +286,7 @@ async def handle_complete_booking(update: Update, context: ContextTypes.DEFAULT_
 
     if booking.is_done:
         await update.callback_query.edit_message_text("ℹ️ Бронирование уже завершено.")
-        return await show_booking_detail(update, context)
+        return await show_booking_detail(update, context, booking_id=booking_id)
 
     # Mark booking as done
     booking = database_service.update_booking(booking_id, is_done=True)
@@ -425,6 +446,10 @@ async def handle_price_change_input(update: Update, context: ContextTypes.DEFAUL
     booking = database_service.update_booking(booking_id, price=new_price)
     user = database_service.get_user_by_id(booking.user_id)
 
+    # Update calendar event description with new price
+    if booking.calendar_event_id:
+        calendar_service.update_event_info(booking.calendar_event_id, booking, user)
+
     # Notify customer
     await notify_customer_price_change(context, booking, user, old_price)
 
@@ -571,6 +596,11 @@ async def handle_prepayment_change_input(update: Update, context: ContextTypes.D
     # Update booking
     booking = database_service.update_booking(booking_id, prepayment_price=new_prepayment)
     user = database_service.get_user_by_id(booking.user_id)
+
+    # Update calendar event description with new prepayment
+    if booking.calendar_event_id:
+        calendar_service.update_event_info(booking.calendar_event_id, booking, user)
+
 
     # Notify customer
     await notify_customer_prepayment_change(context, booking, user, old_prepayment)
@@ -725,6 +755,10 @@ async def handle_tariff_selection(update: Update, context: ContextTypes.DEFAULT_
         tariff=new_tariff
     )
 
+    # Update calendar event with new tariff (updates both summary and description)
+    if booking.calendar_event_id:
+        calendar_service.update_event_info(booking.calendar_event_id, booking, user)
+
     # Notify customer
     await notify_customer_tariff_change(context, booking, user, old_tariff)
 
@@ -845,6 +879,8 @@ async def start_reschedule_booking(update: Update, context: ContextTypes.DEFAULT
     min_date_booking = today
     start_period, end_period = date_time_helper.month_bounds(today)
     feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
+    # Exclude current booking from occupied slots
+    feature_booking = [b for b in feature_booking if b.id != booking_id]
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking, target_month=today.month, target_year=today.year
     )
@@ -921,7 +957,14 @@ async def handle_reschedule_start_date(update: Update, context: ContextTypes.DEF
         return await show_reschedule_start_time(update, context, booking_id)
     elif is_action:
         # Cancel - return to booking detail
-        return await show_booking_detail(update, context)
+        # Clear reschedule context data
+        context.user_data.pop("reschedule_booking_id", None)
+        context.user_data.pop("reschedule_old_start_date", None)
+        context.user_data.pop("reschedule_old_end_date", None)
+        context.user_data.pop("reschedule_start_date", None)
+
+        # Show booking detail by passing booking_id directly
+        return await show_booking_detail(update, context, booking_id=booking_id)
     elif is_next_month or is_prev_month:
         # Update calendar for new month
         return await show_reschedule_start_date_calendar(update, context, booking_id, selected_date=selected_date)
@@ -951,6 +994,8 @@ async def show_reschedule_start_date_calendar(
     min_date_booking = date.today()
     start_period, end_period = date_time_helper.month_bounds(selected_date)
     feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
+    # Exclude current booking from occupied slots
+    feature_booking = [b for b in feature_booking if b.id != booking_id]
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking, target_month=selected_date.month, target_year=selected_date.year
     )
@@ -988,6 +1033,8 @@ async def show_reschedule_start_time(update: Update, context: ContextTypes.DEFAU
         start_date - timedelta(days=2),
         start_date + timedelta(days=2),
     )
+    # Exclude current booking from occupied slots
+    feature_booking = [b for b in feature_booking if b.id != booking_id]
     available_slots = date_time_helper.get_free_time_slots(feature_booking, start_date)
 
     message = (
@@ -1059,6 +1106,8 @@ async def show_reschedule_finish_date(update: Update, context: ContextTypes.DEFA
 
     start_period, end_period = date_time_helper.month_bounds(start_datetime.date())
     feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
+    # Exclude current booking from occupied slots
+    feature_booking = [b for b in feature_booking if b.id != booking_id]
     available_days = date_time_helper.get_free_dayes_slots(
         feature_booking, target_month=start_period.month, target_year=start_period.year
     )
@@ -1140,6 +1189,8 @@ async def show_reschedule_finish_time(update: Update, context: ContextTypes.DEFA
         finish_date - timedelta(days=2),
         finish_date + timedelta(days=2),
     )
+    # Exclude current booking from occupied slots
+    feature_booking = [b for b in feature_booking if b.id != booking_id]
     start_time = (
         time(0, 0)
         if start_datetime.date() != finish_date
@@ -1308,20 +1359,22 @@ async def handle_reschedule_confirm(update: Update, context: ContextTypes.DEFAUL
     updated_booking = database_service.update_booking(
         booking_id,
         start_date=start_datetime,
-        end_date=finish_datetime,
-        is_date_changed=True,
+        end_date=finish_datetime
     )
 
-    # Move calendar event
+    # Get user for calendar update and notifications
+    user = database_service.get_user_by_id(booking.user_id)
+
+    # Update calendar event with new time and description
     if updated_booking.calendar_event_id:
         calendar_service.move_event(
             updated_booking.calendar_event_id,
             start_datetime,
-            finish_datetime
-        )
+            finish_datetime,
+            booking=updated_booking,
+            user=user)
 
     # Notify customer
-    user = database_service.get_user_by_id(booking.user_id)
     await notify_customer_reschedule(context, updated_booking, user, old_start_date)
 
     # Inform admin chat

@@ -28,7 +28,7 @@ redis_service = RedisSessionService()
 
 def get_handler():
     return [
-        CallbackQueryHandler(choose_booking, pattern=f"^CANCEL-BOOKING_(\d+|{END})$"),
+        CallbackQueryHandler(choose_booking, pattern=rf"^CANCEL-BOOKING_(\d+|{END})$"),
         CallbackQueryHandler(
             confirm_cancel_booking, pattern=f"^CANCEL-CONFIRM_({CONFIRM}|{END})$"
         ),

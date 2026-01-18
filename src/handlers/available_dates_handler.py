@@ -20,7 +20,7 @@ navigation_service = NavigationService()
 
 def get_handler():
     return [
-        CallbackQueryHandler(get_available_dates, pattern="^month_(\d+)_(\d+)$"),
+        CallbackQueryHandler(get_available_dates, pattern=r"^month_(\d+)_(\d+)$"),
         CallbackQueryHandler(
             select_month,
             pattern=f"^{BACK}$",
