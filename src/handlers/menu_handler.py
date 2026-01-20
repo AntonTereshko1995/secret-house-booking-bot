@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.services import job_service
 from src.services.database_service import DatabaseService
+from src.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     MessageHandler,
@@ -62,6 +63,7 @@ from src.handlers import (
     available_dates_handler,
     user_booking,
     feedback_handler,
+    booking_details_handler,
 )
 
 job = job_service.JobService()
@@ -71,7 +73,11 @@ navigation_service = NavigationService()
 def get_handler() -> ConversationHandler:
     handler = ConversationHandler(
         entry_points=[
-            CommandHandler("start", show_menu),
+            CommandHandler(
+                "start",
+                show_menu,
+                filters=~filters.Chat(chat_id=[ADMIN_CHAT_ID, INFORM_CHAT_ID])
+            ),
         ],
         states={
             # GIFT navigation flow
@@ -213,6 +219,13 @@ def get_handler() -> ConversationHandler:
                 CallbackQueryHandler(
                     feedback_handler.start_feedback, pattern=r"^START_FEEDBACK_(\d+)$"
                 ),
+                # Handle booking details management callbacks
+                CallbackQueryHandler(
+                    booking_details_handler.show_booking_detail, pattern=r"^MBD_\d+$"
+                ),
+                CallbackQueryHandler(
+                    admin_handler.back_to_booking_list, pattern=r"^MBL$"
+                ),
             ],
             # Feedback conversation states
             FEEDBACK_Q1: [
@@ -247,7 +260,11 @@ def get_handler() -> ConversationHandler:
             ],
         },
         fallbacks=[
-            CommandHandler("start", show_menu),
+            CommandHandler(
+                "start",
+                show_menu,
+                filters=~filters.Chat(chat_id=[ADMIN_CHAT_ID, INFORM_CHAT_ID])
+            ),
             # Global fallback for menu callbacks when conversation state is lost
             CallbackQueryHandler(handle_menu_callback_fallback),
         ],
@@ -293,6 +310,22 @@ async def handle_menu_callback_fallback(
     elif callback_data.startswith("START_FEEDBACK_"):
         # Handle feedback start button
         return await feedback_handler.start_feedback(update, context)
+    elif callback_data.startswith("MBD_"):
+        # Booking details management callbacks - delegate to booking_details_handler
+        LoggerService.info(
+            __name__,
+            f"Delegating to booking_details_handler for callback: {callback_data}",
+            update
+        )
+        return await booking_details_handler.show_booking_detail(update, context)
+    elif callback_data == "MBL":
+        # Back to booking list - delegate to admin_handler
+        LoggerService.info(
+            __name__,
+            f"Delegating to admin_handler for callback: {callback_data}",
+            update
+        )
+        return await admin_handler.back_to_booking_list(update, context)
     else:
         # Unknown callback - show menu
         LoggerService.warning(
