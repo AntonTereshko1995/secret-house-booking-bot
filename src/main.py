@@ -7,10 +7,10 @@ from src.services.logger_service import LoggerService
 import logging
 from flask import Flask
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, filters
 from telegram.error import BadRequest
 from src.handlers import menu_handler, admin_handler, feedback_handler, booking_details_handler, promocode_handler
-from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID
+from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID, INFORM_CHAT_ID
 from src.services import job_service
 from src.services.callback_recovery_service import CallbackRecoveryService
 from src.services.redis import RedisPersistence
@@ -107,7 +107,14 @@ if __name__ == "__main__":
     application.add_handler(admin_handler.get_broadcast_with_bookings_handler())
     application.add_handler(admin_handler.get_broadcast_without_bookings_handler())
 
-    application.add_handler(CommandHandler("start", menu_handler.show_menu))
+    # Register /start command only for non-admin and non-inform chats
+    application.add_handler(
+        CommandHandler(
+            "start",
+            menu_handler.show_menu,
+            filters=~filters.Chat(chat_id=[ADMIN_CHAT_ID, INFORM_CHAT_ID])
+        )
+    )
     application.add_handler(
         CommandHandler("booking_list", admin_handler.get_booking_list)
     )
