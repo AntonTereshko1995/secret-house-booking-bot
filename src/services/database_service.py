@@ -202,6 +202,7 @@ class DatabaseService:
         promocode_id: int = None,
         wine_preference: str = None,
         transfer_address: str = None,
+        prepayment_price: float = None,
     ) -> BookingBase:
         """Add a new booking to the database."""
         return self.booking_repository.add_booking(
@@ -221,6 +222,7 @@ class DatabaseService:
             promocode_id,
             wine_preference,
             transfer_address,
+            prepayment_price,
         )
 
     def get_booking_by_start_date_user(

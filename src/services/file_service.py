@@ -6,6 +6,7 @@ from typing import List
 from singleton_decorator import singleton
 from src.models.rental_price import RentalPrice
 from src.models.date_pricing_rule import DatePricingRule
+from src.models.holiday_prepayment_rule import HolidayPrepaymentRule
 
 
 @singleton
@@ -14,6 +15,7 @@ class FileService:
     _TARIFF_JSON = "src/config/tariff_rate.json"
     # _TARIFF_JSON = "src/config/tariff_rate_sale.json"
     _DATE_PRICING_RULES_JSON = "src/config/date_pricing_rules.json"
+    _HOLIDAY_PREPAYMENT_RULES_JSON = "src/config/holiday_prepayment_rules.json"
 
     def get_price_media(self) -> List[InputMediaPhoto]:
         if not os.path.exists(self._IMAGE_FOLDER):
@@ -63,4 +65,19 @@ class FileService:
         with open(self._DATE_PRICING_RULES_JSON, "r", encoding="utf-8") as file:
             data = json.load(file)
             rules_list = [DatePricingRule(**item) for item in data["pricing_rules"]]
+        return rules_list
+
+    def get_holiday_prepayment_rules(self) -> List[HolidayPrepaymentRule]:
+        """Загрузить правила предоплаты для праздничных дней из JSON конфигурации."""
+        if not os.path.exists(self._HOLIDAY_PREPAYMENT_RULES_JSON):
+            raise FileNotFoundError(
+                f"Файл {self._HOLIDAY_PREPAYMENT_RULES_JSON} не существует."
+            )
+
+        rules_list = []
+        with open(self._HOLIDAY_PREPAYMENT_RULES_JSON, "r", encoding="utf-8") as file:
+            data = json.load(file)
+            rules_list = [
+                HolidayPrepaymentRule(**item) for item in data["prepayment_rules"]
+            ]
         return rules_list

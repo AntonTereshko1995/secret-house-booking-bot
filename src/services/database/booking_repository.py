@@ -40,6 +40,7 @@ class BookingRepository(BaseRepository):
         promocode_id: int = None,
         wine_preference: str = None,
         transfer_address: str = None,
+        prepayment_price: float = None,
     ) -> BookingBase:
         """Add a new booking to the database."""
         user = self.user_service.get_or_create_user(user_contact)
@@ -67,6 +68,9 @@ class BookingRepository(BaseRepository):
 
                 if promocode_id:
                     new_booking.promocode_id = promocode_id
+
+                if prepayment_price is not None:
+                    new_booking.prepayment_price = prepayment_price
 
                 session.add(new_booking)
                 session.commit()

@@ -1,0 +1,121 @@
+{
+  "prepayment_rules": [
+    {
+      "rule_id": "new_year_dec_31",
+      "date": "12-31",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "Новый год (31 декабря)",
+      "is_active": true,
+      "description": "Новогодние праздники - требуется полная предоплата"
+    },
+    {
+      "rule_id": "new_year_jan_01",
+      "date": "01-01",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "Новый год (1 января)",
+      "is_active": true,
+      "description": "Новогодние праздники - требуется полная предоплата"
+    },
+    {
+      "rule_id": "new_year_jan_02",
+      "date": "01-02",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "Новый год (2 января)",
+      "is_active": true,
+      "description": "Новогодние праздники - требуется полная предоплата"
+    },
+    {
+      "rule_id": "christmas_orthodox",
+      "date": "01-07",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "Рождество Христово (православное)",
+      "is_active": true,
+      "description": "Православное Рождество - требуется полная предоплата"
+    },
+    {
+      "rule_id": "valentines_day",
+      "date": "02-14",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "День всех влюбленных",
+      "is_active": true,
+      "description": "День святого Валентина - требуется полная предоплата"
+    },
+    {
+      "rule_id": "defenders_day",
+      "date": "02-23",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "День защитников Отечества",
+      "is_active": true,
+      "description": "23 февраля - требуется полная предоплата"
+    },
+    {
+      "rule_id": "womens_day",
+      "date": "03-08",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "Международный женский день",
+      "is_active": true,
+      "description": "8 марта - требуется полная предоплата"
+    },
+    {
+      "rule_id": "radonitsa_2026",
+      "date": "2026-04-21",
+      "is_recurring": false,
+      "prepayment_percentage": 100,
+      "name": "Радуница",
+      "is_active": true,
+      "description": "Радуница 2026 года - требуется полная предоплата"
+    },
+    {
+      "rule_id": "labor_day",
+      "date": "05-01",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "Праздник труда",
+      "is_active": true,
+      "description": "1 мая - требуется полная предоплата"
+    },
+    {
+      "rule_id": "victory_day",
+      "date": "05-09",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "День Победы",
+      "is_active": true,
+      "description": "День Победы - требуется полная предоплата"
+    },
+    {
+      "rule_id": "independence_day_belarus",
+      "date": "07-03",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "День Независимости Республики Беларусь",
+      "is_active": true,
+      "description": "3 июля - требуется полная предоплата"
+    },
+    {
+      "rule_id": "october_revolution",
+      "date": "11-07",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "День Октябрьской революции",
+      "is_active": true,
+      "description": "7 ноября - требуется полная предоплата"
+    },
+    {
+      "rule_id": "christmas_catholic",
+      "date": "12-25",
+      "is_recurring": true,
+      "prepayment_percentage": 100,
+      "name": "Рождество Христово (католическое)",
+      "is_active": true,
+      "description": "Католическое Рождество - требуется полная предоплата"
+    }
+  ]
+}
