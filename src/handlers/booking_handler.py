@@ -19,6 +19,7 @@ from src.config.config import (
     BANK_CARD_NUMBER,
 )
 from src.services.calculation_rate_service import CalculationRateService
+from src.services.prepayment_service import PrepaymentService
 from src.services.date_pricing_service import DatePricingService
 from datetime import date, time, timedelta, datetime
 from telegram import Document, InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -986,6 +987,16 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await back_navigation(update, context)
 
     LoggerService.info(__name__, "Pay", update)
+
+    # NEW: Calculate prepayment dynamically
+    prepayment_service = PrepaymentService()
+    prepayment_amount = prepayment_service.calculate_prepayment(
+        total_price=booking.price, booking_date=booking.start_booking_date.date()
+    )
+
+    # Save calculated prepayment to Redis draft
+    redis_service.update_booking_field(update, "prepayment_price", prepayment_amount)
+
     keyboard = []
     if booking.gift_id:
         keyboard.append(
@@ -1006,9 +1017,20 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🙏 Спасибо за понимание!"
         )
     else:
+        # OPTIONAL: add explanation if holiday
+        holiday_explanation = ""
+        if prepayment_service.is_holiday(booking.start_booking_date.date()):
+            holiday_name = prepayment_service.get_holiday_name(
+                booking.start_booking_date.date()
+            )
+            holiday_explanation = (
+                f"\n🎉 <b>{holiday_name}</b> - требуется полная предоплата.\n"
+            )
+
         message = (
             f"💰 <b>Общая сумма оплаты:</b> {booking.price} руб.\n\n"
-            f"🔹 <b>Предоплата:</b> {PREPAYMENT} руб.\n"
+            f"🔹 <b>Предоплата:</b> {prepayment_amount} руб.\n"
+            f"{holiday_explanation}"
             "💡 Предоплата не возвращается при отмене бронирования, но вы можете перенести бронь на другую дату.\n\n"
             "📌 <b>Способы оплаты (BSB-Bank):</b>\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
@@ -1953,6 +1975,7 @@ def save_booking_information(
         getattr(cache_booking, "promocode_id", None),
         cache_booking.wine_preference,
         cache_booking.transfer_address,
+        getattr(cache_booking, "prepayment_price", None),
     )
 
     if booking == None:
