@@ -30,9 +30,6 @@ if "secrets-production" in os.environ:
     BANK_PHONE_NUMBER = secrets.get("BANK_PHONE_NUMBER")
     ADMINISTRATION_CONTACT = secrets.get("ADMINISTRATION_CONTACT")
     GOOGLE_CREDENTIALS = secret_manager_service.get_secret("GOOGLE_CREDENTIALS")
-    REDIS_URL = secret_manager_service.get_secret("REDIS_URL")
-    REDIS_PORT = int(secret_manager_service.get_secret("REDIS_PORT"))
-    REDIS_SSL = secret_manager_service.get_secret("REDIS_SSL").strip().lower() in ("true", "1", "yes", "on")
     SETTINGS_PATH = secret_manager_service.get_secret("SETTINGS_PATH")
 else:
     if os.environ.get("AMVERA") != 1:
@@ -57,7 +54,4 @@ else:
     BANK_CARD_NUMBER = os.getenv("BANK_CARD_NUMBER")
     BANK_PHONE_NUMBER = os.getenv("BANK_PHONE_NUMBER")
     ADMINISTRATION_CONTACT = os.getenv("ADMINISTRATION_CONTACT")
-    REDIS_URL = os.getenv("REDIS_URL")
-    REDIS_PORT = int(os.getenv("REDIS_PORT"))
-    REDIS_SSL = os.getenv("REDIS_SSL").strip().lower() in ("true", "1", "yes", "on")
     SETTINGS_PATH = os.getenv("SETTINGS_PATH")

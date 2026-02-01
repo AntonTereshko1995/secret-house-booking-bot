@@ -1,19 +1,21 @@
 """
-Redis-based persistence for Telegram bot conversation states.
-This allows the bot to maintain user sessions across restarts.
+Custom persistence for Telegram bot conversation states.
+Replaces RedisPersistence using SessionStore.
 """
 import json
 from typing import Dict, Optional, Tuple
 from telegram.ext import BasePersistence, PersistenceInput
 from telegram.ext._utils.types import ConversationDict, CDCData
-from src.services.redis.redis_connection import RedisConnection
+
+from src.services.session.session_store import SessionStore
 from src.services.logger_service import LoggerService
+from src.constants import SESSION_STORAGE_FILE, SESSION_TTL_DAYS, CLEANUP_INTERVAL_DAYS
 
 
-class RedisPersistence(BasePersistence):
+class CustomPersistence(BasePersistence):
     """
-    Custom persistence implementation using Redis.
-    Stores conversation states to allow seamless bot restarts.
+    Stores Telegram conversation states.
+    Drop-in replacement for RedisPersistence.
     """
 
     def __init__(self):
@@ -26,23 +28,24 @@ class RedisPersistence(BasePersistence):
             ),
             update_interval=1.0,
         )
-        self._redis = RedisConnection()
+        self._store = SessionStore(
+            storage_file=SESSION_STORAGE_FILE,
+            cleanup_interval_days=CLEANUP_INTERVAL_DAYS
+        )
         self._conversations: Dict[str, ConversationDict] = {}
         self._conversation_key_prefix = "conversation_state"
-        self._ttl = 259200  # 3 dayes
+        self._ttl_seconds = SESSION_TTL_DAYS * 86400
 
     async def get_conversations(self, name: str) -> ConversationDict:
-        """Retrieve conversation states from Redis"""
+        """Retrieve conversation states"""
         try:
             key = f"{self._conversation_key_prefix}:{name}"
-            data = self._redis.client.get(key)
+            data = await self._store.get(key)
 
             if data:
-                # Parse JSON and convert keys back to tuples
                 raw_dict = json.loads(data)
                 result = {}
                 for key_str, state in raw_dict.items():
-                    # Convert "chat_id,user_id" back to (chat_id, user_id) tuple
                     parts = key_str.split(",")
                     if len(parts) == 2:
                         conversation_key = (int(parts[0]), int(parts[1]))
@@ -79,25 +82,20 @@ class RedisPersistence(BasePersistence):
         try:
             redis_key = f"{self._conversation_key_prefix}:{name}"
 
-            # Get existing conversations
-            existing_data = self._redis.client.get(redis_key)
+            existing_data = await self._store.get(redis_key)
             conversations = json.loads(existing_data) if existing_data else {}
 
-            # Convert tuple key to string for JSON serialization
             key_str = ",".join(map(str, key))
 
             if new_state is None:
-                # Remove conversation
                 conversations.pop(key_str, None)
             else:
-                # Update conversation state
                 conversations[key_str] = new_state
 
-            # Save back to Redis with TTL
-            self._redis.client.setex(
+            await self._store.set(
                 redis_key,
-                self._ttl,
-                json.dumps(conversations)
+                json.dumps(conversations),
+                self._ttl_seconds
             )
 
         except Exception as e:

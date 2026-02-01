@@ -21,7 +21,7 @@ from src.constants import (
     FEEDBACK_Q8,
     FEEDBACK_Q9,
 )
-from src.services.redis import RedisSessionService
+from src.services.session.session_service import SessionService
 from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
@@ -29,7 +29,7 @@ from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID
 from datetime import date, timedelta
 
-redis_service = RedisSessionService()
+session_service = SessionService()
 navigation_service = NavigationService()
 
 
@@ -86,9 +86,9 @@ async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
 
     # Initialize Redis with booking_id and chat_id
-    redis_service.init_feedback(update)
-    redis_service.update_feedback_field(update, "booking_id", booking_id)
-    redis_service.update_feedback_field(update, "chat_id", chat_id)
+    await session_service.init_feedback(update)
+    await session_service.update_feedback_field(update, "booking_id", booking_id)
+    await session_service.update_feedback_field(update, "chat_id", chat_id)
 
     LoggerService.info(
         __name__,
@@ -125,7 +125,7 @@ async def handle_q1_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
     rating = int(update.callback_query.data.split("_")[-1])
-    redis_service.update_feedback_field(update, "expectations_rating", rating)
+    await session_service.update_feedback_field(update, "expectations_rating", rating)
 
     LoggerService.info(
         __name__, "Q1 rating received", update, kwargs={"rating": rating}
@@ -158,7 +158,7 @@ async def handle_q2_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
     rating = int(update.callback_query.data.split("_")[-1])
-    redis_service.update_feedback_field(update, "comfort_rating", rating)
+    await session_service.update_feedback_field(update, "comfort_rating", rating)
 
     LoggerService.info(
         __name__, "Q2 rating received", update, kwargs={"rating": rating}
@@ -191,7 +191,7 @@ async def handle_q3_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
     rating = int(update.callback_query.data.split("_")[-1])
-    redis_service.update_feedback_field(update, "cleanliness_rating", rating)
+    await session_service.update_feedback_field(update, "cleanliness_rating", rating)
 
     LoggerService.info(
         __name__, "Q3 rating received", update, kwargs={"rating": rating}
@@ -224,7 +224,7 @@ async def handle_q4_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
     rating = int(update.callback_query.data.split("_")[-1])
-    redis_service.update_feedback_field(update, "host_support_rating", rating)
+    await session_service.update_feedback_field(update, "host_support_rating", rating)
 
     LoggerService.info(
         __name__, "Q4 rating received", update, kwargs={"rating": rating}
@@ -258,7 +258,7 @@ async def handle_q5_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
     rating = int(update.callback_query.data.split("_")[-1])
-    redis_service.update_feedback_field(update, "location_rating", rating)
+    await session_service.update_feedback_field(update, "location_rating", rating)
 
     LoggerService.info(
         __name__, "Q5 rating received", update, kwargs={"rating": rating}
@@ -291,7 +291,7 @@ async def handle_q6_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
     rating = int(update.callback_query.data.split("_")[-1])
-    redis_service.update_feedback_field(update, "recommendation_rating", rating)
+    await session_service.update_feedback_field(update, "recommendation_rating", rating)
 
     LoggerService.info(
         __name__, "Q6 rating received", update, kwargs={"rating": rating}
@@ -304,7 +304,7 @@ async def handle_q6_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_question_7(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Q7: Что вам больше всего понравилось в доме и на его территории?"""
-    redis_service.update_feedback_field(update, "current_question", 7)
+    await session_service.update_feedback_field(update, "current_question", 7)
 
     await update.callback_query.edit_message_text(
         text="<b>Вопрос 7 из 9</b>\n\n"
@@ -316,7 +316,7 @@ async def show_question_7(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_question_8(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Q8: Что следует улучшить?"""
-    redis_service.update_feedback_field(update, "current_question", 8)
+    await session_service.update_feedback_field(update, "current_question", 8)
 
     await update.message.reply_text(
         text="<b>Вопрос 8 из 9</b>\n\n"
@@ -328,7 +328,7 @@ async def show_question_8(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_question_9(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Q9: Публичный отзыв"""
-    redis_service.update_feedback_field(update, "current_question", 9)
+    await session_service.update_feedback_field(update, "current_question", 9)
 
     await update.message.reply_text(
         text="<b>Вопрос 9 из 9</b>\n\n"
@@ -340,7 +340,7 @@ async def show_question_9(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text responses for Q7, Q8, Q9"""
-    feedback_data = redis_service.get_feedback(update)
+    feedback_data = await session_service.get_feedback(update)
     if not feedback_data:
         LoggerService.warning(__name__, "No feedback data found in Redis", update)
         return ConversationHandler.END
@@ -357,21 +357,21 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if current_q == 7:
         # Store Q7 answer
-        redis_service.update_feedback_field(update, "liked_most", text)
+        await session_service.update_feedback_field(update, "liked_most", text)
         LoggerService.info(__name__, "Q7 answer received", update)
         await show_question_8(update, context)
         return FEEDBACK_Q8
 
     elif current_q == 8:
         # Store Q8 answer
-        redis_service.update_feedback_field(update, "improvements", text)
+        await session_service.update_feedback_field(update, "improvements", text)
         LoggerService.info(__name__, "Q8 answer received", update)
         await show_question_9(update, context)
         return FEEDBACK_Q9
 
     elif current_q == 9:
         # Store Q9 answer (final question)
-        redis_service.update_feedback_field(update, "public_review", text)
+        await session_service.update_feedback_field(update, "public_review", text)
         LoggerService.info(__name__, "Q9 answer received", update)
 
         # Send to admin and get promocode
@@ -405,7 +405,7 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
         )
 
         # Clean up Redis
-        redis_service.clear_feedback(update)
+        await session_service.clear_feedback(update)
 
         return f"FEEDBACK_{END}"
 
@@ -415,7 +415,7 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send complete feedback to ADMIN_CHAT_ID and create feedback promocode"""
-    feedback_data = redis_service.get_feedback(update)
+    feedback_data = await session_service.get_feedback(update)
 
     if not feedback_data:
         LoggerService.error(__name__, "No feedback data to send", update)
@@ -505,7 +505,7 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Return to main menu after feedback completion"""
     await update.callback_query.answer()
-    redis_service.clear_feedback(update)
+    await session_service.clear_feedback(update)
 
     LoggerService.info(__name__, "User returned to menu after feedback", update)
 
