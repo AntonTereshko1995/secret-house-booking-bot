@@ -1350,6 +1350,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             f"• <a href=\"https://t.me/sekret_blr\">Telegram канал</a>",
             parse_mode="HTML",
             reply_markup=reply_markup,
+            disable_web_page_preview=True,
         )
 
         LoggerService.info(
