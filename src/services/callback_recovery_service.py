@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 from src.services.logger_service import LoggerService
 from src.services.navigation_service import NavigationService
 from src.constants import MENU
-from src.services.redis import RedisSessionService
+from src.services.session.session_service import SessionService
 
 
 @singleton
@@ -16,7 +16,7 @@ class CallbackRecoveryService:
 
     def __init__(self):
         self.navigation_service = NavigationService()
-        self.redis_service = RedisSessionService()
+        self.session_service = SessionService()
 
     async def handle_stale_callback(
         self,
@@ -75,8 +75,8 @@ class CallbackRecoveryService:
 
         # Clear any stale Redis state
         try:
-            self.redis_service.clear_booking(update)
-            self.redis_service.clear_feedback(update)
+            self.session_service.clear_booking(update)
+            self.session_service.clear_feedback(update)
         except:
             pass
 
@@ -100,7 +100,7 @@ class CallbackRecoveryService:
         callback_data = update.callback_query.data or ""
 
         if callback_data.startswith("BOOKING-"):
-            booking = self.redis_service.get_booking(update)
+            booking = self.session_service.get_booking(update)
             if not booking:
                 LoggerService.info(
                     __name__,

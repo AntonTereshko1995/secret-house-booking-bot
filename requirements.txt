@@ -20,4 +20,3 @@ requests
 alembic
 driver
 dataclasses_json
-redis
