@@ -105,7 +105,7 @@ class NavigationService:
     }
 
     async def safe_edit_message_text(
-        self, callback_query: CallbackQuery, text, reply_markup=None
+        self, callback_query: CallbackQuery, text, reply_markup=None, disable_web_page_preview=False
     ):
         """
         Safely edit message text, handling common errors gracefully.
@@ -116,7 +116,7 @@ class NavigationService:
         """
         try:
             await callback_query.edit_message_text(
-                text=text, parse_mode="HTML", reply_markup=reply_markup
+                text=text, parse_mode="HTML", reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview
             )
         except BadRequest as e:
             error_msg = str(e).lower()
@@ -140,7 +140,7 @@ class NavigationService:
                 )
                 try:
                     await callback_query.message.reply_text(
-                        text=text, parse_mode="HTML", reply_markup=reply_markup
+                        text=text, parse_mode="HTML", reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview
                     )
                 except Exception as reply_error:
                     LoggerService.error(
