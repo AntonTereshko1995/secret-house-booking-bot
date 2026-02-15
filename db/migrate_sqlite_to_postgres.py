@@ -229,20 +229,20 @@ def migrate_table(source_session, target_session, model_class, table_name: str):
         # CRITICAL: Reset PostgreSQL sequence for autoincrement
         # This ensures future inserts use correct IDs
         logger.info("Resetting sequence for future inserts...")
-        max_id_result = target_session.execute(text(f"SELECT MAX(id) FROM {table_name}"))
+        max_id_result = target_session.execute(text(f'SELECT MAX(id) FROM "{table_name}"'))
         max_id = max_id_result.scalar() or 0
 
         target_session.execute(
-            text(f"ALTER SEQUENCE {table_name}_id_seq RESTART WITH {max_id + 1}")
+            text(f'ALTER SEQUENCE "{table_name}_id_seq" RESTART WITH {max_id + 1}')
         )
         target_session.commit()
         logger.success(f"Sequence reset to {max_id + 1}")
 
-        logger.success(f"✓ Successfully migrated {record_count} records from {table_name}")
+        logger.success(f"SUCCESS: Successfully migrated {record_count} records from {table_name}")
 
     except Exception as e:
         target_session.rollback()
-        logger.error(f"✗ Error migrating {table_name}: {e}")
+        logger.error(f"ERROR: Error migrating {table_name}: {e}")
         logger.error("Transaction rolled back")
         raise
 

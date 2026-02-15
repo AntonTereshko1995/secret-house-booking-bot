@@ -123,7 +123,7 @@ def auto_migrate_data_if_needed():
 
         print("")
         print("=" * 80)
-        print("[AUTO-MIGRATION] ✓ Automatic data migration completed successfully!")
+        print("[AUTO-MIGRATION] SUCCESS: Automatic data migration completed successfully!")
         print("=" * 80)
 
     except Exception as e:
@@ -159,7 +159,7 @@ def run_migrations_if_needed():
         if current_rev != head_rev:
             print(f"[MIGRATION] Migrating DB schema: {current_rev} -> {head_rev}")
             command.upgrade(alembic_cfg, "head")
-            print("[MIGRATION] ✓ Schema migration completed")
+            print("[MIGRATION] Schema migration completed successfully")
         else:
             print("[INFO] DB schema already up to date.")
 
