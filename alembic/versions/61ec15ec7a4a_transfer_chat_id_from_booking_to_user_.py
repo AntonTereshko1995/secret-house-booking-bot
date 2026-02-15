@@ -48,7 +48,7 @@ def upgrade() -> None:
         user_id, booking_count = row
         connection.execute(
             sa.text("""
-            UPDATE user
+            UPDATE "user"
             SET has_bookings = true,
                 total_bookings = :booking_count
             WHERE id = :user_id
@@ -73,8 +73,8 @@ def downgrade() -> None:
     connection.execute(
         sa.text("""
         UPDATE booking
-        SET chat_id = (SELECT chat_id FROM user WHERE user.id = booking.user_id)
-        WHERE EXISTS (SELECT 1 FROM user WHERE user.id = booking.user_id AND user.chat_id IS NOT NULL)
+        SET chat_id = (SELECT chat_id FROM "user" WHERE "user".id = booking.user_id)
+        WHERE EXISTS (SELECT 1 FROM "user" WHERE "user".id = booking.user_id AND "user".chat_id IS NOT NULL)
     """)
     )
 

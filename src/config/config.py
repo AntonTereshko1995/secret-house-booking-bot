@@ -38,12 +38,13 @@ else:
     # AMVERA deployment: When AMVERA=1, environment variables are set directly (no .env file)
     # DATABASE_URL format: postgresql://admin:password@host/database
     if os.environ.get("AMVERA") != "1":
-        file = (
-            "src/config/.env.debug"
-            if os.getenv("ENV") == "debug"
-            else "src/config/.env.production"
-        )
-        load_dotenv(file)
+        # Get project root directory (2 levels up from this file: config.py -> src -> project_root)
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        env_file_name = ".env.debug" if os.getenv("ENV") == "debug" else ".env.production"
+        env_file_path = os.path.join(project_root, env_file_name)
+        print(f"[CONFIG] Loading environment from: {env_file_path}")
+        print(f"[CONFIG] File exists: {os.path.exists(env_file_path)}")
+        load_dotenv(env_file_path)
 
     DEBUG = os.getenv("DEBUG", "false").strip().lower() in ("true", "1", "yes", "on")
     GOOGLE_CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS")
