@@ -26,11 +26,18 @@ def check_sqlite_file_exists() -> tuple[bool, str]:
     """
     Check if SQLite database file exists.
 
+    Checks multiple locations:
+    1. /data/the_secret_house.db (Amvera production)
+    2. ./the_secret_house.db (local production)
+    3. ./test_the_secret_house.db (local testing)
+
     Returns:
         (exists, filepath): Tuple of boolean and filepath
     """
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     sqlite_paths = [
+        "/data/the_secret_house.db",  # Amvera production path
+        os.path.join(BASE_DIR, "the_secret_house.db"),
         os.path.join(BASE_DIR, "test_the_secret_house.db"),
         os.path.join(BASE_DIR, "test_the_secret_house.db.backup"),
     ]
@@ -44,21 +51,24 @@ def check_sqlite_file_exists() -> tuple[bool, str]:
 
 def is_database_empty(engine) -> bool:
     """
-    Check if PostgreSQL database is empty (no records in user table).
+    Check if PostgreSQL database needs migration (no records in booking table).
+
+    We check booking table specifically because it's the main data table.
+    If booking is empty but users exist, we still need to migrate bookings.
 
     Args:
         engine: SQLAlchemy engine
 
     Returns:
-        True if database is empty or user table doesn't exist, False otherwise
+        True if database needs migration (booking table empty), False otherwise
     """
     try:
         with engine.connect() as conn:
-            # Check if user table exists
+            # Check if booking table exists
             result = conn.execute(
                 text(
                     "SELECT COUNT(*) FROM information_schema.tables "
-                    "WHERE table_schema = 'public' AND table_name = 'user'"
+                    "WHERE table_schema = 'public' AND table_name = 'booking'"
                 )
             )
             table_exists = result.scalar() > 0
@@ -66,10 +76,17 @@ def is_database_empty(engine) -> bool:
             if not table_exists:
                 return True
 
-            # Check if user table has records
-            result = conn.execute(text('SELECT COUNT(*) FROM "user"'))
+            # Check if booking table has records
+            # If booking is empty, we need migration even if other tables have data
+            result = conn.execute(text('SELECT COUNT(*) FROM "booking"'))
             count = result.scalar()
-            return count == 0
+
+            if count == 0:
+                print("[AUTO-MIGRATION] Booking table is empty - migration needed")
+                return True
+
+            print(f"[AUTO-MIGRATION] Booking table has {count} records - skipping migration")
+            return False
     except Exception as e:
         print(f"[WARNING] Error checking if database is empty: {e}")
         return False
@@ -89,13 +106,12 @@ def auto_migrate_data_if_needed():
 
     print("[AUTO-MIGRATION] Detected PostgreSQL database")
 
-    # Check if database is empty
+    # Check if database needs migration (booking table empty)
     engine = create_engine(DATABASE_URL)
     if not is_database_empty(engine):
-        print("[AUTO-MIGRATION] PostgreSQL database has data, skipping auto-migration")
         return
 
-    print("[AUTO-MIGRATION] PostgreSQL database is empty")
+    print("[AUTO-MIGRATION] PostgreSQL database needs migration")
 
     # Check if SQLite file exists
     sqlite_exists, sqlite_path = check_sqlite_file_exists()
