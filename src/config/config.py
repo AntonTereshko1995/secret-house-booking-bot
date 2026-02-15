@@ -35,7 +35,9 @@ if "secrets-production" in os.environ:
     REDIS_SSL = secret_manager_service.get_secret("REDIS_SSL").strip().lower() in ("true", "1", "yes", "on")
     SETTINGS_PATH = secret_manager_service.get_secret("SETTINGS_PATH")
 else:
-    if os.environ.get("AMVERA") != 1:
+    # AMVERA deployment: When AMVERA=1, environment variables are set directly (no .env file)
+    # DATABASE_URL format: postgresql://admin:password@host/database
+    if os.environ.get("AMVERA") != "1":
         file = (
             "src/config/.env.debug"
             if os.getenv("ENV") == "debug"

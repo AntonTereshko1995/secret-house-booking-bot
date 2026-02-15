@@ -33,21 +33,20 @@ def upgrade() -> None:
     booking = table(
         "booking",
         column("user_id", sa.Integer),
-        column("is_done", sa.Integer),
-        column("is_canceled", sa.Integer),
+        column("is_done", sa.Boolean),
+        column("is_canceled", sa.Boolean),
     )
 
     # Get connection
     conn = op.get_bind()
 
     # Calculate completed bookings per user
-    # Note: SQLite stores booleans as integers (0=False, 1=True)
     completed_counts = conn.execute(
         select(booking.c.user_id, func.count().label("completed_count"))
         .where(
             sa.and_(
-                booking.c.is_done == 1,  # True
-                booking.c.is_canceled == 0,  # False
+                booking.c.is_done == True,
+                booking.c.is_canceled == False,
             )
         )
         .group_by(booking.c.user_id)
