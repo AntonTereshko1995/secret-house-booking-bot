@@ -35,7 +35,9 @@ if "secrets-production" in os.environ:
     REDIS_SSL = secret_manager_service.get_secret("REDIS_SSL").strip().lower() in ("true", "1", "yes", "on")
     SETTINGS_PATH = secret_manager_service.get_secret("SETTINGS_PATH")
 else:
-    if os.environ.get("AMVERA") != 1:
+    # AMVERA deployment: When AMVERA=1, environment variables are set directly (no .env file)
+    # DATABASE_URL format: postgresql://admin:password@host/database
+    if os.environ.get("AMVERA") != "1":
         file = (
             "src/config/.env.debug"
             if os.getenv("ENV") == "debug"
@@ -43,21 +45,21 @@ else:
         )
         load_dotenv(file)
 
-    DEBUG = os.getenv("DEBUG").strip().lower() in ("true", "1", "yes", "on")
+    DEBUG = os.getenv("DEBUG", "false").strip().lower() in ("true", "1", "yes", "on")
     GOOGLE_CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS")
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN")
-    LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE")
+    LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN", "")
+    LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE", "")
     DATABASE_URL = os.getenv("DATABASE_URL")
-    ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
-    INFORM_CHAT_ID = int(os.getenv("INFORM_CHAT_ID"))
+    ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
+    INFORM_CHAT_ID = int(os.getenv("INFORM_CHAT_ID", "0"))
     GPT_KEY = os.getenv("GPT_KEY")
     GPT_PROMPT = os.getenv("GPT_PROMPT")
     CALENDAR_ID = os.getenv("CALENDAR_ID")
     BANK_CARD_NUMBER = os.getenv("BANK_CARD_NUMBER")
     BANK_PHONE_NUMBER = os.getenv("BANK_PHONE_NUMBER")
     ADMINISTRATION_CONTACT = os.getenv("ADMINISTRATION_CONTACT")
-    REDIS_URL = os.getenv("REDIS_URL")
-    REDIS_PORT = int(os.getenv("REDIS_PORT"))
-    REDIS_SSL = os.getenv("REDIS_SSL").strip().lower() in ("true", "1", "yes", "on")
-    SETTINGS_PATH = os.getenv("SETTINGS_PATH")
+    REDIS_URL = os.getenv("REDIS_URL", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+    REDIS_SSL = os.getenv("REDIS_SSL", "false").strip().lower() in ("true", "1", "yes", "on")
+    SETTINGS_PATH = os.getenv("SETTINGS_PATH", "data/settings.json")

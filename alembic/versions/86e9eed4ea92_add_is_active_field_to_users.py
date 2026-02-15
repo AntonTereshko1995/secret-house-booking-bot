@@ -20,12 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add is_active column with default value 1 (True) if it doesn't exist
+    # Add is_active column with default value True if it doesn't exist
     # This migration is idempotent - it won't fail if column already exists
     try:
         op.add_column(
             "user",
-            sa.Column("is_active", sa.Integer(), nullable=False, server_default="1"),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
         )
     except:
         # Column already exists, migration was already applied manually

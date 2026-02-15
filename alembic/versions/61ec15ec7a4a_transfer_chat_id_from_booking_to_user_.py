@@ -23,7 +23,7 @@ def upgrade() -> None:
     # Step 1: Add new columns to user table
     with op.batch_alter_table("user", schema=None) as batch_op:
         batch_op.add_column(
-            sa.Column("has_bookings", sa.Integer(), nullable=False, server_default="0")
+            sa.Column("has_bookings", sa.Boolean(), nullable=False, server_default="false")
         )
         batch_op.add_column(
             sa.Column(
@@ -49,7 +49,7 @@ def upgrade() -> None:
         connection.execute(
             sa.text("""
             UPDATE user
-            SET has_bookings = 1,
+            SET has_bookings = true,
                 total_bookings = :booking_count
             WHERE id = :user_id
         """),
