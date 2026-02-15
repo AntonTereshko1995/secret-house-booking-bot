@@ -38,13 +38,14 @@ else:
     # AMVERA deployment: When AMVERA=1, environment variables are set directly (no .env file)
     # DATABASE_URL format: postgresql://admin:password@host/database
     if os.environ.get("AMVERA") != "1":
-        # Get project root directory (2 levels up from this file: config.py -> src -> project_root)
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        # Get config directory (where this file is located)
+        config_dir = os.path.dirname(os.path.abspath(__file__))
         env_file_name = ".env.debug" if os.getenv("ENV") == "debug" else ".env.production"
-        env_file_path = os.path.join(project_root, env_file_name)
+        env_file_path = os.path.join(config_dir, env_file_name)
         print(f"[CONFIG] Loading environment from: {env_file_path}")
         print(f"[CONFIG] File exists: {os.path.exists(env_file_path)}")
         load_dotenv(env_file_path)
+        print(f"[CONFIG] DATABASE_URL after load: {os.getenv('DATABASE_URL')}")
 
     DEBUG = os.getenv("DEBUG", "false").strip().lower() in ("true", "1", "yes", "on")
     GOOGLE_CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS")
@@ -52,6 +53,15 @@ else:
     LOGTAIL_TOKEN = os.getenv("LOGTAIL_TOKEN", "")
     LOGTAIL_SOURCE = os.getenv("LOGTAIL_SOURCE", "")
     DATABASE_URL = os.getenv("DATABASE_URL")
+
+    if DATABASE_URL is None:
+        raise ValueError(
+            "DATABASE_URL is not set! Please check:\n"
+            "1. ENV variable is set correctly (should be 'debug' or 'production')\n"
+            "2. .env.debug or .env.production file exists in src/config/\n"
+            "3. DATABASE_URL is defined in the .env file"
+        )
+
     ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
     INFORM_CHAT_ID = int(os.getenv("INFORM_CHAT_ID", "0"))
     GPT_KEY = os.getenv("GPT_KEY")
