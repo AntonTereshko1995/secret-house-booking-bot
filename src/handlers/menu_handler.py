@@ -421,7 +421,8 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     if update.message:
         await update.message.reply_text(
-            text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons)
+            text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons),
+            disable_web_page_preview=True
         )
     elif update.callback_query:
         try:
@@ -434,5 +435,6 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             callback_query=update.callback_query,
             text=text,
             reply_markup=InlineKeyboardMarkup(buttons),
+            disable_web_page_preview=True
         )
     return MENU
