@@ -39,25 +39,37 @@ def upgrade() -> None:
             )
         """)
         op.execute("""
-            INSERT INTO promocode_new 
-            SELECT id, name, promocode_type, date_from, date_to, 
+            INSERT INTO promocode_new
+            SELECT id, name, promocode_type, date_from, date_to,
                    discount_percentage, applicable_tariffs, is_active, created_at
             FROM promocode
         """)
         op.execute("DROP TABLE promocode")
         op.execute("ALTER TABLE promocode_new RENAME TO promocode")
     else:
-        # For other databases, use standard DROP CONSTRAINT
-        with op.batch_alter_table("promocode", schema=None) as batch_op:
-            # Try to drop the constraint - it might have different names in different databases
-            try:
-                batch_op.drop_constraint("uq_promocode_name", type_="unique")
-            except Exception:
-                try:
-                    batch_op.drop_constraint("promocode_name_key", type_="unique")
-                except Exception:
-                    # If constraint name is unknown, try to find and drop it
-                    pass
+        # For PostgreSQL and other databases, use direct SQL to safely drop constraint
+        conn = op.get_bind()
+
+        # Check if constraint exists using PostgreSQL system catalogs
+        result = conn.execute(sa.text("""
+            SELECT constraint_name
+            FROM information_schema.table_constraints
+            WHERE table_name = 'promocode'
+            AND constraint_type = 'UNIQUE'
+            AND constraint_name LIKE '%name%'
+        """))
+
+        constraint_name = None
+        row = result.fetchone()
+        if row:
+            constraint_name = row[0]
+
+        if constraint_name:
+            print(f"[MIGRATION] Dropping unique constraint: {constraint_name}")
+            conn.execute(sa.text(f'ALTER TABLE promocode DROP CONSTRAINT "{constraint_name}"'))
+            conn.commit()
+        else:
+            print("[MIGRATION] No unique constraint on 'name' column found, skipping")
 
 
 def downgrade() -> None:
