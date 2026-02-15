@@ -169,6 +169,3 @@ the_secret_house.db
 *.db
 settings.json
 /.vs
-
-# Session storage
-session_storage.json

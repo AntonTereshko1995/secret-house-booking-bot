@@ -2,7 +2,7 @@ import sys
 import os
 from src.models.enum.booking_step import BookingStep
 from src.services.navigation_service import NavigationService
-from src.services.session.session_service import SessionService
+from src.services.redis import RedisSessionService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
@@ -53,7 +53,7 @@ MAX_PEOPLE = 6
 rate_service = CalculationRateService()
 date_pricing_service = DatePricingService()
 database_service = DatabaseService()
-session_service = SessionService()
+redis_service = RedisSessionService()
 navigation_service = NavigationService()
 
 
@@ -110,7 +110,7 @@ def get_handler():
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, "Back to menu", update)
-    await session_service.clear_booking(update)
+    redis_service.clear_booking(update)
     return MENU
 
 
@@ -120,8 +120,8 @@ async def generate_tariff_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     # return await send_approving_to_admin(update, context, None, is_cash=True)
     LoggerService.info(__name__, "Generate tariff", update)
 
-    await session_service.init_booking(update)
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.TARIFF)
+    redis_service.init_booking(update)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.TARIFF)
 
     keyboard = [
         [
@@ -195,39 +195,39 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await back_navigation(update, context)
 
     tariff = tariff_helper.get_by_str(data)
-    await session_service.update_booking_field(update, "tariff", tariff)
+    redis_service.update_booking_field(update, "tariff", tariff)
     LoggerService.info(__name__, "Select tariff", update, kwargs={"tariff": tariff})
 
     if tariff != Tariff.GIFT:
         rental_rate = rate_service.get_by_tariff(tariff)
-        await session_service.update_booking_field(update, "rental_rate", rental_rate)
+        redis_service.update_booking_field(update, "rental_rate", rental_rate)
 
     if (
         tariff == Tariff.INCOGNITA_DAY
         or tariff == Tariff.INCOGNITA_HOURS
         or tariff == Tariff.INCOGNITA_WORKER
     ):
-        await session_service.update_booking_field(update, "is_sauna_included", True)
-        await session_service.update_booking_field(update, "is_secret_room_included", True)
-        await session_service.update_booking_field(update, "is_white_room_included", True)
-        await session_service.update_booking_field(update, "is_green_room_included", True)
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(update, "is_sauna_included", True)
+        redis_service.update_booking_field(update, "is_secret_room_included", True)
+        redis_service.update_booking_field(update, "is_white_room_included", True)
+        redis_service.update_booking_field(update, "is_green_room_included", True)
+        redis_service.update_booking_field(
             update, "is_additional_bedroom_included", True
         )
 
         if tariff == Tariff.INCOGNITA_DAY:
-            await session_service.update_booking_field(update, "is_photoshoot_included", True)
+            redis_service.update_booking_field(update, "is_photoshoot_included", True)
             return await photoshoot_message(update, context)
         elif tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_WORKER:
-            await session_service.update_booking_field(update, "is_photoshoot_included", False)
+            redis_service.update_booking_field(update, "is_photoshoot_included", False)
             return await count_of_people_message(update, context)
     elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
-        await session_service.update_booking_field(update, "is_photoshoot_included", False)
-        await session_service.update_booking_field(update, "is_sauna_included", False)
-        await session_service.update_booking_field(update, "is_secret_room_included", True)
-        await session_service.update_booking_field(update, "is_white_room_included", True)
-        await session_service.update_booking_field(update, "is_green_room_included", True)
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(update, "is_photoshoot_included", False)
+        redis_service.update_booking_field(update, "is_sauna_included", False)
+        redis_service.update_booking_field(update, "is_secret_room_included", True)
+        redis_service.update_booking_field(update, "is_white_room_included", True)
+        redis_service.update_booking_field(update, "is_green_room_included", True)
+        redis_service.update_booking_field(
             update, "is_additional_bedroom_included", True
         )
         return await sauna_message(update, context)
@@ -242,7 +242,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @safe_callback_query()
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Enter user contact", update)
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.CONTACT)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.CONTACT)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -274,8 +274,8 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_input = update.message.text
         is_valid, cleaned_contact = string_helper.is_valid_user_contact(user_input)
         if is_valid:
-            booking = await session_service.get_booking(update)
-            await session_service.update_booking_field(update, "user_contact", cleaned_contact)
+            booking = redis_service.get_booking(update)
+            redis_service.update_booking_field(update, "user_contact", cleaned_contact)
 
             # Save contact to database
             try:
@@ -300,7 +300,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 __name__, "User name is valid", update, kwargs={"user_name": user_input}
             )
             if booking.gift_id:
-                if await is_any_additional_payment(update):
+                if is_any_additional_payment(update):
                     return await pay(update, context)
                 else:
                     return await send_approving_to_admin(update, context, is_cash=True)
@@ -328,7 +328,7 @@ async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return await back_navigation(update, context)
 
     is_photoshoot_included = eval(data)
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "is_photoshoot_included", is_photoshoot_included
     )
     LoggerService.info(
@@ -348,7 +348,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     is_sauna_included = eval(data)
-    await session_service.update_booking_field(update, "is_sauna_included", is_sauna_included)
+    redis_service.update_booking_field(update, "is_sauna_included", is_sauna_included)
     LoggerService.info(
         __name__,
         "Include sauna",
@@ -356,7 +356,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kwargs={"is_sauna_included": is_sauna_included},
     )
 
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if booking.gift_id:
         return await navigate_next_step_for_gift(update, context)
     elif booking.tariff == Tariff.DAY or booking.tariff == Tariff.DAY_FOR_COUPLE:
@@ -373,7 +373,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
         return await back_navigation(update, context)
 
     is_secret_room_included = eval(data)
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "is_secret_room_included", is_secret_room_included
     )
     LoggerService.info(
@@ -382,7 +382,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
         update,
         kwargs={"is_secret_room_included": is_secret_room_included},
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if booking.gift_id:
         return await navigate_next_step_for_gift(update, context)
 
@@ -400,13 +400,13 @@ async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Select bedroom", update, kwargs={"bedroom": bedroom})
 
     if bedroom == Bedroom.GREEN:
-        await session_service.update_booking_field(update, "is_white_room_included", False)
-        await session_service.update_booking_field(update, "is_green_room_included", True)
+        redis_service.update_booking_field(update, "is_white_room_included", False)
+        redis_service.update_booking_field(update, "is_green_room_included", True)
     else:
-        await session_service.update_booking_field(update, "is_white_room_included", True)
-        await session_service.update_booking_field(update, "is_green_room_included", False)
+        redis_service.update_booking_field(update, "is_white_room_included", True)
+        redis_service.update_booking_field(update, "is_green_room_included", False)
 
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if booking.gift_id:
         return await navigate_next_step_for_gift(update, context)
 
@@ -425,17 +425,17 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
         __name__, "Select additional bedroom", update, kwargs={"is_added": is_added}
     )
     if is_added:
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(
             update, "is_additional_bedroom_included", True
         )
-        await session_service.update_booking_field(update, "is_white_room_included", True)
-        await session_service.update_booking_field(update, "is_green_room_included", True)
+        redis_service.update_booking_field(update, "is_white_room_included", True)
+        redis_service.update_booking_field(update, "is_green_room_included", True)
     else:
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(
             update, "is_additional_bedroom_included", False
         )
 
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if booking.gift_id:
         return await navigate_next_step_for_gift(update, context)
 
@@ -450,7 +450,7 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
         return await back_navigation(update, context)
 
     number_of_guests = int(data)
-    await session_service.update_booking_field(update, "number_of_guests", number_of_guests)
+    redis_service.update_booking_field(update, "number_of_guests", number_of_guests)
     LoggerService.info(
         __name__,
         "Select number of people",
@@ -486,7 +486,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_prev_month,
     ) = await calendar_picker.process_calendar_selection(update, context)
     if selected:
-        booking = await session_service.get_booking(update)
+        booking = redis_service.get_booking(update)
         if not tariff_helper.is_booking_available(booking.tariff, selected_date):
             LoggerService.warning(
                 __name__, f"start date is incorrect for {booking.tariff}", update
@@ -503,7 +503,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update, context, error_message=error_message
             )
 
-        await session_service.update_booking_field(update, "start_booking_date", selected_date)
+        redis_service.update_booking_field(update, "start_booking_date", selected_date)
         LoggerService.info(
             __name__,
             "select start date",
@@ -566,11 +566,11 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update, context
     )
     if selected:
-        booking = await session_service.get_booking(update)
+        booking = redis_service.get_booking(update)
         start_booking_date = booking.start_booking_date.replace(
             hour=time.hour, minute=time.minute
         )
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(
             update, "start_booking_date", start_booking_date
         )
         LoggerService.info(
@@ -591,7 +591,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @safe_callback_query()
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (
         booking.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)
@@ -604,7 +604,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_prev_month,
     ) = await calendar_picker.process_calendar_selection(update, context)
     if selected:
-        await session_service.update_booking_field(update, "finish_booking_date", selected_date)
+        redis_service.update_booking_field(update, "finish_booking_date", selected_date)
         LoggerService.info(
             __name__,
             "select finish date",
@@ -664,11 +664,11 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update, context
     )
     if selected:
-        booking = await session_service.get_booking(update)
+        booking = redis_service.get_booking(update)
         finish_booking_date = booking.finish_booking_date.replace(
             hour=time.hour, minute=time.minute
         )
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(
             update, "finish_booking_date", finish_booking_date
         )
         LoggerService.info(
@@ -723,7 +723,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.COMMENT)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.COMMENT)
 
     if update.message == None:
         if update.callback_query:
@@ -733,7 +733,7 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return await back_navigation(update, context)
     else:
         booking_comment = update.message.text
-        await session_service.update_booking_field(update, "booking_comment", booking_comment)
+        redis_service.update_booking_field(update, "booking_comment", booking_comment)
         LoggerService.info(
             __name__, "Write comment", update, kwargs={"comment": booking_comment}
         )
@@ -743,7 +743,7 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def promocode_entry_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show promo code entry prompt with SKIP option"""
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.PROMOCODE)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.PROMOCODE)
 
     keyboard = [
         [InlineKeyboardButton("Пропустить", callback_data=f"BOOKING-PROMO_{SKIP}")],
@@ -779,7 +779,7 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
         return PROMOCODE_INPUT
 
     promo_code = update.message.text.strip().upper()
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     # Validate against booking start_date and tariff
     is_valid, message_text, promo = database_service.validate_promocode(
@@ -788,8 +788,8 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
 
     if is_valid:
         # Store promocode_id in redis, will be saved to DB later
-        await session_service.update_booking_field(update, "promocode_id", promo.id)
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(update, "promocode_id", promo.id)
+        redis_service.update_booking_field(
             update, "promocode_discount", promo.discount_percentage
         )
 
@@ -810,7 +810,7 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
         )
 
         # Check if Incognito tariff and route to questionnaire
-        booking = await session_service.get_booking(update)
+        booking = redis_service.get_booking(update)
         if (
             booking.tariff == Tariff.INCOGNITA_DAY
             or booking.tariff == Tariff.INCOGNITA_HOURS
@@ -854,7 +854,7 @@ async def skip_promocode(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     # Check if Incognito tariff and route to questionnaire
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if (
         booking.tariff == Tariff.INCOGNITA_DAY
         or booking.tariff == Tariff.INCOGNITA_HOURS
@@ -866,10 +866,10 @@ async def skip_promocode(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.CONFIRM_BOOKING
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("Перейти к оплате.", callback_data=SET_USER)],
@@ -903,7 +903,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             discount_amount = int(price * (discount_percentage / 100))
             price = price - discount_amount
             # Save discounted price to Redis
-            await session_service.update_booking_field(update, "price", price)
+            redis_service.update_booking_field(update, "price", price)
             promocode_info = (
                 f"\n🎟️ <b>Промокод:</b> скидка {discount_percentage}% "
                 f"(-{discount_amount} руб.)\n"
@@ -972,14 +972,14 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message, parse_mode="HTML", reply_markup=reply_markup
         )
 
-    await session_service.update_booking_field(update, "price", price)
+    redis_service.update_booking_field(update, "price", price)
     return BOOKING
 
 
 @safe_callback_query()
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.PAY)
-    booking = await session_service.get_booking(update)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.PAY)
+    booking = redis_service.get_booking(update)
 
     if update.callback_query and update.callback_query.data:
         await update.callback_query.answer()
@@ -995,7 +995,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Save calculated prepayment to Redis draft
-    await session_service.update_booking_field(update, "prepayment_price", prepayment_amount)
+    redis_service.update_booking_field(update, "prepayment_price", prepayment_amount)
 
     keyboard = []
     if booking.gift_id:
@@ -1057,7 +1057,7 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Cancel booking", update)
     await update.callback_query.answer()
 
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if booking:
         database_service.update_booking(booking.id, is_canceled=True)
     return await back_navigation(update, context)
@@ -1067,8 +1067,8 @@ async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     LoggerService.info(__name__, "Confirm booking", update)
 
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.FINISH)
-    booking = await session_service.get_booking(update)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.FINISH)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-BACK_{BACK}")]
@@ -1097,10 +1097,10 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.PHOTOSHOOT
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"BOOKING-PHOTO_{str(True)}")],
@@ -1131,10 +1131,10 @@ async def photoshoot_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.SECRET_ROOM
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"BOOKING-SECRET_{str(True)}")],
@@ -1165,8 +1165,8 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def write_code_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE, is_error: bool = False
 ):
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.COMMENT)
-    booking = await session_service.get_booking(update)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.COMMENT)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-CODE_{END}")]
@@ -1193,10 +1193,10 @@ async def write_code_message(
 
 
 async def count_of_people_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.NUMBER_GUESTS
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("1 гость", callback_data="BOOKING-PEOPLE_1")],
@@ -1330,7 +1330,7 @@ async def start_date_message(
     context: ContextTypes.DEFAULT_TYPE,
     error_message: Optional[str] = None,
 ):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.START_DATE
     )
     today = date.today()
@@ -1338,7 +1338,7 @@ async def start_date_message(
     min_date_booking = today
 
     # Check if user already has a selected date to preserve the month
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if booking and booking.start_booking_date:
         # Use the month from the previously selected date
         reference_date = booking.start_booking_date.date()
@@ -1387,10 +1387,10 @@ async def start_date_message(
 
 
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.START_TIME
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     feature_booking = database_service.get_booking_by_start_date_period(
         booking.start_booking_date.date() - timedelta(days=2),
@@ -1436,10 +1436,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.FINISH_DATE
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
@@ -1492,10 +1492,10 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.FINISH_TIME
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     feature_booking = database_service.get_booking_by_start_date_period(
         booking.finish_booking_date.date() - timedelta(days=2),
@@ -1542,8 +1542,8 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.SAUNA)
-    booking = await session_service.get_booking(update)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.SAUNA)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"BOOKING-SAUNA_{str(True)}")],
@@ -1573,7 +1573,7 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(update, "navigation_step", BookingStep.COMMENT)
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.COMMENT)
     keyboard = [
         [InlineKeyboardButton("Пропустить", callback_data=f"BOOKING-COMMENT_{SKIP}")],
         [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-COMMENT_{END}")],
@@ -1590,7 +1590,7 @@ async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def wine_preference_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.WINE_PREFERENCE
     )
 
@@ -1665,7 +1665,7 @@ async def handle_wine_preference(update: Update, context: ContextTypes.DEFAULT_T
         return await back_navigation(update, context)
 
     wine_preference = data  # "none", "sweet", "semi_sweet", "dry", "semi_dry"
-    await session_service.update_booking_field(update, "wine_preference", wine_preference)
+    redis_service.update_booking_field(update, "wine_preference", wine_preference)
 
     LoggerService.info(
         __name__,
@@ -1682,7 +1682,7 @@ async def transfer_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Display transfer service question for Incognito tariffs.
     User can click skip button or type address.
     """
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.TRANSFER_ADDRESS
     )
 
@@ -1719,7 +1719,7 @@ async def handle_transfer_skip(update: Update, context: ContextTypes.DEFAULT_TYP
     if data == str(END):
         return await back_navigation(update, context)
 
-    await session_service.update_booking_field(update, "transfer_address", None)
+    redis_service.update_booking_field(update, "transfer_address", None)
     LoggerService.info(__name__, "Transfer service declined", update)
 
     return await confirm_pay(update, context)
@@ -1753,7 +1753,7 @@ async def handle_transfer_input(update: Update, context: ContextTypes.DEFAULT_TY
             )
             return INCOGNITO_TRANSFER
 
-        await session_service.update_booking_field(update, "transfer_address", address)
+        redis_service.update_booking_field(update, "transfer_address", address)
 
         LoggerService.info(
             __name__,
@@ -1768,7 +1768,7 @@ async def handle_transfer_input(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 async def bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.FIRST_BEDROOM
     )
     keyboard = [
@@ -1805,10 +1805,10 @@ async def bedroom_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def additional_bedroom_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    await session_service.update_booking_field(
+    redis_service.update_booking_field(
         update, "navigation_step", BookingStep.SECOND_BEDROOM
     )
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
 
     keyboard = [
         [InlineKeyboardButton("Да", callback_data=f"BOOKING-ADD-BEDROOM_{str(True)}")],
@@ -1838,8 +1838,8 @@ async def additional_bedroom_message(
     return BOOKING
 
 
-async def is_any_additional_payment(update: Update) -> bool:
-    booking = await session_service.get_booking(update)
+def is_any_additional_payment(update: Update) -> bool:
+    booking = redis_service.get_booking(update)
 
     if booking.gift_id:
         gift = database_service.get_gift_by_id(booking.gift_id)
@@ -1860,7 +1860,7 @@ async def is_any_additional_payment(update: Update) -> bool:
 async def navigate_next_step_for_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    booking = await session_service.get_booking(update)
+    booking = redis_service.get_booking(update)
     if not booking.gift_id:
         return
 
@@ -1889,22 +1889,22 @@ async def navigate_next_step_for_gift(
     return await count_of_people_message(update, context)
 
 
-async def init_fields_for_gift(update: Update):
-    booking = await session_service.get_booking(update)
+def init_fields_for_gift(update: Update):
+    booking = redis_service.get_booking(update)
     if not booking.gift_id:
         return
 
     gift = database_service.get_gift_by_id(booking.gift_id)
     if gift.has_secret_room:
-        await session_service.update_booking_field(update, "is_secret_room_included", True)
+        redis_service.update_booking_field(update, "is_secret_room_included", True)
     if gift.has_sauna:
-        await session_service.update_booking_field(update, "is_sauna_included", True)
+        redis_service.update_booking_field(update, "is_sauna_included", True)
     if gift.has_additional_bedroom:
-        await session_service.update_booking_field(
+        redis_service.update_booking_field(
             update, "is_additional_bedroom_included", True
         )
-        await session_service.update_booking_field(update, "is_white_room_included", True)
-        await session_service.update_booking_field(update, "is_green_room_included", True)
+        redis_service.update_booking_field(update, "is_white_room_included", True)
+        redis_service.update_booking_field(update, "is_green_room_included", True)
 
 
 async def init_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1915,11 +1915,11 @@ async def init_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not gift:
         return await write_code_message(update, context, True)
 
-    await session_service.update_booking_field(update, "gift_id", gift.id)
-    await session_service.update_booking_field(update, "tariff", gift.tariff)
+    redis_service.update_booking_field(update, "gift_id", gift.id)
+    redis_service.update_booking_field(update, "tariff", gift.tariff)
 
     rental_rate = rate_service.get_by_tariff(gift.tariff)
-    await session_service.update_booking_field(update, "rental_rate", rental_rate)
+    redis_service.update_booking_field(update, "rental_rate", rental_rate)
 
     categories = rate_service.get_price_categories(
         rental_rate, gift.has_sauna, gift.has_secret_room, gift.has_additional_bedroom
@@ -1930,11 +1930,11 @@ async def init_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
     )
 
-    await init_fields_for_gift(update)
+    init_fields_for_gift(update)
     return await navigate_next_step_for_gift(update, context)
 
 
-async def save_booking_information(
+def save_booking_information(
     update: Update, chat_id: int, is_cash=False
 ) -> BookingBase:
     # booking = database_service.get_booking_by_id(1)
@@ -1957,7 +1957,7 @@ async def save_booking_information(
     #     booking.gift_id,
     #     )
 
-    cache_booking = await session_service.get_booking(update)
+    cache_booking = redis_service.get_booking(update)
     booking = database_service.add_booking(
         cache_booking.user_contact,
         cache_booking.start_booking_date,
@@ -2033,7 +2033,7 @@ async def send_approving_to_admin(
     is_cash=False,
 ):
     chat_id = navigation_service.get_chat_id(update)
-    booking = await save_booking_information(update, chat_id, is_cash)
+    booking = save_booking_information(update, chat_id, is_cash)
     if not booking and update.message:
         await update.message.reply_text(
             text="❌ <b>Ошибка!</b>\n\n"

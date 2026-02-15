@@ -5,7 +5,7 @@ from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.calendar_service import CalendarService
-from src.services.session.session_service import SessionService
+from src.services.redis import RedisSessionService
 from datetime import date
 from src.services.database_service import DatabaseService
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -23,7 +23,7 @@ from src.constants import (
 database_service = DatabaseService()
 calendar_service = CalendarService()
 navigation_service = NavigationService()
-session_service = SessionService()
+redis_service = RedisSessionService()
 
 
 def get_handler():
@@ -39,13 +39,13 @@ def get_handler():
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, "Back to menu", update)
-    await session_service.clear_cancel_booking(update)
+    redis_service.clear_cancel_booking(update)
     return MENU
 
 
 @safe_callback_query()
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.init_cancel_booking(update)
+    redis_service.init_cancel_booking(update)
     LoggerService.info(__name__, "Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -67,7 +67,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_input = update.message.text
         is_valid, cleaned_contact = string_helper.is_valid_user_contact(user_input)
         if is_valid:
-            await session_service.update_cancel_booking_field(update, "user_contact", cleaned_contact)
+            redis_service.update_cancel_booking_field(update, "user_contact", cleaned_contact)
 
             # Save contact to database
             try:
@@ -119,7 +119,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == str(END):
         return await back_navigation(update, context)
 
-    await session_service.update_cancel_booking_field(update, "selected_booking_id", int(data))
+    redis_service.update_cancel_booking_field(update, "selected_booking_id", int(data))
     LoggerService.info(
         __name__, "Choose booking", update, kwargs={"booking_id": data}
     )
@@ -135,7 +135,7 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
 
     LoggerService.info(__name__, "Confirm cancel booking", update)
 
-    draft = await session_service.get_cancel_booking(update)
+    draft = redis_service.get_cancel_booking(update)
     if not draft or not draft.selected_booking_id:
         LoggerService.warning(__name__, "Draft is None or booking_id is missing (double click protection)", update)
         return await back_navigation(update, context)
@@ -154,12 +154,12 @@ async def confirm_cancel_booking(update: Update, context: ContextTypes.DEFAULT_T
         "📌 Если у вас возникли вопросы, свяжитесь с администратором.",
         reply_markup=reply_markup,
     )
-    await session_service.clear_cancel_booking(update)
+    redis_service.clear_cancel_booking(update)
     return CANCEL_BOOKING
 
 
 async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    draft = await session_service.get_cancel_booking(update)
+    draft = redis_service.get_cancel_booking(update)
     selected_bookings = database_service.get_booking_by_user_contact(draft.user_contact)
 
     if not selected_bookings or len(selected_bookings) == 0:
@@ -167,7 +167,7 @@ async def choose_booking_message(update: Update, context: ContextTypes.DEFAULT_T
 
     # Store booking IDs in Redis
     booking_ids = [b.id for b in selected_bookings]
-    await session_service.update_cancel_booking_field(update, "selected_bookings", booking_ids)
+    redis_service.update_cancel_booking_field(update, "selected_bookings", booking_ids)
 
     keyboard = []
     for booking in selected_bookings:

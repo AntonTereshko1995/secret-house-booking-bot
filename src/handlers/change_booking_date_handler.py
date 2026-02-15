@@ -10,7 +10,7 @@ from src.services.calendar_service import CalendarService
 from src.models.rental_price import RentalPrice
 from src.services.calculation_rate_service import CalculationRateService
 from src.services.date_pricing_service import DatePricingService
-from src.services.session.session_service import SessionService
+from src.services.redis import RedisSessionService
 from db.models.booking import BookingBase
 from src.services.database_service import DatabaseService
 from datetime import datetime, date, time, timedelta
@@ -35,7 +35,7 @@ calculation_rate_service = CalculationRateService()
 calendar_service = CalendarService()
 navigation_service = NavigationService()
 date_pricing_service = DatePricingService()
-session_service = SessionService()
+redis_service = RedisSessionService()
 
 
 def get_handler():
@@ -63,13 +63,13 @@ def get_handler():
 async def back_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await menu_handler.show_menu(update, context)
     LoggerService.info(__name__, "Back to menu", update)
-    await session_service.clear_change_booking(update)
+    redis_service.clear_change_booking(update)
     return MENU
 
 
 @safe_callback_query()
 async def enter_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await session_service.init_change_booking(update)
+    redis_service.init_change_booking(update)
     LoggerService.info(__name__, "Enter user contact", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -91,7 +91,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_input = update.message.text
         is_valid, cleaned_contact = string_helper.is_valid_user_contact(user_input)
         if is_valid:
-            await session_service.update_change_booking_field(update, "user_contact", cleaned_contact)
+            redis_service.update_change_booking_field(update, "user_contact", cleaned_contact)
 
             # Save contact to database
             try:
@@ -144,7 +144,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == str(END):
         return await back_navigation(update, context)
 
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     # Find booking from database by selected_bookings
     selected_bookings_list = database_service.get_booking_by_user_contact(draft.user_contact)
     booking = next((b for b in selected_bookings_list if str(b.id) == data), None)
@@ -165,15 +165,15 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Store booking data in Redis
-    await session_service.update_change_booking_field(update, "selected_booking_id", booking.id)
-    await session_service.update_change_booking_field(update, "old_booking_date", booking.start_date)
-    await session_service.update_change_booking_field(update, "booking_price", booking.price)
-    await session_service.update_change_booking_field(update, "booking_tariff", booking.tariff.name)
-    await session_service.update_change_booking_field(update, "booking_has_sauna", booking.has_sauna)
-    await session_service.update_change_booking_field(update, "booking_has_photoshoot", booking.has_photoshoot)
-    await session_service.update_change_booking_field(update, "booking_has_secret_room", booking.has_secret_room)
-    await session_service.update_change_booking_field(update, "booking_has_white_bedroom", booking.has_white_bedroom)
-    await session_service.update_change_booking_field(update, "booking_has_green_bedroom", booking.has_green_bedroom)
+    redis_service.update_change_booking_field(update, "selected_booking_id", booking.id)
+    redis_service.update_change_booking_field(update, "old_booking_date", booking.start_date)
+    redis_service.update_change_booking_field(update, "booking_price", booking.price)
+    redis_service.update_change_booking_field(update, "booking_tariff", booking.tariff.name)
+    redis_service.update_change_booking_field(update, "booking_has_sauna", booking.has_sauna)
+    redis_service.update_change_booking_field(update, "booking_has_photoshoot", booking.has_photoshoot)
+    redis_service.update_change_booking_field(update, "booking_has_secret_room", booking.has_secret_room)
+    redis_service.update_change_booking_field(update, "booking_has_white_bedroom", booking.has_white_bedroom)
+    redis_service.update_change_booking_field(update, "booking_has_green_bedroom", booking.has_green_bedroom)
 
     LoggerService.info(__name__, "Choose booking", update, kwargs={"booking_id": booking.id})
     return await start_date_message(update, context)
@@ -192,7 +192,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_prev_month,
     ) = await calendar_picker.process_calendar_selection(update, context)
     if selected:
-        draft = await session_service.get_change_booking(update)
+        draft = redis_service.get_change_booking(update)
         booking = database_service.get_booking_by_id(draft.selected_booking_id)
 
         if not tariff_helper.is_booking_available(booking.tariff, selected_date):
@@ -211,7 +211,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update, context, error_message=error_message
             )
 
-        await session_service.update_change_booking_field(update, "start_booking_date", selected_date)
+        redis_service.update_change_booking_field(update, "start_booking_date", selected_date)
         LoggerService.info(
             __name__,
             "select start date",
@@ -232,7 +232,7 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Exclude current user's booking from occupied slots
-        draft = await session_service.get_change_booking(update)
+        draft = redis_service.get_change_booking(update)
         if draft and draft.selected_booking_id:
             feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
 
@@ -275,11 +275,11 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update, context
     )
     if selected:
-        draft = await session_service.get_change_booking(update)
+        draft = redis_service.get_change_booking(update)
         start_booking_date = draft.start_booking_date.replace(
             hour=time.hour, minute=time.minute
         )
-        await session_service.update_change_booking_field(update, "start_booking_date", start_booking_date)
+        redis_service.update_change_booking_field(update, "start_booking_date", start_booking_date)
         LoggerService.info(
             __name__,
             "select start time",
@@ -298,7 +298,7 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @safe_callback_query()
 async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     max_date_booking = date.today() + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (draft.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
     (
@@ -309,7 +309,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_prev_month,
     ) = await calendar_picker.process_calendar_selection(update, context)
     if selected:
-        await session_service.update_change_booking_field(update, "finish_booking_date", selected_date)
+        redis_service.update_change_booking_field(update, "finish_booking_date", selected_date)
         LoggerService.info(
             __name__,
             "select finish date",
@@ -330,7 +330,7 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Exclude current user's booking from occupied slots
-        draft = await session_service.get_change_booking(update)
+        draft = redis_service.get_change_booking(update)
         if draft and draft.selected_booking_id:
             feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
 
@@ -375,9 +375,9 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update, context
     )
     if selected:
-        draft = await session_service.get_change_booking(update)
+        draft = redis_service.get_change_booking(update)
         finish_booking_date = draft.finish_booking_date.replace(hour=time.hour, minute=time.minute)
-        await session_service.update_change_booking_field(update, "finish_booking_date", finish_booking_date)
+        redis_service.update_change_booking_field(update, "finish_booking_date", finish_booking_date)
 
         LoggerService.info(
             __name__,
@@ -463,7 +463,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     LoggerService.info(__name__, "Confirm booking", update)
 
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     if not draft or not draft.selected_booking_id:
         LoggerService.warning(__name__, "Draft is None or booking_id is missing (double click protection)", update)
         return await back_navigation(update, context)
@@ -533,7 +533,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query, text=message, reply_markup=reply_markup
     )
-    await session_service.clear_change_booking(update)
+    redis_service.clear_change_booking(update)
     return CHANGE_BOOKING_DATE
 
 
@@ -542,7 +542,7 @@ async def choose_booking_message(
     context: ContextTypes.DEFAULT_TYPE,
     error_message: Optional[str] = None,
 ):
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     booking_list = database_service.get_booking_by_user_contact(draft.user_contact)
     selected_bookings = list(
         filter(lambda x: x.start_date.date() >= date.today(), booking_list)
@@ -553,7 +553,7 @@ async def choose_booking_message(
 
     # Store booking IDs in Redis
     booking_ids = [b.id for b in selected_bookings]
-    await session_service.update_change_booking_field(update, "selected_bookings", booking_ids)
+    redis_service.update_change_booking_field(update, "selected_bookings", booking_ids)
 
     keyboard = []
     for booking in selected_bookings:
@@ -600,7 +600,7 @@ async def start_date_message(
     feature_booking = database_service.get_booking_by_start_date_period(start_period, end_period)
 
     # Exclude current user's booking from occupied slots
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     if draft and draft.selected_booking_id:
         feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
 
@@ -640,7 +640,7 @@ async def start_date_message(
 
 @safe_callback_query()
 async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     booking = database_service.get_booking_by_id(draft.selected_booking_id)
 
     feature_booking = database_service.get_booking_by_start_date_period(
@@ -693,7 +693,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 @safe_callback_query()
 async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     today = date.today()
     max_date_booking = today + relativedelta(months=PERIOD_IN_MONTHS)
     min_date_booking = (draft.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).date()
@@ -740,7 +740,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 @safe_callback_query()
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     feature_booking = database_service.get_booking_by_start_date_period(
         draft.finish_booking_date.date() - timedelta(days=2),
         draft.finish_booking_date.date() + timedelta(days=2),
@@ -790,7 +790,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     booking = database_service.get_booking_by_id(draft.selected_booking_id)
 
     keyboard = [
@@ -843,7 +843,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def warning_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    draft = await session_service.get_change_booking(update)
+    draft = redis_service.get_change_booking(update)
     LoggerService.info(__name__, "Not found bookings", update)
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)

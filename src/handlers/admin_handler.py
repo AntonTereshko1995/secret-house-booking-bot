@@ -1315,14 +1315,8 @@ async def send_booking_details(
 
 
 async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase):
-    """Modified to trigger feedback conversation with personalized booking details"""
+    """Modified to trigger feedback conversation instead of sending Google Forms link"""
     try:
-        # Get tariff name
-        tariff_name = tariff_helper.get_name(booking.tariff)
-
-        # Format booking date
-        start_date = booking.start_date.strftime("%d.%m.%Y")
-
         # Create inline button to start feedback conversation
         keyboard = [
             [
@@ -1335,19 +1329,10 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
 
         message = await context.bot.send_message(
             chat_id=booking.user.chat_id,
-            text=f"🏡 <b>The Secret House благодарит вас за выбор нашего дома для аренды!</b> 💫\n\n"
-            f"<b>Ваше бронирование:</b>\n"
-            f"📅 Дата заезда: <b>{start_date}</b>\n"
-            f"💰 Тариф: <b>{tariff_name}</b>\n\n"
-            f"Мы хотели бы узнать, как Вам понравилось проживание и наше обслуживание. "
-            f"Будем благодарны, если вы оставите отзыв о своих впечатлениях!\n\n"
-            f"🎁 <b>Специальное предложение:</b> После получения вашего отзыва мы дарим промокод на <b>10% скидку</b> для следующего визита!\n\n"
-            f"С уважением,\n"
-            f"Команда The Secret House ✨\n\n"
-            f"📱 <b>Мы в соцсетях:</b>\n"
-            f"• <a href=\"https://www.instagram.com/sekret_blr/\">Instagram (публичный)</a>\n"
-            f"• <a href=\"https://www.instagram.com/sekret_belarus\">Instagram (закрытый)</a>\n"
-            f"• <a href=\"https://t.me/sekret_blr\">Telegram канал</a>",
+            text="🏡 <b>The Secret House благодарит вас за выбор нашего дома для аренды!</b> 💫\n\n"
+            "Мы хотели бы узнать, как Вам понравилось наше обслуживание. "
+            "Будем благодарны, если вы оставите отзыв.\n\n"
+            "После получения фидбека мы дарим Вам <b>10% скидки</b> для следующей поездки.",
             parse_mode="HTML",
             reply_markup=reply_markup,
         )
@@ -1359,8 +1344,6 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "message_id": message.message_id,
-                "tariff": tariff_name,
-                "start_date": start_date,
                 "action": "send_feedback",
             },
         )

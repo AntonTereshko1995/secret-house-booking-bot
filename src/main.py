@@ -13,8 +13,7 @@ from src.handlers import menu_handler, admin_handler, feedback_handler, booking_
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID, INFORM_CHAT_ID
 from src.services import job_service
 from src.services.callback_recovery_service import CallbackRecoveryService
-from src.services.session import CustomPersistence
-from src.services.session.session_service import SessionService
+from src.services.redis import RedisPersistence
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -41,18 +40,6 @@ async def set_commands(application: Application):
     await application.bot.set_my_commands(
         admin_commands, scope=BotCommandScopeChatAdministrators(chat_id=ADMIN_CHAT_ID)
     )
-
-    # Initialize session service
-    session_service = SessionService()
-    await session_service.initialize()
-    LoggerService.info(__name__, "SessionService initialized successfully")
-
-
-async def shutdown_services(application: Application):
-    """Shutdown services on application stop."""
-    session_service = SessionService()
-    await session_service.shutdown()
-    LoggerService.info(__name__, "SessionService shut down successfully")
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -90,22 +77,21 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 if __name__ == "__main__":
-    # Initialize custom persistence for conversation states
-    persistence = CustomPersistence()
+    # Initialize Redis persistence for conversation states
+    persistence = RedisPersistence()
 
     # Build application with persistence
     application = (
         Application.builder()
         .token(TELEGRAM_TOKEN)
         .post_init(set_commands)
-        .post_shutdown(shutdown_services)
         .persistence(persistence)
         .build()
     )
 
     LoggerService.info(
         __name__,
-        "Application initialized with CustomPersistence for conversation states"
+        "Application initialized with Redis persistence for conversation states"
     )
 
     # Register handlers

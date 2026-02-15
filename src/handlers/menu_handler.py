@@ -326,17 +326,6 @@ async def handle_menu_callback_fallback(
             update
         )
         return await admin_handler.back_to_booking_list(update, context)
-    elif callback_data.startswith("booking_") or callback_data.startswith("gift_"):
-        # Admin booking/gift management callbacks - delegate to admin_handler
-        LoggerService.info(
-            __name__,
-            f"Delegating booking/gift callback to admin_handler: {callback_data}",
-            update
-        )
-        if callback_data.startswith("booking_"):
-            return await admin_handler.booking_callback(update, context)
-        else:
-            return await admin_handler.gift_callback(update, context)
     else:
         # Unknown callback - show menu
         LoggerService.warning(
@@ -401,7 +390,7 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             )
         ],
         [InlineKeyboardButton("Узнать стоимость аренды 💰", callback_data=PRICE)],
-        # [InlineKeyboardButton("Задать вопрос ❓", callback_data=QUESTIONS)],
+        [InlineKeyboardButton("Задать вопрос ❓", callback_data=QUESTIONS)],
         [
             InlineKeyboardButton(
                 "Связаться с администратором 📞", url="https://t.me/the_secret_house"
@@ -412,10 +401,6 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = (
         "<b>Добро пожаловать в The Secret House!</b>\n"
         "🏡 <b>Уют, искусство и тайны — всё для вашего идеального отдыха.</b>\n\n"
-        "📱 <b>Мы в соцсетях:</b>\n"
-        "• <a href=\"https://www.instagram.com/sekret_blr/\">Instagram (публичный)</a>\n"
-        "• <a href=\"https://www.instagram.com/sekret_belarus\">Instagram (закрытый)</a>\n"
-        "• <a href=\"https://t.me/sekret_blr\">Telegram канал</a>\n\n"
         "Выберите нужный пункт:\n\n"
     )
 
