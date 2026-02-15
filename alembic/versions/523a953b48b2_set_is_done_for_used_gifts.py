@@ -24,13 +24,13 @@ def upgrade() -> None:
     # Find gifts by checking if they are referenced in booking table
     op.execute("""
         UPDATE gift
-        SET is_done = 1
+        SET is_done = true
         WHERE id IN (
             SELECT DISTINCT gift_id
             FROM booking
             WHERE gift_id IS NOT NULL
         )
-        AND is_done = 0
+        AND is_done = false
     """)
 
 
@@ -38,11 +38,11 @@ def downgrade() -> None:
     # Revert is_done for gifts that were updated
     op.execute("""
         UPDATE gift
-        SET is_done = 0
+        SET is_done = false
         WHERE id IN (
             SELECT DISTINCT gift_id
             FROM booking
             WHERE gift_id IS NOT NULL
         )
-        AND is_done = 1
+        AND is_done = true
     """)
