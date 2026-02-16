@@ -192,8 +192,39 @@ def migrate_table(source_session, target_session, model_class, table_name: str):
         query = source_session.query(model_class)
 
         # Filter orphan records based on table (records with invalid foreign keys)
-        if table_name == 'booking' or table_name == 'gift':
-            # Only migrate records with valid user_id (exists in user table)
+        if table_name == 'booking':
+            # Filter bookings with invalid foreign keys (user_id, gift_id, promocode_id)
+            from db.models.user import UserBase
+            from db.models.gift import GiftBase
+            from db.models.promocode import PromocodeBase
+
+            # Get all valid IDs from source database
+            valid_user_ids = [user.id for user in source_session.query(UserBase.id).all()]
+            valid_gift_ids = [gift.id for gift in source_session.query(GiftBase.id).all()]
+            valid_promocode_ids = [promo.id for promo in source_session.query(PromocodeBase.id).all()]
+
+            # Filter records to only those with valid user_id
+            query = query.filter(model_class.user_id.in_(valid_user_ids))
+
+            # Filter records with gift_id: either NULL or exists in gift table
+            query = query.filter(
+                (model_class.gift_id.is_(None)) | (model_class.gift_id.in_(valid_gift_ids))
+            )
+
+            # Filter records with promocode_id: either NULL or exists in promocode table
+            query = query.filter(
+                (model_class.promocode_id.is_(None)) | (model_class.promocode_id.in_(valid_promocode_ids))
+            )
+
+            source_records = query.all()
+            record_count = len(source_records)
+            orphan_count = total_records - record_count
+
+            if orphan_count > 0:
+                logger.warning(f"Skipping {orphan_count} orphan records in {table_name} (invalid foreign keys)")
+            logger.info(f"Found {record_count} valid records in {table_name}")
+        elif table_name == 'gift':
+            # Filter gifts with invalid user_id
             from db.models.user import UserBase
 
             # Get all valid user IDs from source database
