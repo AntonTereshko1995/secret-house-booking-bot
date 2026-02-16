@@ -191,38 +191,38 @@ def migrate_table(source_session, target_session, model_class, table_name: str):
 
         query = source_session.query(model_class)
 
+        # Initialize variables for FK validation
+        valid_gift_ids = []
+        valid_promocode_ids = []
+
         # Filter orphan records based on table (records with invalid foreign keys)
         if table_name == 'booking':
-            # Filter bookings with invalid foreign keys (user_id, gift_id, promocode_id)
+            # For bookings: filter by user_id but DON'T skip - clean invalid gift/promo IDs
             from db.models.user import UserBase
             from db.models.gift import GiftBase
             from db.models.promocode import PromocodeBase
 
-            # Get all valid IDs from source database
+            # Get all valid IDs from MIGRATED tables (not source!)
+            # We need IDs that will actually exist in target database
             valid_user_ids = [user.id for user in source_session.query(UserBase.id).all()]
-            valid_gift_ids = [gift.id for gift in source_session.query(GiftBase.id).all()]
+
+            # Get only gifts that will be migrated (have valid user_id)
+            valid_gift_ids = [
+                gift.id for gift in source_session.query(GiftBase.id)
+                .filter(GiftBase.user_id.in_(valid_user_ids)).all()
+            ]
             valid_promocode_ids = [promo.id for promo in source_session.query(PromocodeBase.id).all()]
 
-            # Filter records to only those with valid user_id
+            # Filter records to only those with valid user_id (required FK)
             query = query.filter(model_class.user_id.in_(valid_user_ids))
-
-            # Filter records with gift_id: either NULL or exists in gift table
-            query = query.filter(
-                (model_class.gift_id.is_(None)) | (model_class.gift_id.in_(valid_gift_ids))
-            )
-
-            # Filter records with promocode_id: either NULL or exists in promocode table
-            query = query.filter(
-                (model_class.promocode_id.is_(None)) | (model_class.promocode_id.in_(valid_promocode_ids))
-            )
 
             source_records = query.all()
             record_count = len(source_records)
             orphan_count = total_records - record_count
 
             if orphan_count > 0:
-                logger.warning(f"Skipping {orphan_count} orphan records in {table_name} (invalid foreign keys)")
-            logger.info(f"Found {record_count} valid records in {table_name}")
+                logger.warning(f"Skipping {orphan_count} bookings with invalid user_id")
+            logger.info(f"Found {record_count} bookings with valid user_id")
         elif table_name == 'gift':
             # Filter gifts with invalid user_id
             from db.models.user import UserBase
@@ -254,13 +254,35 @@ def migrate_table(source_session, target_session, model_class, table_name: str):
         # Convert to dictionaries (to avoid session binding issues)
         logger.info(f"Converting {record_count} records to dictionaries...")
         records_data = []
+        cleaned_gift_ids = 0
+        cleaned_promocode_ids = 0
+
         for record in source_records:
             # Get all column values as dict
             record_dict = {
                 column.name: getattr(record, column.name)
                 for column in record.__table__.columns
             }
+
+            # Clean invalid foreign keys for booking table
+            if table_name == 'booking':
+                # Clean gift_id if it doesn't exist in valid_gift_ids
+                if record_dict.get('gift_id') is not None:
+                    if record_dict['gift_id'] not in valid_gift_ids:
+                        record_dict['gift_id'] = None
+                        cleaned_gift_ids += 1
+
+                # Clean promocode_id if it doesn't exist in valid_promocode_ids
+                if record_dict.get('promocode_id') is not None:
+                    if record_dict['promocode_id'] not in valid_promocode_ids:
+                        record_dict['promocode_id'] = None
+                        cleaned_promocode_ids += 1
+
             records_data.append(record_dict)
+
+        if table_name == 'booking' and (cleaned_gift_ids > 0 or cleaned_promocode_ids > 0):
+            logger.warning(f"Cleaned {cleaned_gift_ids} invalid gift_id references")
+            logger.warning(f"Cleaned {cleaned_promocode_ids} invalid promocode_id references")
 
         logger.success(f"Converted {len(records_data)} records")
 
