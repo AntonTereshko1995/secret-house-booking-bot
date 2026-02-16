@@ -42,10 +42,18 @@ def check_sqlite_file_exists() -> tuple[bool, str]:
         os.path.join(BASE_DIR, "test_the_secret_house.db.backup"),
     ]
 
+    print("[AUTO-MIGRATION] Searching for SQLite database file...")
     for path in sqlite_paths:
+        print(f"[AUTO-MIGRATION] Checking: {path}")
         if os.path.exists(path):
+            file_size_mb = os.path.getsize(path) / (1024 * 1024)
+            print(f"[AUTO-MIGRATION] OK Found SQLite database: {path}")
+            print(f"[AUTO-MIGRATION] OK File size: {file_size_mb:.2f} MB")
             return True, path
+        else:
+            print(f"[AUTO-MIGRATION]   - Not found")
 
+    print("[AUTO-MIGRATION] X No SQLite database file found in any location")
     return False, ""
 
 
@@ -100,27 +108,35 @@ def auto_migrate_data_if_needed():
     3. SQLite file exists
     """
 
+    print("[AUTO-MIGRATION] ===== Checking if auto-migration is needed =====")
+    print(f"[AUTO-MIGRATION] DATABASE_URL: {DATABASE_URL[:60]}...")
+
     # Only auto-migrate if using PostgreSQL
     if not is_postgresql_database(DATABASE_URL):
+        print("[AUTO-MIGRATION] Not using PostgreSQL - skipping auto-migration")
         return
 
-    print("[AUTO-MIGRATION] Detected PostgreSQL database")
+    print("[AUTO-MIGRATION] OK Detected PostgreSQL database")
 
     # Check if database needs migration (booking table empty)
+    print("[AUTO-MIGRATION] Checking if booking table is empty...")
     engine = create_engine(DATABASE_URL)
     if not is_database_empty(engine):
+        print("[AUTO-MIGRATION] Booking table has data - skipping auto-migration")
         return
 
-    print("[AUTO-MIGRATION] PostgreSQL database needs migration")
+    print("[AUTO-MIGRATION] OK Booking table is empty - migration needed")
+    print("[AUTO-MIGRATION] ===== Starting SQLite file search =====")
 
     # Check if SQLite file exists
     sqlite_exists, sqlite_path = check_sqlite_file_exists()
     if not sqlite_exists:
-        print("[AUTO-MIGRATION] No SQLite file found, skipping auto-migration")
+        print("[AUTO-MIGRATION] X No SQLite file found, skipping auto-migration")
         return
 
-    print(f"[AUTO-MIGRATION] Found SQLite file: {sqlite_path}")
-    print("[AUTO-MIGRATION] Starting automatic data migration...")
+    print("[AUTO-MIGRATION] ===== All checks passed - starting migration =====")
+    print(f"[AUTO-MIGRATION] Source: {sqlite_path}")
+    print(f"[AUTO-MIGRATION] Target: {DATABASE_URL[:60]}...")
     print("=" * 80)
 
     # Import migration function
@@ -145,7 +161,7 @@ def auto_migrate_data_if_needed():
     except Exception as e:
         print("")
         print("=" * 80)
-        print(f"[AUTO-MIGRATION] ✗ Error during automatic migration: {e}")
+        print(f"[AUTO-MIGRATION] X Error during automatic migration: {e}")
         print("[AUTO-MIGRATION] You can manually run:")
         print(f"  python db/migrate_sqlite_to_postgres.py {sqlite_url} {DATABASE_URL}")
         print("=" * 80)

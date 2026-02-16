@@ -171,3 +171,5 @@ settings.json
 /.vs
 docs/
 PRPs/
+test_the_secret_house.db.prod
+test_the_secret_house.db.test
