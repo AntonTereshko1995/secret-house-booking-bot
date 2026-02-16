@@ -358,7 +358,7 @@ class UserRepository(BaseRepository):
                     select(UserBase.chat_id).where(
                         and_(
                             UserBase.chat_id.isnot(None),
-                            UserBase.has_bookings == 1,
+                            UserBase.has_bookings == True,
                             UserBase.is_active == True,
                         )
                     )
@@ -415,7 +415,7 @@ class UserRepository(BaseRepository):
             with self.Session() as session:
                 user = session.scalar(select(UserBase).where(UserBase.id == user_id))
                 if user:
-                    user.has_bookings = 1
+                    user.has_bookings = True
                     user.total_bookings = (user.total_bookings or 0) + 1
                     session.commit()
         except Exception as e:
@@ -452,7 +452,7 @@ class UserRepository(BaseRepository):
                 from sqlalchemy import func
 
                 count = session.scalar(
-                    select(func.count(UserBase.id)).where(UserBase.has_bookings == 1)
+                    select(func.count(UserBase.id)).where(UserBase.has_bookings == True)
                 )
                 return int(count) if count else 0
         except Exception as e:
