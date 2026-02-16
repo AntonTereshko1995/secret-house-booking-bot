@@ -120,6 +120,22 @@ def auto_migrate_data_if_needed():
         return
 
     print(f"[AUTO-MIGRATION] Found SQLite file: {sqlite_path}")
+
+    # Clear all tables before migration to avoid conflicts
+    print("[AUTO-MIGRATION] Clearing existing data from all tables...")
+    try:
+        with engine.connect() as conn:
+            # Delete in correct order (bookings first due to foreign keys)
+            tables = ['booking', 'gift', 'promocode', 'user']
+            for table in tables:
+                conn.execute(text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE'))
+                conn.commit()
+                print(f"[AUTO-MIGRATION]   - Cleared {table}")
+        print("[AUTO-MIGRATION] All tables cleared successfully")
+    except Exception as e:
+        print(f"[AUTO-MIGRATION] Warning: Error clearing tables: {e}")
+        # Continue with migration anyway
+
     print("[AUTO-MIGRATION] Starting automatic data migration...")
     print("=" * 80)
 
