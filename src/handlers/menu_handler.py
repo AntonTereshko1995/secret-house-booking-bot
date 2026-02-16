@@ -91,8 +91,12 @@ def get_handler() -> ConversationHandler:
             ],
             GIFT_PHOTO_UPLOAD: [
                 MessageHandler(
-                    filters.PHOTO | filters.Document.PDF & filters.Document.PDF,
+                    filters.PHOTO | filters.Document.ALL,
                     gift_certificate_handler.handle_photo,
+                ),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    gift_certificate_handler.handle_text_instead_of_file,
                 ),
                 CallbackQueryHandler(show_menu, pattern=f"^{END}$"),
             ],
@@ -138,7 +142,11 @@ def get_handler() -> ConversationHandler:
             ],
             BOOKING_PHOTO_UPLOAD: [
                 MessageHandler(
-                    filters.PHOTO | filters.Document.PDF, booking_handler.handle_photo
+                    filters.PHOTO | filters.Document.ALL, booking_handler.handle_photo
+                ),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    booking_handler.handle_text_instead_of_file,
                 ),
                 CallbackQueryHandler(
                     booking_handler.cash_pay_booking,

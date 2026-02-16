@@ -441,21 +441,84 @@ def save_gift_information(update: Update):
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle payment confirmation upload for gift certificates (photos and documents of any format).
+
+    Accepts:
+    - Gallery photos (update.message.photo)
+    - Any document type (PDF, DOC, DOCX, images as documents, etc.)
+    """
     document: Document = None
     photo: str = None
     chat_id = update.message.chat.id
-    if (
-        update.message.document != None
-        and update.message.document.mime_type == "application/pdf"
-    ):
-        document = update.message.document
-    else:
+
+    # CRITICAL: Check photo first (photos have higher priority)
+    if update.message and update.message.photo:
+        # User sent photo via gallery
         photo = update.message.photo[-1].file_id
+        LoggerService.info(
+            __name__,
+            "Gift payment confirmation received - photo",
+            update,
+            kwargs={"file_type": "photo"}
+        )
+    elif update.message and update.message.document:
+        # User sent any document type
+        document = update.message.document
+        mime_type = document.mime_type or "unknown"
+        LoggerService.info(
+            __name__,
+            "Gift payment confirmation received - document",
+            update,
+            kwargs={
+                "file_type": "document",
+                "mime_type": mime_type,
+                "file_name": document.file_name or "unknown"
+            }
+        )
+    else:
+        # Should never happen with proper filters, but log anyway
+        LoggerService.warning(
+            __name__,
+            "handle_photo called without photo or document",
+            update
+        )
 
     gift = save_gift_information(update)
-    LoggerService.info(__name__, "handle photo", update)
     await admin_handler.accept_gift_payment(
         update, context, gift, chat_id, photo, document
     )
     redis_service.clear_gift_certificate(update)
     return await confirm_gift(update, context)
+
+
+async def handle_text_instead_of_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle text messages when file is expected for gift certificate payment.
+
+    Inform user they need to send a file/photo, not text.
+    """
+    LoggerService.warning(
+        __name__,
+        "User sent text instead of gift payment confirmation file",
+        update,
+        kwargs={"text_length": len(update.message.text) if update.message and update.message.text else 0}
+    )
+
+    if update.message:
+        await update.message.reply_text(
+            "❌ <b>Пожалуйста, отправьте файл с подтверждением оплаты</b>\n\n"
+            "📸 Вы можете отправить:\n"
+            "• Фотографию из галереи\n"
+            "• Скриншот экрана\n"
+            "• PDF документ\n"
+            "• Word или Excel файл\n"
+            "• Любое изображение с чеком\n\n"
+            "❗️ <b>Важно:</b> Мы не можем принять текстовое сообщение.\n"
+            "Нам нужен именно файл или фотография для подтверждения платежа.",
+            parse_mode="HTML"
+        )
+
+    # Stay in same state for retry
+    from src.constants import GIFT_PHOTO_UPLOAD
+    return GIFT_PHOTO_UPLOAD

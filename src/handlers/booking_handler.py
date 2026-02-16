@@ -1012,7 +1012,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n"
             "💵 Наличными при заселении.\n\n"
             "❗️ <b>Важно!</b>\n"
-            "После оплаты отправьте скриншот или PDF документ с чеком.\n"
+            "После оплаты отправьте скриншот, фотографию или документ любого формата с подтверждением.\n"
             "📩 Только так мы сможем подтвердить получение предоплаты.\n\n"
             "🙏 Спасибо за понимание!"
         )
@@ -1035,7 +1035,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📌 <b>Способы оплаты (BSB-Bank):</b>\n"
             f"💳 По номеру карты: <b>{BANK_CARD_NUMBER}</b>\n\n"
             "❗ <b>Важно!</b>\n"
-            "После оплаты отправьте скриншот или PDF документ с чеком.\n"
+            "После оплаты отправьте скриншот, фотографию или документ любого формата с подтверждением.\n"
             "📩 Это необходимо для подтверждения вашей предоплаты.\n\n"
             "🙏 Спасибо за понимание!"
         )
@@ -2006,19 +2006,80 @@ def save_booking_information(
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle payment confirmation upload (photos and documents of any format).
+
+    Accepts:
+    - Gallery photos (update.message.photo)
+    - Any document type (PDF, DOC, DOCX, images as documents, etc.)
+    """
     document: Optional[Document] = None
     photo: Optional[str] = None
-    if (
-        update.message
-        and update.message.document
-        and update.message.document.mime_type == "application/pdf"
-    ):
-        document = update.message.document
-    elif update.message and update.message.photo:
-        photo = update.message.photo[-1].file_id
 
-    LoggerService.info(__name__, "handle photo", update)
+    # CRITICAL: Check photo first (photos have higher priority)
+    if update.message and update.message.photo:
+        # User sent photo via gallery
+        photo = update.message.photo[-1].file_id
+        LoggerService.info(
+            __name__,
+            "Payment confirmation received - photo",
+            update,
+            kwargs={"file_type": "photo"}
+        )
+    elif update.message and update.message.document:
+        # User sent any document type
+        document = update.message.document
+        mime_type = document.mime_type or "unknown"
+        LoggerService.info(
+            __name__,
+            "Payment confirmation received - document",
+            update,
+            kwargs={
+                "file_type": "document",
+                "mime_type": mime_type,
+                "file_name": document.file_name or "unknown"
+            }
+        )
+    else:
+        # Should never happen with proper filters, but log anyway
+        LoggerService.warning(
+            __name__,
+            "handle_photo called without photo or document",
+            update
+        )
+
     return await send_approving_to_admin(update, context, photo, document)
+
+
+async def handle_text_instead_of_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle text messages when file is expected.
+
+    Inform user they need to send a file/photo, not text.
+    """
+    LoggerService.warning(
+        __name__,
+        "User sent text instead of payment confirmation file",
+        update,
+        kwargs={"text_length": len(update.message.text) if update.message and update.message.text else 0}
+    )
+
+    if update.message:
+        await update.message.reply_text(
+            "❌ <b>Пожалуйста, отправьте файл с подтверждением оплаты</b>\n\n"
+            "📸 Вы можете отправить:\n"
+            "• Фотографию из галереи\n"
+            "• Скриншот экрана\n"
+            "• PDF документ\n"
+            "• Word или Excel файл\n"
+            "• Любое изображение с чеком\n\n"
+            "❗️ <b>Важно:</b> Мы не можем принять текстовое сообщение.\n"
+            "Нам нужен именно файл или фотография для подтверждения платежа.",
+            parse_mode="HTML"
+        )
+
+    # Stay in same state for retry
+    return BOOKING_PHOTO_UPLOAD
 
 
 async def cash_pay_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
