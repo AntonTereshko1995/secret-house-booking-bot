@@ -114,6 +114,148 @@ def auto_migrate_gifts_if_needed(engine):
         print(f"[AUTO-MIGRATION] Error checking gifts: {e}")
 
 
+def auto_migrate_bookings_if_needed(engine):
+    """
+    Automatically migrate missing bookings from SQLite to PostgreSQL if needed.
+
+    This handles bookings that may have been skipped or added after initial migration.
+    """
+    # Check if using PostgreSQL
+    if not DATABASE_URL.startswith("postgresql"):
+        return
+
+    # Find SQLite database
+    sqlite_paths = [
+        "/data/the_secret_house.db",  # Amvera production
+        "./the_secret_house.db",
+        "./test_the_secret_house.db",
+    ]
+
+    sqlite_path = None
+    for path in sqlite_paths:
+        if os.path.exists(path):
+            sqlite_path = path
+            break
+
+    if not sqlite_path:
+        return  # No SQLite database found
+
+    try:
+        # Check booking count in PostgreSQL
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM booking"))
+            pg_booking_count = result.scalar()
+
+        # Check booking count in SQLite
+        sqlite_url = f"sqlite:///{sqlite_path}"
+        sqlite_engine = create_engine(sqlite_url)
+        with sqlite_engine.connect() as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM booking"))
+            sqlite_booking_count = result.scalar()
+
+        # If PostgreSQL has fewer bookings, migrate missing ones
+        if pg_booking_count < sqlite_booking_count:
+            print(f"[AUTO-MIGRATION] Found {sqlite_booking_count} bookings in SQLite, {pg_booking_count} in PostgreSQL")
+            print(f"[AUTO-MIGRATION] Migrating {sqlite_booking_count - pg_booking_count} missing bookings...")
+
+            # Import models
+            from db.models.booking import BookingBase
+            from db.models.user import UserBase
+            from db.models.gift import GiftBase
+            from db.models.promocode import PromocodeBase
+
+            # Get existing booking IDs in PostgreSQL
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT id FROM booking"))
+                existing_ids = {row[0] for row in result}
+
+            # Get valid IDs for foreign keys
+            SourceSession = sessionmaker(bind=sqlite_engine)
+            source_session = SourceSession()
+
+            # Get valid user IDs (must exist in both SQLite and will be in PostgreSQL)
+            valid_user_ids = [user.id for user in source_session.query(UserBase.id).all()]
+
+            # Get valid gift IDs (only those with valid user_id)
+            valid_gift_ids = [
+                gift.id for gift in source_session.query(GiftBase.id)
+                .filter(GiftBase.user_id.in_(valid_user_ids) | GiftBase.user_id.is_(None)).all()
+            ]
+
+            # Get all valid promocode IDs
+            valid_promocode_ids = [promo.id for promo in source_session.query(PromocodeBase.id).all()]
+
+            # Get all bookings from SQLite with valid user_id
+            all_sqlite_bookings = source_session.query(BookingBase).filter(
+                BookingBase.user_id.in_(valid_user_ids)
+            ).all()
+
+            # Filter to only missing bookings
+            missing_bookings = [b for b in all_sqlite_bookings if b.id not in existing_ids]
+
+            if missing_bookings:
+                print(f"[AUTO-MIGRATION] Migrating {len(missing_bookings)} bookings...")
+
+                # Convert to dictionaries and clean invalid FKs
+                bookings_data = []
+                cleaned_gift_ids = 0
+                cleaned_promocode_ids = 0
+
+                for booking in missing_bookings:
+                    booking_dict = {
+                        column.name: getattr(booking, column.name)
+                        for column in booking.__table__.columns
+                    }
+
+                    # Clean invalid gift_id
+                    if booking_dict.get('gift_id') is not None:
+                        if booking_dict['gift_id'] not in valid_gift_ids:
+                            booking_dict['gift_id'] = None
+                            cleaned_gift_ids += 1
+
+                    # Clean invalid promocode_id
+                    if booking_dict.get('promocode_id') is not None:
+                        if booking_dict['promocode_id'] not in valid_promocode_ids:
+                            booking_dict['promocode_id'] = None
+                            cleaned_promocode_ids += 1
+
+                    bookings_data.append(booking_dict)
+
+                if cleaned_gift_ids > 0 or cleaned_promocode_ids > 0:
+                    print(f"[AUTO-MIGRATION] Cleaned {cleaned_gift_ids} invalid gift_id, {cleaned_promocode_ids} invalid promocode_id")
+
+                # Insert into PostgreSQL
+                TargetSession = sessionmaker(bind=engine)
+                target_session = TargetSession()
+
+                try:
+                    target_session.bulk_insert_mappings(BookingBase, bookings_data)
+                    target_session.commit()
+
+                    # Reset sequence
+                    max_id_result = target_session.execute(text('SELECT MAX(id) FROM "booking"'))
+                    max_id = max_id_result.scalar() or 0
+                    target_session.execute(
+                        text(f'ALTER SEQUENCE "booking_id_seq" RESTART WITH {max_id + 1}')
+                    )
+                    target_session.commit()
+
+                    print(f"[AUTO-MIGRATION] ✓ Successfully migrated {len(missing_bookings)} bookings!")
+
+                except Exception as e:
+                    target_session.rollback()
+                    print(f"[AUTO-MIGRATION] ✗ Error migrating bookings: {e}")
+                finally:
+                    target_session.close()
+
+            source_session.close()
+        else:
+            print(f"[AUTO-MIGRATION] Booking table is up to date ({pg_booking_count} bookings)")
+
+    except Exception as e:
+        print(f"[AUTO-MIGRATION] Error checking bookings: {e}")
+
+
 def run_migrations_if_needed():
     """
     Run Alembic schema migrations and auto-migrate data if needed.
@@ -121,6 +263,7 @@ def run_migrations_if_needed():
     This function:
     1. Runs Alembic schema migrations
     2. Auto-migrates missing gift certificates from SQLite (if needed)
+    3. Auto-migrates missing bookings from SQLite (if needed)
     """
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     ALEMBIC_INI_PATH = os.path.join(BASE_DIR, "alembic.ini")
@@ -146,3 +289,9 @@ def run_migrations_if_needed():
         auto_migrate_gifts_if_needed(engine)
     except Exception as e:
         print(f"[AUTO-MIGRATION] Error during gift auto-migration: {e}")
+
+    # Step 3: Auto-migrate bookings if needed
+    try:
+        auto_migrate_bookings_if_needed(engine)
+    except Exception as e:
+        print(f"[AUTO-MIGRATION] Error during booking auto-migration: {e}")
