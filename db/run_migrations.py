@@ -185,13 +185,32 @@ def auto_migrate_bookings_if_needed(engine):
             # Get all valid promocode IDs
             valid_promocode_ids = [promo.id for promo in source_session.query(PromocodeBase.id).all()]
 
-            # Get all bookings from SQLite with valid user_id
-            all_sqlite_bookings = source_session.query(BookingBase).filter(
-                BookingBase.user_id.in_(valid_user_ids)
-            ).all()
+            # Get ALL bookings from SQLite (including those with invalid user_id)
+            all_bookings = source_session.query(BookingBase).all()
 
-            # Filter to only missing bookings
-            missing_bookings = [b for b in all_sqlite_bookings if b.id not in existing_ids]
+            # Filter to only missing bookings (not yet in PostgreSQL)
+            missing_all = [b for b in all_bookings if b.id not in existing_ids]
+
+            # Separate valid and invalid bookings
+            invalid_user_bookings = []
+            valid_bookings = []
+
+            for booking in missing_all:
+                if booking.user_id is None or booking.user_id not in valid_user_ids:
+                    invalid_user_bookings.append(booking)
+                else:
+                    valid_bookings.append(booking)
+
+            # Log invalid bookings
+            if invalid_user_bookings:
+                print(f"[AUTO-MIGRATION] ⚠️  Skipping {len(invalid_user_bookings)} bookings with invalid/NULL user_id:")
+                for b in invalid_user_bookings[:5]:  # Show first 5
+                    user_status = "NULL" if b.user_id is None else f"invalid user_id={b.user_id}"
+                    print(f"  - Booking ID={b.id}, {user_status}, date={b.start_date.date()}")
+                if len(invalid_user_bookings) > 5:
+                    print(f"  ... and {len(invalid_user_bookings) - 5} more")
+
+            missing_bookings = valid_bookings
 
             if missing_bookings:
                 print(f"[AUTO-MIGRATION] Migrating {len(missing_bookings)} bookings...")
