@@ -175,6 +175,7 @@ def migrate_table(source_session, target_session, model_class, table_name: str):
     Migrate a single table from source to target.
 
     CRITICAL: Preserves primary key IDs to maintain referential integrity.
+    Automatically filters orphan records (records with invalid foreign keys).
 
     Args:
         source_session: SQLAlchemy session for source database
@@ -185,9 +186,33 @@ def migrate_table(source_session, target_session, model_class, table_name: str):
 
     try:
         # Read all records from source
-        source_records = source_session.query(model_class).all()
-        record_count = len(source_records)
-        logger.info(f"Found {record_count} records in {table_name}")
+        total_records = source_session.query(model_class).count()
+        logger.info(f"Total records in source {table_name}: {total_records}")
+
+        query = source_session.query(model_class)
+
+        # Filter orphan records based on table (records with invalid foreign keys)
+        if table_name == 'booking' or table_name == 'gift':
+            # Only migrate records with valid user_id (exists in user table)
+            from db.models.user import UserBase
+
+            # Get all valid user IDs from source database
+            valid_user_ids = [user.id for user in source_session.query(UserBase.id).all()]
+
+            # Filter records to only those with valid user_id
+            query = query.filter(model_class.user_id.in_(valid_user_ids))
+
+            source_records = query.all()
+            record_count = len(source_records)
+            orphan_count = total_records - record_count
+
+            if orphan_count > 0:
+                logger.warning(f"Skipping {orphan_count} orphan records in {table_name} (invalid user_id)")
+            logger.info(f"Found {record_count} valid records in {table_name}")
+        else:
+            source_records = query.all()
+            record_count = len(source_records)
+            logger.info(f"Found {record_count} records in {table_name}")
 
         if record_count == 0:
             logger.warning(f"No records to migrate in {table_name}")
@@ -221,10 +246,10 @@ def migrate_table(source_session, target_session, model_class, table_name: str):
         target_count = target_session.query(model_class).count()
         if target_count != record_count:
             raise ValueError(
-                f"Count mismatch! Source: {record_count}, Target: {target_count}"
+                f"Count mismatch! Expected: {record_count}, Got: {target_count}"
             )
 
-        logger.success(f"Verified: {target_count} records in target match source")
+        logger.success(f"Verified: {target_count} records migrated successfully")
 
         # CRITICAL: Reset PostgreSQL sequence for autoincrement
         # This ensures future inserts use correct IDs
