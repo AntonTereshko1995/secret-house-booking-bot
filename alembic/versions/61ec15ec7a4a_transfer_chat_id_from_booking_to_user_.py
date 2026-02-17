@@ -23,7 +23,7 @@ def upgrade() -> None:
     # Step 1: Add new columns to user table
     with op.batch_alter_table("user", schema=None) as batch_op:
         batch_op.add_column(
-            sa.Column("has_bookings", sa.Boolean(), nullable=False, server_default="false")
+            sa.Column("has_bookings", sa.Integer(), nullable=False, server_default="0")
         )
         batch_op.add_column(
             sa.Column(
@@ -48,8 +48,8 @@ def upgrade() -> None:
         user_id, booking_count = row
         connection.execute(
             sa.text("""
-            UPDATE "user"
-            SET has_bookings = true,
+            UPDATE user
+            SET has_bookings = 1,
                 total_bookings = :booking_count
             WHERE id = :user_id
         """),
@@ -73,8 +73,8 @@ def downgrade() -> None:
     connection.execute(
         sa.text("""
         UPDATE booking
-        SET chat_id = (SELECT chat_id FROM "user" WHERE "user".id = booking.user_id)
-        WHERE EXISTS (SELECT 1 FROM "user" WHERE "user".id = booking.user_id AND "user".chat_id IS NOT NULL)
+        SET chat_id = (SELECT chat_id FROM user WHERE user.id = booking.user_id)
+        WHERE EXISTS (SELECT 1 FROM user WHERE user.id = booking.user_id AND user.chat_id IS NOT NULL)
     """)
     )
 

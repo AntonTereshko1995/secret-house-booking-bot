@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.add_column("user", sa.Column("user_name", sa.String(), nullable=True))
 
     # Populate user_name from contact for existing users
-    op.execute('UPDATE "user" SET user_name = contact')
+    op.execute("UPDATE user SET user_name = contact")
 
 
 def downgrade() -> None:

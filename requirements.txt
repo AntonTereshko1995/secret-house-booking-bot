@@ -1,7 +1,6 @@
 python-telegram-bot
 singleton_decorator
 sqlalchemy
-psycopg2-binary
 python-dotenv
 logtail-python
 loguru
