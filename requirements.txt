@@ -18,6 +18,7 @@ aiohttp
 flask
 requests
 alembic
+psycopg2-binary
 driver
 dataclasses_json
 redis
