@@ -320,9 +320,14 @@ class BookingRepository(BaseRepository):
     def is_booking_between_dates(self, start: datetime, end: datetime) -> bool:
         """Check if there are any bookings between the given dates."""
         try:
+            # Normalize to naive datetime (remove timezone) since DB stores naive datetime
+            start_naive = start.replace(tzinfo=None) if start.tzinfo else start
+            end_naive = end.replace(tzinfo=None) if end.tzinfo else end
+            
             LoggerService.info(
                 __name__,
-                f"Checking bookings overlap: requested interval [{start}] - [{end}]"
+                f"Checking bookings overlap: requested interval [{start}] - [{end}], "
+                f"normalized to naive: [{start_naive}] - [{end_naive}]"
             )
             
             with self.Session() as session:
@@ -332,8 +337,8 @@ class BookingRepository(BaseRepository):
                             BookingBase.is_canceled == False,
                             BookingBase.is_done == False,
                             BookingBase.is_prepaymented == True,
-                            BookingBase.start_date < end,
-                            BookingBase.end_date > start,
+                            BookingBase.start_date < end_naive,
+                            BookingBase.end_date > start_naive,
                         )
                     )
                 ).first()
