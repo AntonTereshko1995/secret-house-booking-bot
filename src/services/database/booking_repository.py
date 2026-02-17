@@ -327,20 +327,8 @@ class BookingRepository(BaseRepository):
                             BookingBase.is_canceled == False,
                             BookingBase.is_done == False,
                             BookingBase.is_prepaymented == True,
-                            or_(
-                                and_(
-                                    BookingBase.start_date < end,
-                                    BookingBase.start_date > start,
-                                ),
-                                and_(
-                                    BookingBase.end_date > start,
-                                    BookingBase.end_date < end,
-                                ),
-                                and_(
-                                    BookingBase.start_date < start,
-                                    BookingBase.end_date > end,
-                                ),
-                            ),
+                            BookingBase.start_date < end,
+                            BookingBase.end_date > start,
                         )
                     )
                 ).first()
