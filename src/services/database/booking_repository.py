@@ -320,6 +320,11 @@ class BookingRepository(BaseRepository):
     def is_booking_between_dates(self, start: datetime, end: datetime) -> bool:
         """Check if there are any bookings between the given dates."""
         try:
+            LoggerService.info(
+                __name__,
+                f"Checking bookings overlap: requested interval [{start}] - [{end}]"
+            )
+            
             with self.Session() as session:
                 overlapping_bookings = session.scalars(
                     select(BookingBase).where(
@@ -332,6 +337,20 @@ class BookingRepository(BaseRepository):
                         )
                     )
                 ).first()
+                
+                if overlapping_bookings:
+                    LoggerService.warning(
+                        __name__,
+                        f"CONFLICT FOUND! Existing booking ID={overlapping_bookings.id}: "
+                        f"[{overlapping_bookings.start_date}] - [{overlapping_bookings.end_date}], "
+                        f"user_id={overlapping_bookings.user_id}, "
+                        f"is_canceled={overlapping_bookings.is_canceled}, "
+                        f"is_done={overlapping_bookings.is_done}, "
+                        f"is_prepaymented={overlapping_bookings.is_prepaymented}"
+                    )
+                else:
+                    LoggerService.info(__name__, "No conflicting bookings found")
+                
                 return overlapping_bookings is not None
         except Exception as e:
             print(f"Error in is_booking_between_dates: {e}")

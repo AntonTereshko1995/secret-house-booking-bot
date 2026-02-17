@@ -695,9 +695,21 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update, context, error_message=error_message
             )
 
+        check_start = booking.start_booking_date - timedelta(hours=CLEANING_HOURS)
+        check_end = finish_booking_date + timedelta(hours=CLEANING_HOURS)
+        
+        LoggerService.info(
+            __name__,
+            f"Checking booking overlap with cleaning hours: "
+            f"user_booking=[{booking.start_booking_date}] - [{finish_booking_date}], "
+            f"check_interval_with_cleaning=[{check_start}] - [{check_end}], "
+            f"CLEANING_HOURS={CLEANING_HOURS}",
+            update
+        )
+        
         is_any_booking = database_service.is_booking_between_dates(
-            booking.start_booking_date - timedelta(hours=CLEANING_HOURS),
-            finish_booking_date + timedelta(hours=CLEANING_HOURS),
+            check_start,
+            check_end,
         )
         if is_any_booking:
             error_message = (
