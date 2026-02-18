@@ -43,6 +43,13 @@ class BookingRepository(BaseRepository):
         prepayment_price: float = None,
     ) -> BookingBase:
         """Add a new booking to the database."""
+        # Always store as naive Minsk time (+3): strip tzinfo to prevent SQLAlchemy
+        # from converting timezone-aware values to UTC before saving
+        if start_date and start_date.tzinfo is not None:
+            start_date = start_date.replace(tzinfo=None)
+        if end_date and end_date.tzinfo is not None:
+            end_date = end_date.replace(tzinfo=None)
+
         user = self.user_service.get_or_create_user(user_contact)
         with self.Session() as session:
             try:
@@ -320,6 +327,13 @@ class BookingRepository(BaseRepository):
     def is_booking_between_dates(self, start: datetime, end: datetime) -> bool:
         """Check if there are any bookings between the given dates."""
         try:
+            # Strip timezone info to avoid PostgreSQL converting tz-aware values to UTC
+            # when comparing against naive timestamps stored in the DB
+            if start.tzinfo is not None:
+                start = start.replace(tzinfo=None)
+            if end.tzinfo is not None:
+                end = end.replace(tzinfo=None)
+
             LoggerService.info(
                 __name__,
                 f"Checking bookings overlap: requested interval [{start}] - [{end}]"
@@ -460,9 +474,9 @@ class BookingRepository(BaseRepository):
                     return
 
                 if start_date:
-                    booking.start_date = start_date
+                    booking.start_date = start_date.replace(tzinfo=None) if start_date.tzinfo else start_date
                 if end_date:
-                    booking.end_date = end_date
+                    booking.end_date = end_date.replace(tzinfo=None) if end_date.tzinfo else end_date
                 if is_canceled:
                     booking.is_canceled = is_canceled
                 if is_date_changed:
