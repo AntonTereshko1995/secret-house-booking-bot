@@ -460,6 +460,7 @@ class BookingRepository(BaseRepository):
         prepayment: float = None,
         prepayment_price: float = None,
         tariff: Tariff = None,
+        receipt_file_id: str = None,
     ) -> BookingBase:
         """Update booking fields and return with eagerly loaded user."""
         with self.Session() as session:
@@ -499,6 +500,8 @@ class BookingRepository(BaseRepository):
                     booking.prepayment_price = prepayment
                 if tariff is not None:
                     booking.tariff = tariff
+                if receipt_file_id is not None:
+                    booking.receipt_file_id = receipt_file_id
 
                 session.commit()
                 session.refresh(booking)

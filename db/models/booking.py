@@ -41,6 +41,7 @@ class BookingBase(Base):
     promocode_id: Mapped[int] = mapped_column(ForeignKey("promocode.id"), nullable=True)
     wine_preference: Mapped[str] = mapped_column(String, nullable=True)
     transfer_address: Mapped[str] = mapped_column(String, nullable=True)
+    receipt_file_id: Mapped[str] = mapped_column(String, nullable=True)
     user = relationship("UserBase")
     gift = relationship("GiftBase")
     promocode = relationship("PromocodeBase")

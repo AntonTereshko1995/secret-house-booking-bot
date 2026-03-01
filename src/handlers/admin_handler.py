@@ -1098,36 +1098,38 @@ async def approve_booking(
 ):
     (booking, user) = await prepare_approve_process(update, context, booking_id)
     await check_and_send_booking(context, booking)
-    # Prepare confirmation message
-    confirmation_text = (
-        "🎉 <b>Отличные новости!</b> 🎉\n"
-        "✅ <b>Ваше бронирование подтверждено администратором.</b>\n"
-        "📩 За 1 день до заезда вы получите сообщение с деталями бронирования и инструкцией по заселению.\n"
-        f"Общая стоимость бронирования: {booking.price} руб.\n"
-        f"Предоплата: {booking.prepayment_price} руб.\n"
-    )
 
-    # Add transfer time information if transfer is requested
-    if booking.transfer_address:
-        # Transfer time is 30 minutes before check-in time
-        transfer_time = booking.start_date - timedelta(minutes=30)
-        confirmation_text += f"🚗 <b>Трансфер:</b> {booking.transfer_address}\n"
-        confirmation_text += (
-            f"🕐 <b>Время трансфера:</b> {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
+    if int(chat_id):
+        # Prepare confirmation message
+        confirmation_text = (
+            "🎉 <b>Отличные новости!</b> 🎉\n"
+            "✅ <b>Ваше бронирование подтверждено администратором.</b>\n"
+            "📩 За 1 день до заезда вы получите сообщение с деталями бронирования и инструкцией по заселению.\n"
+            f"Общая стоимость бронирования: {booking.price} руб.\n"
+            f"Предоплата: {booking.prepayment_price} руб.\n"
         )
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=confirmation_text,
-        parse_mode="HTML",
-    )
+        # Add transfer time information if transfer is requested
+        if booking.transfer_address:
+            # Transfer time is 30 minutes before check-in time
+            transfer_time = booking.start_date - timedelta(minutes=30)
+            confirmation_text += f"🚗 <b>Трансфер:</b> {booking.transfer_address}\n"
+            confirmation_text += (
+                f"🕐 <b>Время трансфера:</b> {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
+            )
+
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=confirmation_text,
+            parse_mode="HTML",
+        )
 
     text = f"Подтверждено ✅\n\n{string_helper.generate_booking_info_message(booking, user)}"
     message = update.callback_query.message
     if message.caption:
-        await message.edit_caption(text)
+        await message.edit_caption(text, reply_markup=None)
     else:
-        await message.edit_text(text)
+        await message.edit_text(text, reply_markup=None)
 
     return END
 
@@ -1136,21 +1138,24 @@ async def cancel_booking(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int
 ):
     booking = database_service.update_booking(booking_id, is_canceled=True)
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="⚠️ <b>Внимание!</b> ⚠️\n"
-        "❌ <b>Ваше бронирование отменено.</b>\n"
-        "📞 Администратор свяжется с вами для уточнения деталей.",
-        parse_mode="HTML",
-    )
+
+    if int(chat_id):
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ <b>Внимание!</b> ⚠️\n"
+            "❌ <b>Ваше бронирование отменено.</b>\n"
+            "📞 Администратор свяжется с вами для уточнения деталей.",
+            parse_mode="HTML",
+        )
+
     user = database_service.get_user_by_id(booking.user_id)
 
     text = f"Отмена.\n\n {string_helper.generate_booking_info_message(booking, user)}"
     message = update.callback_query.message
     if message.caption:
-        await message.edit_caption(text)
+        await message.edit_caption(text, reply_markup=None)
     else:
-        await message.edit_text(text)
+        await message.edit_text(text, reply_markup=None)
     return END
 
 

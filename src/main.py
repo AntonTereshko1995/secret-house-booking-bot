@@ -1,4 +1,5 @@
 import os
+import threading
 import time
 import sys
 
@@ -14,12 +15,14 @@ from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID, INFORM_CHAT_ID
 from src.services import job_service
 from src.services.callback_recovery_service import CallbackRecoveryService
 from src.services.redis import RedisPersistence
+from src.controllers.receipt_controller import receipt_bp
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
+app.register_blueprint(receipt_bp)
 
 
 async def set_commands(application: Application):
@@ -95,13 +98,14 @@ if __name__ == "__main__":
     )
 
     # Register handlers
-    # IMPORTANT: feedback is now integrated into menu_handler states
-    # No need to register feedback_handler separately
+    # IMPORTANT: purchase/password handlers must be registered BEFORE menu_handler
+    # so admin ENTER_PRICE / ENTER_PREPAYMENT text messages are routed correctly
+    # before the general ConversationHandler can intercept them.
+    application.add_handler(admin_handler.get_purchase_handler())
+    application.add_handler(admin_handler.get_password_handler())
     application.add_handler(booking_details_handler.get_handler())
     application.add_handler(menu_handler.get_handler())
     application.add_error_handler(error_handler)
-    application.add_handler(admin_handler.get_password_handler())
-    application.add_handler(admin_handler.get_purchase_handler())
     application.add_handler(promocode_handler.get_create_promocode_handler())
     application.add_handler(admin_handler.get_broadcast_handler())
     application.add_handler(admin_handler.get_broadcast_with_bookings_handler())
@@ -138,5 +142,12 @@ if __name__ == "__main__":
     os.environ["TZ"] = "Europe/Minsk"
     if hasattr(time, 'tzset'):
         time.tzset()
+
+    flask_thread = threading.Thread(
+        target=lambda: app.run(host="0.0.0.0", port=8002, use_reloader=False),
+        daemon=True,
+    )
+    flask_thread.start()
+    logger.info("Flask HTTP server started on port 8002")
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
