@@ -20,7 +20,6 @@ from src.controllers.receipt_controller import receipt_bp
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.register_blueprint(receipt_bp)
 
@@ -148,6 +147,6 @@ if __name__ == "__main__":
         daemon=True,
     )
     flask_thread.start()
-    logger.info("Flask HTTP server started on port 8002")
+    LoggerService.info(__name__, "Flask HTTP server started on port 8002")
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)

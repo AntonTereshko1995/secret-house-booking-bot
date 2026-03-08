@@ -1162,7 +1162,7 @@ async def cancel_booking(
 async def approve_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
-    gift = database_service.update_gift(gift_id, is_paymented=True, is_done=True)
+    gift = database_service.update_gift(gift_id, is_paymented=True)
     await context.bot.send_message(chat_id=chat_id, text=f"{gift.code}")
 
     await context.bot.send_message(
@@ -1226,7 +1226,8 @@ async def inform_message(
     booking: BookingBase,
     user: UserBase,
 ):
-    message = string_helper.generate_booking_info_message(booking, user)
+    prefix = "🌐 Бронирование через веб-сайт\n\n" if user and user.chat_id is None else ""
+    message = prefix + string_helper.generate_booking_info_message(booking, user)
     await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=message)
 
 

@@ -8,6 +8,7 @@ from src.services.database.base import BaseRepository
 from src.services.logger_service import LoggerService
 from src.services.database.user_repository import UserRepository
 from db.models.booking import BookingBase
+from db.models.gift import GiftBase
 from src.models.enum.tariff import Tariff
 from singleton_decorator import singleton
 from sqlalchemy import and_, distinct, func, or_, select
@@ -72,6 +73,9 @@ class BookingRepository(BaseRepository):
 
                 if gift_id:
                     new_booking.gift_id = gift_id
+                    gift = session.get(GiftBase, gift_id)
+                    if gift:
+                        gift.is_done = True
 
                 if promocode_id:
                     new_booking.promocode_id = promocode_id

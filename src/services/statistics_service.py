@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database_service import DatabaseService
+from src.services.logger_service import LoggerService
 from singleton_decorator import singleton
 
 
@@ -98,7 +99,7 @@ class StatisticsService:
         # Total revenue (bookings + gifts)
         total_revenue = all_time.total_revenue + gift_stats.gift_revenue
 
-        return Statistics(
+        stats = Statistics(
             all_time=all_time,
             year_to_date=ytd,
             current_month=current_month,
@@ -107,6 +108,8 @@ class StatisticsService:
             total_revenue=total_revenue,
             generated_at=now,
         )
+        LoggerService.info(__name__, "Statistics generated", kwargs={"total_revenue": total_revenue, "total_bookings": all_time.total_bookings, "total_users": user_stats.total_users})
+        return stats
 
     def _get_booking_stats(
         self, start_date: datetime, end_date: datetime

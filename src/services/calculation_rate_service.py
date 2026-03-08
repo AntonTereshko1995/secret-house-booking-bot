@@ -9,6 +9,7 @@ from typing import List
 from singleton_decorator import singleton
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.services.logger_service import LoggerService
 
 
 @singleton
@@ -24,6 +25,7 @@ class CalculationRateService:
             (rate for rate in tariffs if rate.tariff == tariff.value), None
         )
         if selected_tariff is None:
+            LoggerService.error(__name__, f"No RentalPrice found for tariff: {tariff}")
             raise ValueError(f"No RentalPrice found for tariff: {tariff}")
         return selected_tariff
 

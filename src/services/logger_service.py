@@ -71,10 +71,10 @@ class LoggerService:
         if file_name in LoggerService.loggers:
             return LoggerService.loggers[file_name]
 
-        logtail_handler = LogtailHandler(
-            source_token=LOGTAIL_TOKEN,
-            host=LOGTAIL_SOURCE,
-        )
+        handler_kwargs = {"source_token": LOGTAIL_TOKEN}
+        if LOGTAIL_SOURCE:
+            handler_kwargs["host"] = LOGTAIL_SOURCE
+        logtail_handler = LogtailHandler(**handler_kwargs)
 
         logger = logging.getLogger(file_name)
         logger.setLevel(logging.INFO)

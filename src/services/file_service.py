@@ -7,6 +7,7 @@ from singleton_decorator import singleton
 from src.models.rental_price import RentalPrice
 from src.models.date_pricing_rule import DatePricingRule
 from src.models.holiday_prepayment_rule import HolidayPrepaymentRule
+from src.services.logger_service import LoggerService
 
 
 @singleton
@@ -37,6 +38,7 @@ class FileService:
 
     def get_tariff_rates(self) -> List[RentalPrice]:
         if not os.path.exists(self._TARIFF_JSON):
+            LoggerService.error(__name__, f"Tariff JSON not found: {self._TARIFF_JSON}")
             raise FileNotFoundError(f"Файл {self._TARIFF_JSON} не существует.")
 
         tariff_list = []
@@ -57,6 +59,7 @@ class FileService:
 
     def get_date_pricing_rules(self) -> List[DatePricingRule]:
         if not os.path.exists(self._DATE_PRICING_RULES_JSON):
+            LoggerService.error(__name__, f"Date pricing rules JSON not found: {self._DATE_PRICING_RULES_JSON}")
             raise FileNotFoundError(
                 f"Файл {self._DATE_PRICING_RULES_JSON} не существует."
             )
@@ -70,6 +73,7 @@ class FileService:
     def get_holiday_prepayment_rules(self) -> List[HolidayPrepaymentRule]:
         """Загрузить правила предоплаты для праздничных дней из JSON конфигурации."""
         if not os.path.exists(self._HOLIDAY_PREPAYMENT_RULES_JSON):
+            LoggerService.error(__name__, f"Holiday prepayment rules JSON not found: {self._HOLIDAY_PREPAYMENT_RULES_JSON}")
             raise FileNotFoundError(
                 f"Файл {self._HOLIDAY_PREPAYMENT_RULES_JSON} не существует."
             )
