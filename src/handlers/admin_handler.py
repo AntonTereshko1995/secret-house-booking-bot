@@ -1116,11 +1116,15 @@ async def approve_booking(
             f"🕐 <b>Время трансфера:</b> {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
         )
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=confirmation_text,
-        parse_mode="HTML",
-    )
+    if chat_id:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=confirmation_text,
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
 
     text = f"Подтверждено ✅\n\n{string_helper.generate_booking_info_message(booking, user)}"
     message = update.callback_query.message
@@ -1136,13 +1140,17 @@ async def cancel_booking(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int
 ):
     booking = database_service.update_booking(booking_id, is_canceled=True)
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="⚠️ <b>Внимание!</b> ⚠️\n"
-        "❌ <b>Ваше бронирование отменено.</b>\n"
-        "📞 Администратор свяжется с вами для уточнения деталей.",
-        parse_mode="HTML",
-    )
+    if chat_id:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="⚠️ <b>Внимание!</b> ⚠️\n"
+                "❌ <b>Ваше бронирование отменено.</b>\n"
+                "📞 Администратор свяжется с вами для уточнения деталей.",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
     user = database_service.get_user_by_id(booking.user_id)
 
     text = f"Отмена.\n\n {string_helper.generate_booking_info_message(booking, user)}"
