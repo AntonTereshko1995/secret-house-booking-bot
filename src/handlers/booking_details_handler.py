@@ -1263,24 +1263,6 @@ async def handle_reschedule_finish_time(update: Update, context: ContextTypes.DE
             )
             return await show_reschedule_start_date_calendar(update, context, booking_id, error_message)
 
-        # Validate duration
-        selected_duration = finish_datetime - start_datetime
-        duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
-        rental_price = calculation_rate_service.get_by_tariff(booking.tariff)
-        booking_duration_hours = max(
-            (booking.end_date - booking.start_date).total_seconds() / 3600,
-            rental_price.duration_hours,
-        )
-        if duration_booking_hours > booking_duration_hours:
-            error_message = (
-                "❌ <b>Ошибка!</b>\n\n"
-                "⏳ <b>Максимальная продолжительность тарифа превышена.</b>\n"
-                f"🕒 Длительность <b>{rental_price.name}</b>: {rental_price.duration_hours} ч.\n\n"
-                "🔄 Пожалуйста, повторите попытку и выберите доступный вариант.\n\n"
-                "📅 Выберите новую дату начала бронирования."
-            )
-            return await show_reschedule_start_date_calendar(update, context, booking_id, error_message)
-
         context.user_data["reschedule_finish_datetime"] = finish_datetime
         LoggerService.info(
             __name__,
