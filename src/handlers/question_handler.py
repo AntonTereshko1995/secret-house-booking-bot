@@ -45,12 +45,12 @@ async def start_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
-    LoggerService.info(__name__, "user", update, **{"message": message})
+    LoggerService.info(__name__, "user", update, **{"user_message": message})
     await context.bot.send_chat_action(
         chat_id=update.effective_chat.id, action=ChatAction.TYPING
     )
     responce = await gpt_service.generate_response(message)
-    LoggerService.info(__name__, "gpt", update, **{"message": responce})
+    LoggerService.info(__name__, "gpt", update, **{"gpt_message": responce})
     keyboard = [[InlineKeyboardButton("Назад в меню", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=responce, reply_markup=reply_markup)

@@ -1708,7 +1708,7 @@ async def handle_promo_tariff_selection(
             __name__,
             "Promocode created successfully",
             update,
-            **{"promocode_id": promocode.id, "name": promocode.name},
+            **{"promocode_id": promocode.id, "promocode_name": promocode.name},
         )
 
     except Exception as e:

@@ -586,7 +586,7 @@ async def create_promocode_with_tariffs(
             __name__,
             "Promocode created successfully",
             update,
-            **{"promocode_id": promocode.id, "name": promocode.name},
+            **{"promocode_id": promocode.id, "promocode_name": promocode.name},
         )
 
     except Exception as e:
