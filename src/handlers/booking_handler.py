@@ -196,7 +196,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     tariff = tariff_helper.get_by_str(data)
     redis_service.update_booking_field(update, "tariff", tariff)
-    LoggerService.info(__name__, "Select tariff", update, kwargs={"tariff": tariff})
+    LoggerService.info(__name__, "Select tariff", update, **{"tariff": tariff})
 
     if tariff != Tariff.GIFT:
         rental_rate = rate_service.get_by_tariff(tariff)
@@ -285,19 +285,19 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     __name__,
                     "User contact saved to database",
                     update,
-                    kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                    **{"chat_id": chat_id, "contact": cleaned_contact},
                 )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to save user contact to database",
                     exception=e,
-                    kwargs={"contact": cleaned_contact},
+                    **{"contact": cleaned_contact},
                 )
                 # Continue with booking flow even if DB update fails
 
             LoggerService.info(
-                __name__, "User name is valid", update, kwargs={"user_name": user_input}
+                __name__, "User name is valid", update, **{"user_name": user_input}
             )
             if booking.gift_id:
                 if is_any_additional_payment(update):
@@ -335,7 +335,7 @@ async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         __name__,
         "Include photoshoot",
         update,
-        kwargs={"is_photoshoot_included": is_photoshoot_included},
+        **{"is_photoshoot_included": is_photoshoot_included},
     )
     return await count_of_people_message(update, context)
 
@@ -353,7 +353,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
         __name__,
         "Include sauna",
         update,
-        kwargs={"is_sauna_included": is_sauna_included},
+        **{"is_sauna_included": is_sauna_included},
     )
 
     booking = redis_service.get_booking(update)
@@ -380,7 +380,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
         __name__,
         "Include secret room",
         update,
-        kwargs={"is_secret_room_included": is_secret_room_included},
+        **{"is_secret_room_included": is_secret_room_included},
     )
     booking = redis_service.get_booking(update)
     if booking.gift_id:
@@ -397,7 +397,7 @@ async def select_bedroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await back_navigation(update, context)
 
     bedroom = bedroom_halper.get_by_str(data)
-    LoggerService.info(__name__, "Select bedroom", update, kwargs={"bedroom": bedroom})
+    LoggerService.info(__name__, "Select bedroom", update, **{"bedroom": bedroom})
 
     if bedroom == Bedroom.GREEN:
         redis_service.update_booking_field(update, "is_white_room_included", False)
@@ -422,7 +422,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
 
     is_added = eval(data)
     LoggerService.info(
-        __name__, "Select additional bedroom", update, kwargs={"is_added": is_added}
+        __name__, "Select additional bedroom", update, **{"is_added": is_added}
     )
     if is_added:
         redis_service.update_booking_field(
@@ -455,7 +455,7 @@ async def select_number_of_people(update: Update, context: ContextTypes.DEFAULT_
         __name__,
         "Select number of people",
         update,
-        kwargs={"number_of_guests": number_of_guests},
+        **{"number_of_guests": number_of_guests},
     )
     return await start_date_message(update, context)
 
@@ -508,12 +508,12 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select start date",
             update,
-            kwargs={"start_date": selected_date.date()},
+            **{"start_date": selected_date.date()},
         )
         return await start_time_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select start date", update, kwargs={"start_date": "back"}
+            __name__, "select start date", update, **{"start_date": "back"}
         )
         return await back_navigation(update, context)
     elif is_next_month or is_prev_month:
@@ -577,12 +577,12 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select start time",
             update,
-            kwargs={"start_time": start_booking_date.time()},
+            **{"start_time": start_booking_date.time()},
         )
         return await finish_date_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select start time", update, kwargs={"start_time": "back"}
+            __name__, "select start time", update, **{"start_time": "back"}
         )
         return await start_date_message(update, context)
     return BOOKING
@@ -609,12 +609,12 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select finish date",
             update,
-            kwargs={"finish_date": selected_date.date()},
+            **{"finish_date": selected_date.date()},
         )
         return await finish_time_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select finish date", update, kwargs={"finish_date": "back"}
+            __name__, "select finish date", update, **{"finish_date": "back"}
         )
         return await start_time_message(update, context)
     elif is_next_month or is_prev_month:
@@ -675,7 +675,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select finish time",
             update,
-            kwargs={"finish_time": finish_booking_date.time()},
+            **{"finish_time": finish_booking_date.time()},
         )
 
         if (
@@ -728,7 +728,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await comment_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select finish time", update, kwargs={"finish_time": "cancel"}
+            __name__, "select finish time", update, **{"finish_time": "cancel"}
         )
         return await finish_date_message(update, context)
     return BOOKING
@@ -747,7 +747,7 @@ async def write_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         booking_comment = update.message.text
         redis_service.update_booking_field(update, "booking_comment", booking_comment)
         LoggerService.info(
-            __name__, "Write comment", update, kwargs={"comment": booking_comment}
+            __name__, "Write comment", update, **{"comment": booking_comment}
         )
 
     return await promocode_entry_message(update, context)
@@ -815,7 +815,7 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
             __name__,
             "Promocode applied",
             update,
-            kwargs={
+            **{
                 "promocode": promo_code,
                 "discount": promo.discount_percentage,
             },
@@ -850,7 +850,7 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
             __name__,
             "Invalid promocode",
             update,
-            kwargs={"promocode": promo_code, "error": message_text},
+            **{"promocode": promo_code, "error": message_text},
         )
 
         return PROMOCODE_INPUT
@@ -947,7 +947,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         __name__,
         "Confirm pay",
         update,
-        kwargs={"price": price, "has_special_pricing": bool(special_pricing_info)},
+        **{"price": price, "has_special_pricing": bool(special_pricing_info)},
     )
 
     if booking.gift_id:
@@ -1683,7 +1683,7 @@ async def handle_wine_preference(update: Update, context: ContextTypes.DEFAULT_T
         __name__,
         "Wine preference selected",
         update,
-        kwargs={"wine_preference": wine_preference},
+        **{"wine_preference": wine_preference},
     )
 
     return await transfer_message(update, context)
@@ -1771,7 +1771,7 @@ async def handle_transfer_input(update: Update, context: ContextTypes.DEFAULT_TY
             __name__,
             "Transfer address saved",
             update,
-            kwargs={"address": address[:50]},  # Log first 50 chars only
+            **{"address": address[:50]},  # Log first 50 chars only
         )
 
         return await confirm_pay(update, context)
@@ -2036,7 +2036,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "Payment confirmation received - photo",
             update,
-            kwargs={"file_type": "photo"}
+            **{"file_type": "photo"}
         )
     elif update.message and update.message.document:
         # User sent any document type
@@ -2046,7 +2046,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "Payment confirmation received - document",
             update,
-            kwargs={
+            **{
                 "file_type": "document",
                 "mime_type": mime_type,
                 "file_name": document.file_name or "unknown"
@@ -2073,7 +2073,7 @@ async def handle_text_instead_of_file(update: Update, context: ContextTypes.DEFA
         __name__,
         "User sent text instead of payment confirmation file",
         update,
-        kwargs={"text_length": len(update.message.text) if update.message and update.message.text else 0}
+        **{"text_length": len(update.message.text) if update.message and update.message.text else 0}
     )
 
     if update.message:

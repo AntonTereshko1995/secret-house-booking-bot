@@ -116,7 +116,7 @@ async def show_booking_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
         __name__,
         "Admin viewing booking detail",
         update,
-        kwargs={"booking_id": booking_id}
+        **{"booking_id": booking_id}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -177,7 +177,7 @@ async def start_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYP
         __name__,
         "Admin canceled booking",
         update,
-        kwargs={"booking_id": booking_id, "user_contact": user.contact if user else None}
+        **{"booking_id": booking_id, "user_contact": user.contact if user else None}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -238,7 +238,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
                 __name__,
                 "Failed to notify customer of booking approval",
                 exception=e,
-                kwargs={"booking_id": booking_id, "chat_id": user.chat_id if user else None}
+                **{"booking_id": booking_id, "chat_id": user.chat_id if user else None}
             )
 
     # Update admin message
@@ -264,7 +264,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
         __name__,
         "Admin approved booking",
         update,
-        kwargs={"booking_id": booking_id, "user_contact": user.contact if user else None}
+        **{"booking_id": booking_id, "user_contact": user.contact if user else None}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -300,7 +300,7 @@ async def handle_complete_booking(update: Update, context: ContextTypes.DEFAULT_
             __name__,
             "Failed to send feedback request",
             exception=e,
-            kwargs={"booking_id": booking_id}
+            **{"booking_id": booking_id}
         )
         feedback_sent = False
 
@@ -335,7 +335,7 @@ async def handle_complete_booking(update: Update, context: ContextTypes.DEFAULT_
         __name__,
         "Admin completed booking",
         update,
-        kwargs={"booking_id": booking_id, "feedback_sent": feedback_sent}
+        **{"booking_id": booking_id, "feedback_sent": feedback_sent}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -351,7 +351,7 @@ async def notify_customer_cancellation(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -374,14 +374,14 @@ async def notify_customer_cancellation(
         LoggerService.info(
             __name__,
             "Customer notified of cancellation",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of cancellation",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -483,7 +483,7 @@ async def handle_price_change_input(update: Update, context: ContextTypes.DEFAUL
         __name__,
         "Admin changed booking price",
         update,
-        kwargs={"booking_id": booking_id, "old_price": old_price, "new_price": new_price}
+        **{"booking_id": booking_id, "old_price": old_price, "new_price": new_price}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -500,7 +500,7 @@ async def notify_customer_price_change(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -525,14 +525,14 @@ async def notify_customer_price_change(
         LoggerService.info(
             __name__,
             "Customer notified of price change",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of price change",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -635,7 +635,7 @@ async def handle_prepayment_change_input(update: Update, context: ContextTypes.D
         __name__,
         "Admin changed booking prepayment",
         update,
-        kwargs={"booking_id": booking_id, "old_prepayment": old_prepayment, "new_prepayment": new_prepayment}
+        **{"booking_id": booking_id, "old_prepayment": old_prepayment, "new_prepayment": new_prepayment}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -652,7 +652,7 @@ async def notify_customer_prepayment_change(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -677,14 +677,14 @@ async def notify_customer_prepayment_change(
         LoggerService.info(
             __name__,
             "Customer notified of prepayment change",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of prepayment change",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -795,7 +795,7 @@ async def handle_tariff_selection(update: Update, context: ContextTypes.DEFAULT_
         __name__,
         "Admin changed booking tariff",
         update,
-        kwargs={
+        **{
             "booking_id": booking_id,
             "old_tariff": old_tariff.name,
             "new_tariff": new_tariff.name
@@ -816,7 +816,7 @@ async def notify_customer_tariff_change(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -843,14 +843,14 @@ async def notify_customer_tariff_change(
         LoggerService.info(
             __name__,
             "Customer notified of tariff change",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of tariff change",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -952,7 +952,7 @@ async def handle_reschedule_start_date(update: Update, context: ContextTypes.DEF
             __name__,
             "Admin selected reschedule start date",
             update,
-            kwargs={"booking_id": booking_id, "start_date": selected_date_obj}
+            **{"booking_id": booking_id, "start_date": selected_date_obj}
         )
         return await show_reschedule_start_time(update, context, booking_id)
     elif is_action:
@@ -1085,7 +1085,7 @@ async def handle_reschedule_start_time(update: Update, context: ContextTypes.DEF
             __name__,
             "Admin selected reschedule start time",
             update,
-            kwargs={"booking_id": booking_id, "start_datetime": start_datetime}
+            **{"booking_id": booking_id, "start_datetime": start_datetime}
         )
         return await show_reschedule_finish_date(update, context, booking_id)
     elif is_action:
@@ -1166,7 +1166,7 @@ async def handle_reschedule_finish_date(update: Update, context: ContextTypes.DE
             __name__,
             "Admin selected reschedule finish date",
             update,
-            kwargs={"booking_id": booking_id, "finish_date": selected_date_obj}
+            **{"booking_id": booking_id, "finish_date": selected_date_obj}
         )
         return await show_reschedule_finish_time(update, context, booking_id)
     elif is_action:
@@ -1268,7 +1268,7 @@ async def handle_reschedule_finish_time(update: Update, context: ContextTypes.DE
             __name__,
             "Admin selected reschedule finish time",
             update,
-            kwargs={"booking_id": booking_id, "finish_datetime": finish_datetime}
+            **{"booking_id": booking_id, "finish_datetime": finish_datetime}
         )
         return await show_reschedule_confirm(update, context, booking_id)
     elif is_action:
@@ -1397,7 +1397,7 @@ async def handle_reschedule_confirm(update: Update, context: ContextTypes.DEFAUL
         __name__,
         "Admin rescheduled booking",
         update,
-        kwargs={
+        **{
             "booking_id": booking_id,
             "old_start": old_start_date,
             "new_start": start_datetime,
@@ -1420,7 +1420,7 @@ async def notify_customer_reschedule(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -1444,14 +1444,14 @@ async def notify_customer_reschedule(
         LoggerService.info(
             __name__,
             "Customer notified of reschedule",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of reschedule",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 

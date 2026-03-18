@@ -61,7 +61,7 @@ async def get_available_dates(update: Update, context: CallbackContext):
         return await back_navigation(update, context)
 
     month, year = parse_callback_data(update)
-    LoggerService.info(__name__, "Select month", update, kwargs={"month": month})
+    LoggerService.info(__name__, "Select month", update, **{"month": month})
     keyboard = [
         [InlineKeyboardButton("Выбрать другой месяц", callback_data=BACK)],
         [InlineKeyboardButton("Назад в меню", callback_data=END)],

@@ -12,7 +12,7 @@ google-auth-httplib2
 google-api-python-client
 google-cloud-secret-manager
 matplotlib
-python-telegram-bot[job-queue]
+python-telegram-bot[job-queue,rate-limiter]
 flask[async]
 aiohttp
 flask

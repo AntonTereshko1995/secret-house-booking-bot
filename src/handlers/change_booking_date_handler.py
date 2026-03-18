@@ -104,7 +104,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User contact saved to database",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
                 else:
                     user_name = update.effective_user.username or cleaned_contact
@@ -114,14 +114,14 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User not found by chat_id, created new user",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to save user contact to database",
                     exception=e,
-                    kwargs={"contact": cleaned_contact},
+                    **{"contact": cleaned_contact},
                 )
 
             return await choose_booking_message(update, context)
@@ -175,7 +175,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_change_booking_field(update, "booking_has_white_bedroom", booking.has_white_bedroom)
     redis_service.update_change_booking_field(update, "booking_has_green_bedroom", booking.has_green_bedroom)
 
-    LoggerService.info(__name__, "Choose booking", update, kwargs={"booking_id": booking.id})
+    LoggerService.info(__name__, "Choose booking", update, **{"booking_id": booking.id})
     return await start_date_message(update, context)
 
 
@@ -216,12 +216,12 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select start date",
             update,
-            kwargs={"start_date": selected_date.date()},
+            **{"start_date": selected_date.date()},
         )
         return await start_time_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select start date", update, kwargs={"start_date": "cancel"}
+            __name__, "select start date", update, **{"start_date": "cancel"}
         )
         return await back_navigation(update, context)
     elif is_next_month or is_prev_month:
@@ -284,12 +284,12 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select start time",
             update,
-            kwargs={"start_time": start_booking_date.time()},
+            **{"start_time": start_booking_date.time()},
         )
         return await finish_date_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select start time", update, kwargs={"start_time": "back"}
+            __name__, "select start time", update, **{"start_time": "back"}
         )
         return await start_date_message(update, context)
     return CHANGE_BOOKING_DATE
@@ -314,12 +314,12 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select finish date",
             update,
-            kwargs={"finish_date": selected_date.date()},
+            **{"finish_date": selected_date.date()},
         )
         return await finish_time_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select finish date", update, kwargs={"finish_date": "back"}
+            __name__, "select finish date", update, **{"finish_date": "back"}
         )
         return await start_time_message(update, context)
     elif is_next_month or is_prev_month:
@@ -383,7 +383,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select finish time",
             update,
-            kwargs={"finish_time": finish_booking_date.time()},
+            **{"finish_time": finish_booking_date.time()},
         )
 
         booking = database_service.get_booking_by_id(draft.selected_booking_id)
@@ -448,7 +448,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await confirm_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select finish time", update, kwargs={"finish_time": "back"}
+            __name__, "select finish time", update, **{"finish_time": "back"}
         )
         return await finish_date_message(update, context)
     return CHANGE_BOOKING_DATE

@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 import logging
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, filters
+from telegram.ext import AIORateLimiter, Application, CallbackQueryHandler, CommandHandler, ContextTypes, filters
 from telegram.error import BadRequest
 from src.handlers import menu_handler, admin_handler, feedback_handler, booking_details_handler, promocode_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID, INFORM_CHAT_ID
@@ -53,7 +53,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
                 __name__,
                 "Callback query expired - attempting recovery",
                 update,
-                kwargs={"error": str(context.error)}
+                **{"error": str(context.error)}
             )
 
             # Attempt recovery if update is valid
@@ -86,6 +86,7 @@ if __name__ == "__main__":
         .token(TELEGRAM_TOKEN)
         .post_init(set_commands)
         .persistence(persistence)
+        .rate_limiter(AIORateLimiter(max_retries=3))
         .build()
     )
 

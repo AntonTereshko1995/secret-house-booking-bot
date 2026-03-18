@@ -155,7 +155,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User contact saved to database",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
                 else:
                     user_name = update.effective_user.username or cleaned_contact
@@ -165,14 +165,14 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User not found by chat_id, created new user",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to save user contact to database",
                     exception=e,
-                    kwargs={"contact": cleaned_contact},
+                    **{"contact": cleaned_contact},
                 )
 
             return await pay(update, context)
@@ -200,7 +200,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_gift_certificate_field(update, "tariff", tariff)
     redis_service.update_gift_certificate_field(update, "rental_rate", rental_rate)
 
-    LoggerService.info(__name__, "select tariff", update, kwargs={"tariff": tariff})
+    LoggerService.info(__name__, "select tariff", update, **{"tariff": tariff})
 
     if tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_DAY:
         redis_service.update_gift_certificate_field(update, "is_sauna_included", True)
@@ -229,7 +229,7 @@ async def select_additional_bedroom(update: Update, context: ContextTypes.DEFAUL
         __name__,
         "select additional bedroom",
         update,
-        kwargs={"is_additional_bedroom_included": is_additional_bedroom_included},
+        **{"is_additional_bedroom_included": is_additional_bedroom_included},
     )
     return await secret_room_message(update, context)
 
@@ -248,7 +248,7 @@ async def include_secret_room(update: Update, context: ContextTypes.DEFAULT_TYPE
         __name__,
         "include secret room",
         update,
-        kwargs={"is_secret_room_included": is_secret_room_included},
+        **{"is_secret_room_included": is_secret_room_included},
     )
     return await sauna_message(update, context)
 
@@ -267,7 +267,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
         __name__,
         "include sauna",
         update,
-        kwargs={"is_sauna_included": is_sauna_included},
+        **{"is_sauna_included": is_sauna_included},
     )
     return await confirm_pay(update, context)
 
@@ -281,7 +281,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await back_navigation(update, context)
 
     draft = redis_service.get_gift_certificate(update)
-    LoggerService.info(__name__, "pay", update, kwargs={"price": draft.price})
+    LoggerService.info(__name__, "pay", update, **{"price": draft.price})
     keyboard = [[InlineKeyboardButton("Отмена", callback_data=END)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
@@ -331,7 +331,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         draft.is_secret_room_included,
         draft.is_additional_bedroom_included,
     )
-    LoggerService.info(__name__, "confirm pay", update, kwargs={"price": price})
+    LoggerService.info(__name__, "confirm pay", update, **{"price": price})
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text=f"💰 <b>Общая сумма оплаты:</b> {price} руб.\n"
@@ -460,7 +460,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "Gift payment confirmation received - photo",
             update,
-            kwargs={"file_type": "photo"}
+            **{"file_type": "photo"}
         )
     elif update.message and update.message.document:
         # User sent any document type
@@ -470,7 +470,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "Gift payment confirmation received - document",
             update,
-            kwargs={
+            **{
                 "file_type": "document",
                 "mime_type": mime_type,
                 "file_name": document.file_name or "unknown"
@@ -502,7 +502,7 @@ async def handle_text_instead_of_file(update: Update, context: ContextTypes.DEFA
         __name__,
         "User sent text instead of gift payment confirmation file",
         update,
-        kwargs={"text_length": len(update.message.text) if update.message and update.message.text else 0}
+        **{"text_length": len(update.message.text) if update.message and update.message.text else 0}
     )
 
     if update.message:

@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import os
 import pytz
@@ -68,7 +69,7 @@ class JobService:
         LoggerService.info(
             __name__,
             f"Found {len(bookings)} bookings for {tomorrow}",
-            kwargs={"bookings_count": len(bookings), "date": str(tomorrow)},
+            **{"bookings_count": len(bookings), "date": str(tomorrow)},
         )
 
         for booking in bookings:
@@ -77,7 +78,7 @@ class JobService:
                 LoggerService.info(
                     __name__,
                     "Successfully sent booking details to user",
-                    kwargs={
+                    **{
                         "chat_id": booking.user.chat_id,
                         "booking_id": booking.id,
                         "action": "send_booking_details",
@@ -88,12 +89,13 @@ class JobService:
                     __name__,
                     "Failed to send booking details to user",
                     exception=e,
-                    kwargs={
+                    **{
                         "chat_id": booking.user.chat_id if booking.user else None,
                         "booking_id": booking.id,
                         "action": "send_booking_details",
                     },
                 )
+            await asyncio.sleep(2)
 
     async def send_feeback(self, context: CallbackContext):
         today = date.today()
@@ -103,14 +105,14 @@ class JobService:
             LoggerService.info(
                 __name__,
                 f"No completed bookings found for period {seven_days_ago} - {today}",
-                kwargs={"from_date": str(seven_days_ago), "to_date": str(today)},
+                **{"from_date": str(seven_days_ago), "to_date": str(today)},
             )
             return
 
         LoggerService.info(
             __name__,
             f"Found {len(bookings)} completed bookings for period {seven_days_ago} - {today}",
-            kwargs={"bookings_count": len(bookings), "from_date": str(seven_days_ago), "to_date": str(today)},
+            **{"bookings_count": len(bookings), "from_date": str(seven_days_ago), "to_date": str(today)},
         )
 
         for booking in bookings:
@@ -120,7 +122,7 @@ class JobService:
                 LoggerService.info(
                     __name__,
                     "Successfully sent feedback request to user",
-                    kwargs={
+                    **{
                         "chat_id": booking.user.chat_id,
                         "booking_id": booking.id,
                         "action": "send_feedback",
@@ -131,12 +133,13 @@ class JobService:
                     __name__,
                     "Failed to send feedback request to user",
                     exception=e,
-                    kwargs={
+                    **{
                         "chat_id": booking.user.chat_id,
                         "booking_id": booking.id,
                         "action": "send_feedback",
                     },
                 )
+            await asyncio.sleep(2)
 
     async def cleanup_invalid_chats(self, context: CallbackContext):
         """Weekly job to validate all chat IDs and remove invalid ones."""
@@ -146,14 +149,14 @@ class JobService:
 
             if not chat_ids:
                 LoggerService.info(
-                    __name__, "No chat IDs to validate", kwargs={"chat_count": 0}
+                    __name__, "No chat IDs to validate", **{"chat_count": 0}
                 )
                 return
 
             LoggerService.info(
                 __name__,
                 "Starting weekly chat validation",
-                kwargs={"total_chats": len(chat_ids)},
+                **{"total_chats": len(chat_ids)},
             )
 
             # Validate all chat IDs
@@ -171,21 +174,21 @@ class JobService:
                         LoggerService.info(
                             __name__,
                             "Deactivated user with invalid chat_id",
-                            kwargs={"chat_id": invalid_chat_id},
+                            **{"chat_id": invalid_chat_id},
                         )
                 except Exception as e:
                     LoggerService.error(
                         __name__,
                         "Failed to deactivate user",
                         exception=e,
-                        kwargs={"chat_id": invalid_chat_id},
+                        **{"chat_id": invalid_chat_id},
                     )
 
             # Log summary
             LoggerService.info(
                 __name__,
                 "Weekly chat cleanup completed",
-                kwargs={
+                **{
                     "total_checked": results["total_checked"],
                     "valid": results["valid"],
                     "invalid": results["invalid"],
@@ -204,7 +207,7 @@ class JobService:
                 LoggerService.info(
                     __name__,
                     "Expired promocodes cleanup completed",
-                    kwargs={
+                    **{
                         "deactivated_count": count,
                         "date": str(date.today()),
                     },
@@ -213,7 +216,7 @@ class JobService:
                 LoggerService.info(
                     __name__,
                     "No expired promocodes to clean up",
-                    kwargs={"date": str(date.today())},
+                    **{"date": str(date.today())},
                 )
 
         except Exception as e:

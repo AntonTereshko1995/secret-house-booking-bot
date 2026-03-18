@@ -103,7 +103,7 @@ class UserRepository(BaseRepository):
                             LoggerService.info(
                                 __name__,
                                 "Removing chat_id from different user in update_user_contact",
-                                kwargs={
+                                **{
                                     "removed_from_user_id": existing_user_with_chat.id,
                                     "chat_id": chat_id,
                                     "assigned_to_user": user.id,
@@ -118,7 +118,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Found user by contact, added chat_id",
-                            kwargs={"user_id": user.id, "chat_id": chat_id, "contact": contact},
+                            **{"user_id": user.id, "chat_id": chat_id, "contact": contact},
                         )
                         return user
                     else:
@@ -130,7 +130,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Created new user with contact",
-                            kwargs={"user_id": user.id, "chat_id": chat_id, "contact": contact},
+                            **{"user_id": user.id, "chat_id": chat_id, "contact": contact},
                         )
                         return user
 
@@ -161,7 +161,7 @@ class UserRepository(BaseRepository):
                     LoggerService.info(
                         __name__,
                         "Contact found for another user, merged data and deleted duplicate",
-                        kwargs={
+                        **{
                             "deleted_user_id": existing_user.id,
                             "kept_user_id": user.id,
                             "chat_id": chat_id,
@@ -177,7 +177,7 @@ class UserRepository(BaseRepository):
                 LoggerService.info(
                     __name__,
                     "Updated user contact",
-                    kwargs={"chat_id": chat_id, "contact": contact},
+                    **{"chat_id": chat_id, "contact": contact},
                 )
                 return user
 
@@ -205,7 +205,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Updated user_name for existing user",
-                            kwargs={
+                            **{
                                 "user_id": user.id,
                                 "chat_id": chat_id,
                                 "old_user_name": user.user_name,
@@ -218,7 +218,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "User already has this chat_id",
-                            kwargs={
+                            **{
                                 "user_id": user.id,
                                 "chat_id": chat_id,
                                 "user_name": user_name,
@@ -249,7 +249,7 @@ class UserRepository(BaseRepository):
                                 LoggerService.info(
                                     __name__,
                                     "Removing chat_id from different user",
-                                    kwargs={
+                                    **{
                                         "removed_from_user_id": existing_user_with_chat.id,
                                         "chat_id": chat_id,
                                         "assigned_to_user": user.id,
@@ -264,7 +264,7 @@ class UserRepository(BaseRepository):
                                 LoggerService.info(
                                     __name__,
                                     "Reactivated deactivated user",
-                                    kwargs={
+                                    **{
                                         "user_id": user.id,
                                         "user_name": user_name,
                                         "new_chat_id": chat_id,
@@ -275,7 +275,7 @@ class UserRepository(BaseRepository):
                             LoggerService.info(
                                 __name__,
                                 "Updated chat_id for user",
-                                kwargs={
+                                **{
                                     "user_id": user.id,
                                     "chat_id": chat_id,
                                     "user_name": user_name,
@@ -296,7 +296,7 @@ class UserRepository(BaseRepository):
                             LoggerService.info(
                                 __name__,
                                 "Created new user with chat_id",
-                                kwargs={
+                                **{
                                     "user_id": user.id,
                                     "chat_id": chat_id,
                                     "user_name": user_name,
@@ -317,7 +317,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Created new user without user_name",
-                            kwargs={
+                            **{
                                 "user_id": user.id,
                                 "chat_id": chat_id,
                             },

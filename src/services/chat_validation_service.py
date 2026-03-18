@@ -30,7 +30,7 @@ class ChatValidationService:
             LoggerService.info(
                 __name__,
                 f"Chat {chat_id} blocked bot",
-                kwargs={"chat_id": chat_id, "error": str(e)},
+                **{"chat_id": chat_id, "error": str(e)},
             )
             return False
         except BadRequest as e:
@@ -38,7 +38,7 @@ class ChatValidationService:
             LoggerService.info(
                 __name__,
                 f"Chat {chat_id} not found",
-                kwargs={"chat_id": chat_id, "error": str(e)},
+                **{"chat_id": chat_id, "error": str(e)},
             )
             return False
         except TelegramError as e:
@@ -47,7 +47,7 @@ class ChatValidationService:
                 __name__,
                 f"Error validating chat {chat_id}",
                 exception=e,
-                kwargs={"chat_id": chat_id},
+                **{"chat_id": chat_id},
             )
             return False
 

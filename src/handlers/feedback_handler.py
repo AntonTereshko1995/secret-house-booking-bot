@@ -94,7 +94,7 @@ async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         __name__,
         "Feedback conversation started",
         update,
-        kwargs={"booking_id": booking_id},
+        **{"booking_id": booking_id},
     )
 
     # Show Q1
@@ -128,7 +128,7 @@ async def handle_q1_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "expectations_rating", rating)
 
     LoggerService.info(
-        __name__, "Q1 rating received", update, kwargs={"rating": rating}
+        __name__, "Q1 rating received", update, **{"rating": rating}
     )
 
     await show_question_2(update, context)
@@ -161,7 +161,7 @@ async def handle_q2_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "comfort_rating", rating)
 
     LoggerService.info(
-        __name__, "Q2 rating received", update, kwargs={"rating": rating}
+        __name__, "Q2 rating received", update, **{"rating": rating}
     )
 
     await show_question_3(update, context)
@@ -194,7 +194,7 @@ async def handle_q3_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "cleanliness_rating", rating)
 
     LoggerService.info(
-        __name__, "Q3 rating received", update, kwargs={"rating": rating}
+        __name__, "Q3 rating received", update, **{"rating": rating}
     )
 
     await show_question_4(update, context)
@@ -227,7 +227,7 @@ async def handle_q4_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "host_support_rating", rating)
 
     LoggerService.info(
-        __name__, "Q4 rating received", update, kwargs={"rating": rating}
+        __name__, "Q4 rating received", update, **{"rating": rating}
     )
 
     await show_question_5(update, context)
@@ -261,7 +261,7 @@ async def handle_q5_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "location_rating", rating)
 
     LoggerService.info(
-        __name__, "Q5 rating received", update, kwargs={"rating": rating}
+        __name__, "Q5 rating received", update, **{"rating": rating}
     )
 
     await show_question_6(update, context)
@@ -294,7 +294,7 @@ async def handle_q6_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "recommendation_rating", rating)
 
     LoggerService.info(
-        __name__, "Q6 rating received", update, kwargs={"rating": rating}
+        __name__, "Q6 rating received", update, **{"rating": rating}
     )
 
     # Transition to text questions
@@ -470,7 +470,7 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
                 __name__,
                 "Feedback promocode created",
                 update,
-                kwargs={
+                **{
                     "booking_id": feedback_data.booking_id,
                     "promocode": promocode_name,
                     "expiry_date": str(expiry_date)
@@ -481,21 +481,21 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
                 __name__,
                 "Failed to create feedback promocode",
                 exception=e,
-                kwargs={"booking_id": feedback_data.booking_id}
+                **{"booking_id": feedback_data.booking_id}
             )
 
         LoggerService.info(
             __name__,
             "Booking marked as feedback submitted",
             update,
-            kwargs={"booking_id": feedback_data.booking_id},
+            **{"booking_id": feedback_data.booking_id},
         )
 
     LoggerService.info(
         __name__,
         "Feedback sent to admin",
         update,
-        kwargs={"booking_id": feedback_data.booking_id, "user_contact": user_contact},
+        **{"booking_id": feedback_data.booking_id, "user_contact": user_contact},
     )
 
     return promocode_name

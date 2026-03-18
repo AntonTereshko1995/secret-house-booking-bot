@@ -1241,7 +1241,7 @@ async def send_booking_details(
         LoggerService.warning(
             __name__,
             "Cannot send booking details: user or chat_id is missing",
-            kwargs={
+            **{
                 "booking_id": booking.id,
                 "user_id": booking.user_id if booking.user else None,
                 "has_user": booking.user is not None,
@@ -1264,6 +1264,7 @@ async def send_booking_details(
             "Маршрут Google map:\n"
             "https://maps.app.goo.gl/Hsf9Xw69N8tqHyqt5",
         )
+        await asyncio.sleep(1)
 
         # Отправка контактов администратора
         await context.bot.send_message(
@@ -1271,6 +1272,7 @@ async def send_booking_details(
             text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
             f"{ADMINISTRATION_CONTACT}",
         )
+        await asyncio.sleep(1)
 
         # Отправка фото с инструкциями
         photo = file_service.get_image("key.jpg")
@@ -1288,6 +1290,7 @@ async def send_booking_details(
 
         # Отправка инструкций по сауне (если есть)
         if booking.has_sauna:
+            await asyncio.sleep(1)
             await context.bot.send_message(
                 chat_id=booking.user.chat_id,
                 text="Инструкция по включению сауны:\n"
@@ -1301,7 +1304,7 @@ async def send_booking_details(
         LoggerService.info(
             __name__,
             "All booking details sent successfully",
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details_complete",
@@ -1313,7 +1316,7 @@ async def send_booking_details(
             __name__,
             "Failed to send booking details to user",
             exception=e,
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details",
@@ -1364,7 +1367,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
         LoggerService.info(
             __name__,
             "Feedback request sent successfully",
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "message_id": message.message_id,
@@ -1379,7 +1382,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             __name__,
             "Failed to send feedback request to user",
             exception=e,
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_feedback",
@@ -1481,7 +1484,7 @@ async def handle_promo_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     LoggerService.info(
-        __name__, "Promo name set", update, kwargs={"promo_name": promo_name}
+        __name__, "Promo name set", update, **{"promo_name": promo_name}
     )
     return CREATE_PROMO_DATE_FROM
 
@@ -1531,7 +1534,7 @@ async def handle_promo_date_from(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     LoggerService.info(
-        __name__, "Promo date_from set", update, kwargs={"date_from": date_from}
+        __name__, "Promo date_from set", update, **{"date_from": date_from}
     )
     return CREATE_PROMO_DATE_TO
 
@@ -1584,7 +1587,7 @@ async def handle_promo_date_to(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
     LoggerService.info(
-        __name__, "Promo date_to set", update, kwargs={"date_to": date_to}
+        __name__, "Promo date_to set", update, **{"date_to": date_to}
     )
     return CREATE_PROMO_DISCOUNT
 
@@ -1651,7 +1654,7 @@ async def handle_promo_discount(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     LoggerService.info(
-        __name__, "Promo discount set", update, kwargs={"discount": discount}
+        __name__, "Promo discount set", update, **{"discount": discount}
     )
     return CREATE_PROMO_TARIFF
 
@@ -1705,7 +1708,7 @@ async def handle_promo_tariff_selection(
             __name__,
             "Promocode created successfully",
             update,
-            kwargs={"promocode_id": promocode.id, "name": promocode.name},
+            **{"promocode_id": promocode.id, "name": promocode.name},
         )
 
     except Exception as e:
@@ -1902,7 +1905,7 @@ async def handle_delete_promocode_callback(
                 __name__,
                 "Promocode deactivated via button",
                 update,
-                kwargs={"promocode_id": promocode_id},
+                **{"promocode_id": promocode_id},
             )
         else:
             await query.edit_message_text(

@@ -115,7 +115,7 @@ async def handle_promo_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     LoggerService.info(
-        __name__, "Promo name set", update, kwargs={"promo_name": promo_name}
+        __name__, "Promo name set", update, **{"promo_name": promo_name}
     )
     return CREATE_PROMO_TYPE
 
@@ -159,7 +159,7 @@ async def handle_promo_type_selection(
     )
 
     LoggerService.info(
-        __name__, "Promo type set", update, kwargs={"promo_type": promo_type.name}
+        __name__, "Promo type set", update, **{"promo_type": promo_type.name}
     )
     return CREATE_PROMO_DATE_FROM
 
@@ -220,7 +220,7 @@ async def handle_promo_date_from(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     LoggerService.info(
-        __name__, "Promo date_from set", update, kwargs={"date_from": date_from}
+        __name__, "Promo date_from set", update, **{"date_from": date_from}
     )
     return CREATE_PROMO_DATE_TO
 
@@ -275,7 +275,7 @@ async def handle_promo_date_to(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
     LoggerService.info(
-        __name__, "Promo date_to set", update, kwargs={"date_to": date_to}
+        __name__, "Promo date_to set", update, **{"date_to": date_to}
     )
     return CREATE_PROMO_DISCOUNT
 
@@ -346,7 +346,7 @@ async def handle_promo_discount(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     LoggerService.info(
-        __name__, "Promo discount set", update, kwargs={"discount": discount}
+        __name__, "Promo discount set", update, **{"discount": discount}
     )
     return CREATE_PROMO_TARIFF
 
@@ -386,7 +386,7 @@ async def handle_promo_date_from_button(
     )
 
     LoggerService.info(
-        __name__, "Promo date_from set via button", update, kwargs={"date_from": date_from}
+        __name__, "Promo date_from set via button", update, **{"date_from": date_from}
     )
     return CREATE_PROMO_DATE_TO
 
@@ -426,7 +426,7 @@ async def handle_promo_date_to_button(
     )
 
     LoggerService.info(
-        __name__, "Promo date_to set via button", update, kwargs={"date_to": date_to}
+        __name__, "Promo date_to set via button", update, **{"date_to": date_to}
     )
     return CREATE_PROMO_DISCOUNT
 
@@ -586,7 +586,7 @@ async def create_promocode_with_tariffs(
             __name__,
             "Promocode created successfully",
             update,
-            kwargs={"promocode_id": promocode.id, "name": promocode.name},
+            **{"promocode_id": promocode.id, "name": promocode.name},
         )
 
     except Exception as e:
@@ -807,7 +807,7 @@ async def handle_delete_promocode_callback(
                 __name__,
                 "Promocode deactivated via button",
                 update,
-                kwargs={"promocode_id": promocode_id},
+                **{"promocode_id": promocode_id},
             )
         else:
             await query.edit_message_text(

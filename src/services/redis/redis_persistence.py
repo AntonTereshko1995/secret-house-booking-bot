@@ -105,7 +105,7 @@ class RedisPersistence(BasePersistence):
                 __name__,
                 f"Failed to update conversation '{name}'",
                 exception=e,
-                kwargs={"key": key, "new_state": new_state}
+                **{"key": key, "new_state": new_state}
             )
 
     async def get_user_data(self) -> Dict:

@@ -33,7 +33,7 @@ class RedisConnection:
                 __name__,
                 "Failed to connect to Redis",
                 exception=e,
-                kwargs={"host": REDIS_URL, "port": REDIS_PORT}
+                **{"host": REDIS_URL, "port": REDIS_PORT}
             )
             raise
 
