@@ -2049,7 +2049,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             **{
                 "file_type": "document",
                 "mime_type": mime_type,
-                "file_name": document.file_name or "unknown"
+                "doc_file_name": document.file_name or "unknown"
             }
         )
     else:
