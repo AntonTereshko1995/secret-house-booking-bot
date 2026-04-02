@@ -152,6 +152,8 @@ class UserRepository(BaseRepository):
                     existing_user.has_bookings = max(existing_user.has_bookings or 0, user.has_bookings or 0)
                     existing_user.total_bookings = (existing_user.total_bookings or 0) + (user.total_bookings or 0)
                     existing_user.completed_bookings = (existing_user.completed_bookings or 0) + (user.completed_bookings or 0)
+                    # Clear chat_id on the duplicate first to avoid unique constraint violation on autoflush
+                    user.chat_id = None
                     existing_user.chat_id = chat_id
                     existing_user.contact = contact
 

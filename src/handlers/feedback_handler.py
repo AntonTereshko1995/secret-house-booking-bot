@@ -450,8 +450,7 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
     # Mark feedback as submitted in database
     promocode_name = None
     if booking:
-        booking.feedback_submitted = True
-        database_service.update_booking(booking)
+        database_service.update_booking(booking.id, feedback_submitted=True)
 
         # Create feedback promocode valid for 3 months
         promocode_name = f"ОТЗЫВ-{feedback_data.booking_id}"

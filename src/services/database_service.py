@@ -310,6 +310,7 @@ class DatabaseService:
         prepayment: float = None,
         prepayment_price: float = None,
         tariff: Tariff = None,
+        feedback_submitted: bool = None,
     ) -> BookingBase:
         """Update booking fields."""
         return self.booking_repository.update_booking(
@@ -325,6 +326,7 @@ class DatabaseService:
             prepayment,
             prepayment_price,
             tariff,
+            feedback_submitted,
         )
 
     # Statistics methods
