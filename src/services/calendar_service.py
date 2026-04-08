@@ -64,10 +64,15 @@ class CalendarService:
         except Exception as e:
             LoggerService.error(__name__, "add_event: unexpected error", e)
 
+    @staticmethod
+    def _event_summary(booking: BookingBase) -> str:
+        source_label = "🌐" if booking.source == "web" else "📱"
+        return f"{source_label} {tariff_helper.get_name(booking.tariff)}"
+
     @_retry_on_network
     def _add_event(self, booking: BookingBase, user: UserBase) -> str:
         event = {
-            "summary": tariff_helper.get_name(booking.tariff),
+            "summary": self._event_summary(booking),
             "description": string_helper.generate_booking_info_message(booking, user),
             "start": {
                 "dateTime": booking.start_date.isoformat(),
@@ -145,7 +150,7 @@ class CalendarService:
         event["end"]["dateTime"] = finish_datetime.isoformat()
 
         if booking and user:
-            event["summary"] = tariff_helper.get_name(booking.tariff)
+            event["summary"] = self._event_summary(booking)
             event["description"] = string_helper.generate_booking_info_message(
                 booking, user
             )
@@ -183,7 +188,7 @@ class CalendarService:
             LoggerService.warning(__name__, f"update_event_info: event not found, event_id={event_id}")
             return
 
-        event["summary"] = tariff_helper.get_name(booking.tariff)
+        event["summary"] = self._event_summary(booking)
         event["description"] = string_helper.generate_booking_info_message(
             booking, user
         )

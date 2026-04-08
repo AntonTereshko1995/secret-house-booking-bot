@@ -68,6 +68,7 @@ class BookingRepository(BaseRepository):
                     price=price,
                     wine_preference=wine_preference,
                     transfer_address=transfer_address,
+                    source="telegram",
                 )
 
                 if gift_id:

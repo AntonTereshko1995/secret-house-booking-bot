@@ -143,10 +143,17 @@ def generate_booking_info_message(
     is_additional_payment_by_cash=False,
 ) -> str:
     # Handle case when user is None
-    user_contact = user.contact if user and user.contact else "N/A"
+    # For web bookings user.contact lacks '@'; user_name was set from data.telegram (with '@')
+    # For bot bookings user.contact is what the user typed; user_name is their Telegram account name
+    if booking.source == "web":
+        raw_contact = (user.user_name or user.contact) if user else None
+    else:
+        raw_contact = user.contact if user else None
+    user_contact = raw_contact if raw_contact else "N/A"
     user_total_bookings = user.total_bookings if user else 0
     user_completed_bookings = user.completed_bookings if user else 0
     
+    source_label = "🌐 Веб" if booking.source == "web" else "📱 Телеграм"
     message = (
         f"Пользователь: {user_contact}\n"
         f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
@@ -223,6 +230,7 @@ def generate_booking_info_message(
         )
     else:
         message += f"Предоплата: {booking.prepayment_price}\n"
+    message += f"Источник: {source_label}\n"
     return message
 
 
