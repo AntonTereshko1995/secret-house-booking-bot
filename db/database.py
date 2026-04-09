@@ -10,7 +10,12 @@ from db.models.gift import GiftBase
 from sqlalchemy import create_engine
 from src.config.config import DATABASE_URL
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    pool_pre_ping=True,    # test connection before use, discard stale ones
+    pool_recycle=1800,     # recycle connections older than 30 min
+)
 
 
 def create_db_and_tables() -> None:
