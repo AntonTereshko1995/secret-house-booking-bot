@@ -1970,6 +1970,10 @@ def save_booking_information(
     #     )
 
     cache_booking = redis_service.get_booking(update)
+    if cache_booking is None:
+        LoggerService.error(__name__, "Cache booking is None — session expired", chat_id=chat_id)
+        return None
+
     booking = database_service.add_booking(
         cache_booking.user_contact,
         cache_booking.start_booking_date,
@@ -2106,6 +2110,21 @@ async def send_approving_to_admin(
     is_cash=False,
 ):
     chat_id = navigation_service.get_chat_id(update)
+    cache_booking = redis_service.get_booking(update)
+
+    if cache_booking is None:
+        if update.message:
+            await update.message.reply_text(
+                text="⏳ <b>Сессия бронирования устарела</b>\n\n"
+                "К сожалению, данные вашего бронирования не сохранились — скорее всего, прошло слишком много времени с момента оформления.\n\n"
+                "Пожалуйста, начните оформление брони заново:\n"
+                "нажмите кнопку <b>«Меню»</b> → <b>«Открыть Главное меню»</b> → <b>«Забронировать»</b>.\n\n"
+                "Если у вас остались вопросы — выберите пункт <b>«Связаться с администратором»</b>.\n\n"
+                "🙏 Спасибо за понимание!",
+                parse_mode="HTML",
+            )
+        return BOOKING
+
     booking = save_booking_information(update, chat_id, is_cash)
     if not booking and update.message:
         await update.message.reply_text(
