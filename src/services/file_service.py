@@ -13,7 +13,7 @@ from src.models.holiday_prepayment_rule import HolidayPrepaymentRule
 class FileService:
     _IMAGE_FOLDER = "assets/images/"
     _TARIFF_JSON = "src/config/tariff_rate.json"
-    # _TARIFF_JSON = "src/config/tariff_rate_sale.json" 
+    # _TARIFF_JSON = "src/config/tariff_rate_sale.json"
     _DATE_PRICING_RULES_JSON = "src/config/date_pricing_rules.json"
     _HOLIDAY_PREPAYMENT_RULES_JSON = "src/config/holiday_prepayment_rules.json"
 
