@@ -6,7 +6,6 @@ import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.services.secret_manager_service import SecretManagerService
 from src.services.logger_service import LoggerService
 from src.helpers import string_helper, tariff_helper
 from google.auth.exceptions import TransportError
@@ -28,7 +27,6 @@ import logging
 
 SERVICE_ACCOUNT_FILE = "src/config/credentials.json"
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
-secret_manager_service = SecretManagerService()
 
 _NETWORK_ERRORS = (OSError, TransportError, socket.error)
 

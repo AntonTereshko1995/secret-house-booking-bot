@@ -10,7 +10,6 @@ google-auth>=2.0.0
 google-auth-oauthlib>=0.5.0
 google-auth-httplib2>=0.1.0
 google-api-python-client>=2.0.0
-google-cloud-secret-manager>=2.16.0
 matplotlib
 python-telegram-bot[job-queue,rate-limiter]
 flask[async]
