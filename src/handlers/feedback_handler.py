@@ -28,6 +28,8 @@ from src.services.navigation_service import NavigationService
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID
 from datetime import date, timedelta
+import asyncio
+from telegram.error import TimedOut, NetworkError
 
 redis_service = RedisSessionService()
 navigation_service = NavigationService()
@@ -442,10 +444,20 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
         f"<b>9. Публичный отзыв:</b>\n{feedback_data.public_review}"
     )
 
-    # Send to ADMIN_CHAT_ID
-    await context.bot.send_message(
-        chat_id=ADMIN_CHAT_ID, text=message, parse_mode="HTML"
-    )
+    # Send to ADMIN_CHAT_ID with retry on transient network errors
+    for attempt in range(3):
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_CHAT_ID, text=message, parse_mode="HTML"
+            )
+            break
+        except (TimedOut, NetworkError) as e:
+            if attempt == 2:
+                LoggerService.error(
+                    __name__, f"Failed to send feedback to admin after 3 attempts: {e}", update
+                )
+                raise
+            await asyncio.sleep(2 ** attempt)
 
     # Mark feedback as submitted in database
     promocode_name = None

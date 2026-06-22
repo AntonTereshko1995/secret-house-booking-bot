@@ -116,6 +116,14 @@ class JobService:
         )
 
         for booking in bookings:
+            if not booking.user or not booking.user.chat_id:
+                LoggerService.warning(
+                    __name__,
+                    "Skipping feedback: user has no chat_id",
+                    **{"booking_id": booking.id, "action": "send_feedback"},
+                )
+                database_service.update_booking(booking.id, is_done=True)
+                continue
             try:
                 database_service.update_booking(booking.id, is_done=True)
                 await admin_handler.send_feedback(context, booking)
