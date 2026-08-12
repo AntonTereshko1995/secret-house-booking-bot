@@ -10,7 +10,7 @@ from src.helpers import tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
-from src.config.config import CLEANING_HOURS
+from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
 
 
 def is_valid_user_contact(user_name: str) -> tuple[bool, str]:
@@ -84,8 +84,8 @@ def generate_available_slots(
 
     extended_busy_slots = [
         {
-            "start": booking.start_date - cleaning_time,
-            "end": booking.end_date + cleaning_time,
+            "start": booking.start_date - (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
+            "end": booking.end_date + (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
         }
         for booking in bookings
     ]
@@ -162,6 +162,7 @@ def generate_booking_info_message(
         f"Стоимость: {booking.price} руб.\n"
         f"Фотосессия: {bool_to_str(booking.has_photoshoot)}\n"
         f"Сауна: {bool_to_str(booking.has_sauna)}\n"
+        f"Банный чан: {bool_to_str(booking.has_bath_tub)}\n"
         f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
         f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
         f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
@@ -242,6 +243,7 @@ def generate_gift_info_message(gift: GiftBase) -> str:
         f"Тариф: {tariff_helper.get_name(gift.tariff)}\n"
         f"Стоимость: {gift.price} руб.\n"
         f"Сауна: {bool_to_str(gift.has_sauna)}\n"
+        f"Банный чан: {bool_to_str(gift.has_bath_tub)}\n"
         f"Дополнительная спальня: {bool_to_str(gift.has_additional_bedroom)}\n"
         f"Секретная комната: {bool_to_str(gift.has_secret_room)}\n"
         f"Код: {gift.code}\n"

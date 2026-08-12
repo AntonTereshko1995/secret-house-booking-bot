@@ -15,6 +15,7 @@ from src.config.config import (
     PERIOD_IN_MONTHS,
     PREPAYMENT,
     CLEANING_HOURS,
+    CLEANING_HOURS_BATH_TUB,
     BANK_PHONE_NUMBER,
     BANK_CARD_NUMBER,
 )
@@ -103,6 +104,9 @@ def get_handler():
             handle_transfer_skip, pattern=f"^BOOKING-TRANSFER_({SKIP}|{END})$"
         ),
         CallbackQueryHandler(skip_promocode, pattern=f"^BOOKING-PROMO_({SKIP}|{END})$"),
+        CallbackQueryHandler(
+            include_bath_tub, pattern=f"^BOOKING-BATH-TUB_(?i:true|false|{END})$"
+        ),
     ]
 
 
@@ -220,7 +224,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await photoshoot_message(update, context)
         elif tariff == Tariff.INCOGNITA_HOURS or tariff == Tariff.INCOGNITA_WORKER:
             redis_service.update_booking_field(update, "is_photoshoot_included", False)
-            return await count_of_people_message(update, context)
+            return await bath_tub_message(update, context)
     elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
         redis_service.update_booking_field(update, "is_photoshoot_included", False)
         redis_service.update_booking_field(update, "is_sauna_included", False)
@@ -337,6 +341,11 @@ async def include_photoshoot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         update,
         **{"is_photoshoot_included": is_photoshoot_included},
     )
+    booking = redis_service.get_booking(update)
+    if booking.gift_id:
+        return await count_of_people_message(update, context)
+    if booking.tariff == Tariff.INCOGNITA_DAY:
+        return await bath_tub_message(update, context)
     return await count_of_people_message(update, context)
 
 
@@ -359,10 +368,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booking = redis_service.get_booking(update)
     if booking.gift_id:
         return await navigate_next_step_for_gift(update, context)
-    elif booking.tariff == Tariff.DAY or booking.tariff == Tariff.DAY_FOR_COUPLE:
-        return await photoshoot_message(update, context)
-
-    return await count_of_people_message(update, context)
+    return await bath_tub_message(update, context)
 
 
 @safe_callback_query()
@@ -695,15 +701,16 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update, context, error_message=error_message
             )
 
-        check_start = booking.start_booking_date - timedelta(hours=CLEANING_HOURS)
-        check_end = finish_booking_date + timedelta(hours=CLEANING_HOURS)
-        
+        cleaning_hours = CLEANING_HOURS_BATH_TUB if getattr(booking, "is_bath_tub_included", False) else CLEANING_HOURS
+        check_start = booking.start_booking_date - timedelta(hours=cleaning_hours)
+        check_end = finish_booking_date + timedelta(hours=cleaning_hours)
+
         LoggerService.info(
             __name__,
             f"Checking booking overlap with cleaning hours: "
             f"user_booking=[{booking.start_booking_date}] - [{finish_booking_date}], "
             f"check_interval_with_cleaning=[{check_start}] - [{check_end}], "
-            f"CLEANING_HOURS={CLEANING_HOURS}",
+            f"CLEANING_HOURS={cleaning_hours}",
             update
         )
         
@@ -905,6 +912,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_second_room=booking.is_additional_bedroom_included,
         is_photoshoot=booking.is_photoshoot_included,
         count_people=booking.number_of_guests,
+        is_bath_tub=getattr(booking, "is_bath_tub_included", False),
     )
 
     # Apply promocode discount if available
@@ -929,6 +937,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         booking.is_additional_bedroom_included,
         booking.number_of_guests,
         extra_hours,
+        is_bath_tub=getattr(booking, "is_bath_tub_included", False),
     )
     photoshoot_text = ", фото сессия" if booking.is_photoshoot_included else ""
 
@@ -1408,8 +1417,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         booking.start_booking_date.date() - timedelta(days=2),
         booking.start_booking_date.date() + timedelta(days=2),
     )
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "is_bath_tub_included", False) else CLEANING_HOURS)
     available_slots = date_time_helper.get_free_time_slots(
-        feature_booking, booking.start_booking_date.date()
+        feature_booking, booking.start_booking_date.date(),
+        new_booking_cleaning=new_cleaning,
     )
 
     special_date_info = get_special_date_info_for_day(booking.start_booking_date.date())
@@ -1518,8 +1529,10 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         if booking.start_booking_date.date() != booking.finish_booking_date.date()
         else (booking.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     )
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "is_bath_tub_included", False) else CLEANING_HOURS)
     available_slots = date_time_helper.get_free_time_slots(
-        feature_booking, booking.finish_booking_date.date(), start_time=start_time
+        feature_booking, booking.finish_booking_date.date(), start_time=start_time,
+        new_booking_cleaning=new_cleaning,
     )
 
     special_date_info = get_special_date_info_for_day(
@@ -1582,6 +1595,58 @@ async def sauna_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=message, parse_mode="HTML", reply_markup=reply_markup
         )
     return BOOKING
+
+
+async def bath_tub_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    redis_service.update_booking_field(update, "navigation_step", BookingStep.BATH_TUB)
+    booking = redis_service.get_booking(update)
+
+    keyboard = [
+        [InlineKeyboardButton("Да", callback_data=f"BOOKING-BATH-TUB_{str(True)}")],
+        [InlineKeyboardButton("Нет", callback_data=f"BOOKING-BATH-TUB_{str(False)}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"BOOKING-BATH-TUB_{END}")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        "🛁 <b>Хотите воспользоваться банным чаном?</b>\n\n"
+        f"💰 <b>Стоимость:</b> {booking.rental_rate.bath_tub_price} руб.\n"
+        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(booking.tariff)}"
+    )
+
+    if update.message is None:
+        await update.callback_query.answer()
+        await navigation_service.safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
+            reply_markup=reply_markup,
+        )
+    else:
+        await update.message.reply_text(
+            text=message, parse_mode="HTML", reply_markup=reply_markup
+        )
+    return BOOKING
+
+
+@safe_callback_query()
+async def include_bath_tub(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if data == str(END):
+        return await back_navigation(update, context)
+
+    is_bath_tub_included = eval(data)
+    redis_service.update_booking_field(update, "is_bath_tub_included", is_bath_tub_included)
+    LoggerService.info(
+        __name__,
+        "Include bath tub",
+        update,
+        **{"is_bath_tub_included": is_bath_tub_included},
+    )
+    booking = redis_service.get_booking(update)
+    if booking.tariff == Tariff.DAY or booking.tariff == Tariff.DAY_FOR_COUPLE:
+        return await photoshoot_message(update, context)
+    return await count_of_people_message(update, context)
 
 
 async def comment_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1917,6 +1982,8 @@ def init_fields_for_gift(update: Update):
         )
         redis_service.update_booking_field(update, "is_white_room_included", True)
         redis_service.update_booking_field(update, "is_green_room_included", True)
+    if getattr(gift, "has_bath_tub", False):
+        redis_service.update_booking_field(update, "is_bath_tub_included", True)
 
 
 async def init_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1934,7 +2001,8 @@ async def init_gift_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_booking_field(update, "rental_rate", rental_rate)
 
     categories = rate_service.get_price_categories(
-        rental_rate, gift.has_sauna, gift.has_secret_room, gift.has_additional_bedroom
+        rental_rate, gift.has_sauna, gift.has_secret_room, gift.has_additional_bedroom,
+        is_bath_tub=getattr(gift, "has_bath_tub", False),
     )
     await update.message.reply_text(
         f"🎉 <b>Поздравляем!</b> Вы успешно активировали сертификат!\n\n"
@@ -1992,6 +2060,7 @@ def save_booking_information(
         cache_booking.wine_preference,
         cache_booking.transfer_address,
         getattr(cache_booking, "prepayment_price", None),
+        has_bath_tub=getattr(cache_booking, "is_bath_tub_included", False),
     )
 
     if booking == None:

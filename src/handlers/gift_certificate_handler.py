@@ -52,6 +52,9 @@ def get_handler():
         CallbackQueryHandler(pay, pattern=f"^GIFT-PAY_({END})$"),
         CallbackQueryHandler(confirm_gift, pattern=f"^GIFT-CONFIRM_({CONFIRM}|{END})$"),
         CallbackQueryHandler(back_navigation, pattern=f"^GIFT_{END}$"),
+        CallbackQueryHandler(
+            include_bath_tub, pattern=f"^GIFT-BATH-TUB_(?i:true|false|{END})$"
+        ),
     ]
 
 
@@ -206,7 +209,7 @@ async def select_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE):
         redis_service.update_gift_certificate_field(update, "is_sauna_included", True)
         redis_service.update_gift_certificate_field(update, "is_secret_room_included", True)
         redis_service.update_gift_certificate_field(update, "is_additional_bedroom_included", True)
-        return await confirm_pay(update, context)
+        return await bath_tub_message(update, context)
     elif tariff == Tariff.DAY or tariff == Tariff.DAY_FOR_COUPLE:
         redis_service.update_gift_certificate_field(update, "is_secret_room_included", True)
         redis_service.update_gift_certificate_field(update, "is_additional_bedroom_included", True)
@@ -269,7 +272,7 @@ async def include_sauna(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update,
         **{"is_sauna_included": is_sauna_included},
     )
-    return await confirm_pay(update, context)
+    return await bath_tub_message(update, context)
 
 
 @safe_callback_query()
@@ -322,6 +325,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         draft.is_sauna_included,
         draft.is_secret_room_included,
         draft.is_additional_bedroom_included,
+        is_bath_tub=draft.is_bath_tub_included or False,
     )
     redis_service.update_gift_certificate_field(update, "price", price)
 
@@ -330,6 +334,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         draft.is_sauna_included,
         draft.is_secret_room_included,
         draft.is_additional_bedroom_included,
+        is_bath_tub=draft.is_bath_tub_included or False,
     )
     LoggerService.info(__name__, "confirm pay", update, **{"price": price})
     await navigation_service.safe_edit_message_text(
@@ -362,6 +367,46 @@ async def secret_room_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_markup=reply_markup,
     )
     return GIFT_CERTIFICATE
+
+
+@safe_callback_query()
+async def bath_tub_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    draft = redis_service.get_gift_certificate(update)
+
+    keyboard = [
+        [InlineKeyboardButton("Да", callback_data=f"GIFT-BATH-TUB_{str(True)}")],
+        [InlineKeyboardButton("Нет", callback_data=f"GIFT-BATH-TUB_{str(False)}")],
+        [InlineKeyboardButton("Назад в меню", callback_data=f"GIFT-BATH-TUB_{END}")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await navigation_service.safe_edit_message_text(
+        callback_query=update.callback_query,
+        text="🛁 <b>Планируете ли вы пользоваться банным чаном?</b>\n\n"
+        f"💰 <b>Стоимость:</b> {draft.rental_rate.bath_tub_price} руб.\n"
+        f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(draft.tariff)}",
+        reply_markup=reply_markup,
+    )
+    return GIFT_CERTIFICATE
+
+
+@safe_callback_query()
+async def include_bath_tub(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    data = string_helper.get_callback_data(update.callback_query.data)
+    if data == str(END):
+        return await back_navigation(update, context)
+
+    is_bath_tub_included = eval(data)
+    redis_service.update_gift_certificate_field(update, "is_bath_tub_included", is_bath_tub_included)
+    LoggerService.info(
+        __name__,
+        "include bath tub (gift)",
+        update,
+        **{"is_bath_tub_included": is_bath_tub_included},
+    )
+    return await confirm_pay(update, context)
 
 
 @safe_callback_query()
@@ -436,6 +481,7 @@ def save_gift_information(update: Update):
         draft.is_additional_bedroom_included,
         draft.price,
         code,
+        has_bath_tub=draft.is_bath_tub_included or False,
     )
     return gift
 

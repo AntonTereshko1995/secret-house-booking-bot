@@ -19,7 +19,7 @@ from telegram.ext import ContextTypes, CallbackQueryHandler
 from src.handlers import admin_handler, menu_handler
 from src.helpers import date_time_helper, string_helper, tariff_helper
 from src.date_time_picker import calendar_picker, hours_picker
-from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
+from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
 from dateutil.relativedelta import relativedelta
 from typing import Optional
 from src.constants import (
@@ -387,9 +387,6 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         booking = database_service.get_booking_by_id(draft.selected_booking_id)
-        created_bookings = database_service.get_booking_by_start_date_period(
-            draft.start_booking_date, finish_booking_date
-        )
 
         if (
             booking.tariff == Tariff.WORKER or booking.tariff == Tariff.INCOGNITA_WORKER
@@ -408,13 +405,23 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update, context, error_message=error_message
             )
 
-        is_any_booking = any(b.id != booking.id for b in created_bookings)
+        cleaning_h = CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS
+        check_start = draft.start_booking_date - timedelta(hours=cleaning_h)
+        check_end = finish_booking_date + timedelta(hours=cleaning_h)
+        nearby_bookings = database_service.get_booking_by_start_date_period(
+            check_start.date() - timedelta(days=1),
+            check_end.date() + timedelta(days=1),
+        )
+        is_any_booking = any(
+            b.id != booking.id and b.start_date < check_end and b.end_date > check_start
+            for b in nearby_bookings
+        )
         if is_any_booking:
             error_message = (
                 "❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Выбранные дата и время недоступны.</b>\n"
                 "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
-                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
+                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{cleaning_h} часа</b>.\n\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования."
             )
             LoggerService.info(
@@ -485,6 +492,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_photoshoot=booking.has_photoshoot,
         is_secret_room=booking.has_secret_room,
         is_second_room=booking.has_green_bedroom or booking.has_white_bedroom,
+        is_bath_tub=booking.has_bath_tub,
     )
 
     updated_booking = database_service.update_booking(
@@ -652,8 +660,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if draft and draft.selected_booking_id:
         feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
 
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
     available_slots = date_time_helper.get_free_time_slots(
-        feature_booking, draft.start_booking_date.date()
+        feature_booking, draft.start_booking_date.date(),
+        new_booking_cleaning=new_cleaning,
     )
 
     special_date_info = get_special_date_info_for_day(draft.start_booking_date.date())
@@ -755,8 +765,11 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         if draft.start_booking_date.date() != draft.finish_booking_date.date()
         else (draft.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     )
+    booking = database_service.get_booking_by_id(draft.selected_booking_id)
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
     available_slots = date_time_helper.get_free_time_slots(
-        feature_booking, draft.finish_booking_date.date(), start_time=start_time
+        feature_booking, draft.finish_booking_date.date(), start_time=start_time,
+        new_booking_cleaning=new_cleaning,
     )
 
     special_date_info = get_special_date_info_for_day(draft.finish_booking_date.date())
@@ -817,6 +830,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_photoshoot=booking.has_photoshoot,
         is_secret_room=booking.has_secret_room,
         is_second_room=booking.has_green_bedroom or booking.has_white_bedroom,
+        is_bath_tub=booking.has_bath_tub,
     )
 
     message = (

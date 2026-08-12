@@ -14,5 +14,6 @@ class GiftCertificateDraft:
     is_sauna_included: Optional[bool] = None
     is_secret_room_included: Optional[bool] = None
     is_additional_bedroom_included: Optional[bool] = None
+    is_bath_tub_included: Optional[bool] = None
     rental_rate: Optional[RentalPrice] = None
     price: Optional[int] = None

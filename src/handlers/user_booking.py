@@ -118,6 +118,7 @@ async def display_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💰 <b>Стоимость:</b> {booking.price} руб.\n"
                 f"✔ <b>Количество гостей:</b> {booking.number_of_guests}\n"
                 f"✔ <b>Сауна:</b> {string_helper.bool_to_str(booking.has_sauna)}\n"
+                f"✔ <b>Банный чан:</b> {string_helper.bool_to_str(booking.has_bath_tub)}\n"
                 f"✔ <b>Фотосессия:</b> {string_helper.bool_to_str(booking.has_photoshoot)}\n"
                 f"✔ <b>Белая спалня:</b> {string_helper.bool_to_str(booking.has_white_bedroom)}\n"
                 f"✔ <b>Зеленая спальня:</b> {string_helper.bool_to_str(booking.has_green_bedroom)}\n"

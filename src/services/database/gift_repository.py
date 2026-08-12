@@ -26,6 +26,7 @@ class GiftRepository(BaseRepository):
         has_additional_bedroom: bool,
         price: float,
         code: str,
+        has_bath_tub: bool = False,
     ) -> GiftBase:
         """Add a new gift certificate to the database."""
         with self.Session() as session:
@@ -40,6 +41,7 @@ class GiftRepository(BaseRepository):
                     has_sauna=has_sauna,
                     has_secret_room=has_secret_room,
                     has_additional_bedroom=has_additional_bedroom,
+                    has_bath_tub=has_bath_tub,
                     price=price,
                     code=code,
                 )

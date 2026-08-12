@@ -15,6 +15,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {
           "1": 700,
           "2": 1100,
@@ -23,7 +24,7 @@
           "5": 2300,
           "6": 2700,
           "7": 3100,
-          "8": 3500,  
+          "8": 3500,
           "9": 3900,
           "10": 4300,
           "11": 4700,
@@ -47,6 +48,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {
           "1": 500,
           "2": 900,
@@ -55,7 +57,7 @@
           "5": 2000,
           "6": 2400,
           "7": 2800,
-          "8": 3100,  
+          "8": 3100,
           "9": 3500,
           "10": 3900,
           "11": 4300,
@@ -79,6 +81,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {}
       },
       {
@@ -96,6 +99,7 @@
         "is_check_in_time_limit": true,
         "is_photoshoot": false,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {}
       },
       {
@@ -113,6 +117,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": true,
+        "bath_tub_price": 130,
         "multi_day_prices": {
           "1": 900,
           "2": 1600,
@@ -121,7 +126,7 @@
           "5": 3700,
           "6": 4400,
           "7": 5000,
-          "8": 5500,  
+          "8": 5500,
           "9": 6100,
           "10": 6600,
           "11": 5100,
@@ -145,6 +150,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": true,
+        "bath_tub_price": 130,
         "multi_day_prices": {}
       },
       {
@@ -162,6 +168,7 @@
         "is_check_in_time_limit": true,
         "is_photoshoot": false,
         "is_transfer": true,
+        "bath_tub_price": 130,
         "multi_day_prices": {}
       }
     ]

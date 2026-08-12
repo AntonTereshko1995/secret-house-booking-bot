@@ -1165,7 +1165,7 @@ async def cancel_booking(
 async def approve_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
-    gift = database_service.update_gift(gift_id, is_paymented=True, is_done=True)
+    gift = database_service.update_gift(gift_id, is_paymented=True)
     await context.bot.send_message(chat_id=chat_id, text=f"{gift.code}")
 
     await context.bot.send_message(
@@ -1219,6 +1219,8 @@ async def prepare_approve_process(
         is_prepaymented=True,
         calendar_event_id=calendar_event_id,
     )
+    if booking.gift_id:
+        database_service.update_gift(booking.gift_id, is_done=True)
     await inform_message(update, context, booking, user)
     return (booking, user)
 
@@ -1299,6 +1301,16 @@ async def send_booking_details(
                 "3. Все рубильники подписаны. Переключите рубильник с надписей «Сауна».\n"
                 "4. Через 1 час сауна нагреется.\n"
                 "5. После использования выключите рубильник.\n",
+            )
+
+        # Отправка инструкций по банному чану (если есть)
+        if booking.has_bath_tub:
+            await asyncio.sleep(1)
+            await context.bot.send_message(
+                chat_id=booking.user.chat_id,
+                text="🛁 Банный чан:\n"
+                "Банный чан расположен на территории дома.\n"
+                "Пожалуйста, уточните у администратора инструкцию по использованию.",
             )
 
         LoggerService.info(

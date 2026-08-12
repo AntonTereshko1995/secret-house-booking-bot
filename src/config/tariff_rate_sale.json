@@ -15,6 +15,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {
           "1": 500,
           "2": 950,
@@ -23,7 +24,7 @@
           "5": 2200,
           "6": 2600,
           "7": 3000,
-          "8": 3400,  
+          "8": 3400,
           "9": 3700,
           "10": 4000,
           "11": 4300,
@@ -47,6 +48,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {
           "1": 400,
           "2": 800,
@@ -55,7 +57,7 @@
           "5": 1800,
           "6": 2100,
           "7": 2500,
-          "8": 2900,  
+          "8": 2900,
           "9": 3200,
           "10": 3600,
           "11": 3900,
@@ -79,6 +81,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {}
       },
       {
@@ -96,6 +99,7 @@
         "is_check_in_time_limit": true,
         "is_photoshoot": false,
         "is_transfer": false,
+        "bath_tub_price": 180,
         "multi_day_prices": {}
       },
       {
@@ -113,6 +117,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": true,
         "is_transfer": true,
+        "bath_tub_price": 130,
         "multi_day_prices": {
           "1": 700,
           "2": 1400,
@@ -121,7 +126,7 @@
           "5": 3200,
           "6": 3900,
           "7": 4500,
-          "8": 5100,  
+          "8": 5100,
           "9": 5700,
           "10": 6200,
           "11": 6600,
@@ -145,6 +150,7 @@
         "is_check_in_time_limit": false,
         "is_photoshoot": false,
         "is_transfer": true,
+        "bath_tub_price": 130,
         "multi_day_prices": {}
       },
       {
@@ -162,6 +168,7 @@
         "is_check_in_time_limit": true,
         "is_photoshoot": false,
         "is_transfer": true,
+        "bath_tub_price": 130,
         "multi_day_prices": {}
       }
     ]

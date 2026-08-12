@@ -1,7 +1,7 @@
 from datetime import datetime, time, date, timedelta
 from typing import Iterable, List, Tuple
 from matplotlib.dates import relativedelta
-from src.config.config import CLEANING_HOURS
+from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
 
 
 def get_month_name(month: int):
@@ -54,8 +54,10 @@ def get_free_time_slots(
     bookings: Iterable,
     day: date,
     start_time: time = time(0, 0),
+    new_booking_cleaning: timedelta = None,
 ) -> List[Tuple[time, time]]:
-    cleaning = timedelta(hours=CLEANING_HOURS)
+    if new_booking_cleaning is None:
+        new_booking_cleaning = timedelta(hours=CLEANING_HOURS)
 
     day0 = datetime.combine(day, time(0, 0))
     DAY_END_EXCL = 24 * 60
@@ -91,10 +93,14 @@ def get_free_time_slots(
     day_start_min = clamp(minutes_from_day_start(day_start_dt))
 
     # 1) собираем занятые интервалы [s,e) в пределах окна дня
+    # Используем cleaning новой брони: is_booking_between_dates проверяет
+    # пересечение [B.start - B.cleaning, B.end + B.cleaning] с существующими
+    # бронированиями, поэтому занятое окно каждого существующего бронирования
+    # с точки зрения новой брони — [A.end_date + B.cleaning, A.start_date - B.cleaning]
     busy: List[Tuple[int, int]] = []
     for b in sorted(bookings, key=lambda x: x.start_date):
-        occ_start = b.start_date - cleaning
-        occ_end = b.end_date + cleaning
+        occ_start = b.start_date - new_booking_cleaning
+        occ_end = b.end_date + new_booking_cleaning
         s = minutes_from_day_start(occ_start)
         e = minutes_from_day_start(occ_end)
         s = max(s, day_start_min)
@@ -220,9 +226,9 @@ def _group_bookings_by_date(bookings, cleaning_time: timedelta) -> dict:
         start_date = booking.start_date.date()
         end_date = booking.end_date.date()
 
-        # Add cleaning time adjustments
-        adjusted_start = booking.start_date - cleaning_time
-        adjusted_end = booking.end_date + cleaning_time
+        booking_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
+        adjusted_start = booking.start_date - booking_cleaning
+        adjusted_end = booking.end_date + booking_cleaning
 
         # Add to all dates this booking covers
         current_date = start_date

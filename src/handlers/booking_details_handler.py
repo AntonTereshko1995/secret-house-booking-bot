@@ -23,7 +23,7 @@ from src.services.calendar_service import CalendarService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.helpers import string_helper, tariff_helper, date_time_helper
 from src.date_time_picker import calendar_picker, hours_picker
-from src.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID, MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
+from src.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID, MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
 from src.constants import (
     END,
     MANAGE_BOOKING_DETAIL,
@@ -1035,7 +1035,10 @@ async def show_reschedule_start_time(update: Update, context: ContextTypes.DEFAU
     )
     # Exclude current booking from occupied slots
     feature_booking = [b for b in feature_booking if b.id != booking_id]
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, start_date)
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
+    available_slots = date_time_helper.get_free_time_slots(
+        feature_booking, start_date, new_booking_cleaning=new_cleaning,
+    )
 
     message = (
         "⏳ <b>Выберите время начала бронирования.</b>\n"
@@ -1196,7 +1199,10 @@ async def show_reschedule_finish_time(update: Update, context: ContextTypes.DEFA
         if start_datetime.date() != finish_date
         else (start_datetime + timedelta(hours=MIN_BOOKING_HOURS)).time()
     )
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_date, start_time=start_time)
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
+    available_slots = date_time_helper.get_free_time_slots(
+        feature_booking, finish_date, start_time=start_time, new_booking_cleaning=new_cleaning,
+    )
 
     message = (
         "⏳ <b>Выберите время завершения бронирования.</b>\n"
@@ -1250,15 +1256,24 @@ async def handle_reschedule_finish_time(update: Update, context: ContextTypes.DE
             )
             return await show_reschedule_start_date_calendar(update, context, booking_id, error_message)
 
-        # Check for overlapping bookings
-        created_bookings = database_service.get_booking_by_start_date_period(start_datetime, finish_datetime)
-        is_any_booking = any(b.id != booking.id for b in created_bookings)
+        # Check for overlapping bookings with cleaning buffer
+        cleaning_h = CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS
+        check_start = start_datetime - timedelta(hours=cleaning_h)
+        check_end = finish_datetime + timedelta(hours=cleaning_h)
+        nearby_bookings = database_service.get_booking_by_start_date_period(
+            check_start.date() - timedelta(days=1),
+            check_end.date() + timedelta(days=1),
+        )
+        is_any_booking = any(
+            b.id != booking.id and b.start_date < check_end and b.end_date > check_start
+            for b in nearby_bookings
+        )
         if is_any_booking:
             error_message = (
                 "❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Выбранные дата и время недоступны.</b>\n"
                 "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
-                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
+                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{cleaning_h} часа</b>.\n\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования."
             )
             return await show_reschedule_start_date_calendar(update, context, booking_id, error_message)

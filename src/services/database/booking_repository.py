@@ -41,6 +41,7 @@ class BookingRepository(BaseRepository):
         wine_preference: str = None,
         transfer_address: str = None,
         prepayment_price: float = None,
+        has_bath_tub: bool = False,
     ) -> BookingBase:
         """Add a new booking to the database."""
         # Always store as naive Minsk time (+3): strip tzinfo to prevent SQLAlchemy
@@ -63,6 +64,7 @@ class BookingRepository(BaseRepository):
                     has_white_bedroom=has_white_bedroom,
                     has_green_bedroom=has_green_bedroom,
                     has_secret_room=has_secret_room,
+                    has_bath_tub=has_bath_tub,
                     number_of_guests=number_of_guests,
                     comment=comment,
                     price=price,
