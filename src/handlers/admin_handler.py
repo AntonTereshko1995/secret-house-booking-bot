@@ -1166,19 +1166,28 @@ async def approve_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
     gift = database_service.update_gift(gift_id, is_paymented=True)
-    await context.bot.send_message(chat_id=chat_id, text=f"{gift.code}")
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="🎉 <b>Отличные новости!</b> 🎉\n"
-        "✅ <b>Ваш подарочный сертификат подтвержден администратором.</b>\n"
-        "📩 <b>В течение нескольких часов мы отправим вам электронный сертификат.</b>\n"
-        "🔑 <b>Мы также отправили код сертификата — укажите его при бронировании.</b>",
-        parse_mode="HTML",
-    )
-    await update.callback_query.edit_message_caption(
-        f"Подтверждено \n\n{string_helper.generate_gift_info_message(gift)}"
-    )
+    # Only notify the user if there's a real Telegram chat_id (not a web purchase)
+    if chat_id:
+        try:
+            await context.bot.send_message(chat_id=chat_id, text=f"{gift.code}")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="🎉 <b>Отличные новости!</b> 🎉\n"
+                "✅ <b>Ваш подарочный сертификат подтвержден администратором.</b>\n"
+                "📩 <b>В течение нескольких часов мы отправим вам электронный сертификат.</b>\n"
+                "🔑 <b>Мы также отправили код сертификата — укажите его при бронировании.</b>",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
+    text = f"Подтверждено ✅\n\n{string_helper.generate_gift_info_message(gift)}"
+    message = update.callback_query.message
+    if message.caption:
+        await message.edit_caption(text)
+    else:
+        await message.edit_text(text)
     return END
 
 
@@ -1186,16 +1195,25 @@ async def cancel_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
     gift = database_service.get_gift_by_id(gift_id)
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="⚠️ <b>Внимание!</b> ⚠️\n"
-        "❌ <b>Ваша покупка подарочного сертификата была отменена.</b>\n"
-        "📞 Администратор свяжется с вами для уточнения деталей.\n",
-        parse_mode="HTML",
-    )
-    await update.callback_query.edit_message_caption(
-        f"Отмена.\n\n {string_helper.generate_gift_info_message(gift)}"
-    )
+
+    if chat_id:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="⚠️ <b>Внимание!</b> ⚠️\n"
+                "❌ <b>Ваша покупка подарочного сертификата была отменена.</b>\n"
+                "📞 Администратор свяжется с вами для уточнения деталей.\n",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
+    text = f"Отмена ❌\n\n{string_helper.generate_gift_info_message(gift)}"
+    message = update.callback_query.message
+    if message.caption:
+        await message.edit_caption(text)
+    else:
+        await message.edit_text(text)
     return END
 
 

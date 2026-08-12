@@ -6,12 +6,16 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from flask import Flask, jsonify, request
-from telegram import Bot
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 
 from src.config.config import ADMIN_CHAT_ID, TELEGRAM_TOKEN
 from src.handlers.admin_handler import _create_booking_keyboard
-from src.helpers.string_helper import generate_booking_info_message
+from src.helpers.string_helper import (
+    generate_booking_info_message,
+    generate_gift_info_message,
+)
 from src.services.database.booking_repository import BookingRepository
+from src.services.database.gift_repository import GiftRepository
 
 flask_app = Flask(__name__)
 
@@ -99,6 +103,60 @@ def new_booking():
                 text=text,
                 reply_markup=reply_markup,
             )
+
+    try:
+        _run_async(send())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"ok": True})
+
+
+@flask_app.route("/api/gifts/notify", methods=["POST"])
+def gift_notify():
+    gift_id = request.form.get("gift_id")
+    file = request.files.get("file")
+
+    if not gift_id:
+        return jsonify({"error": "Missing gift_id"}), 400
+
+    gift = GiftRepository().get_gift_by_id(int(gift_id))
+    if not gift:
+        return jsonify({"error": "Gift not found"}), 404
+
+    caption = "🎁 Новый подарочный сертификат!\n\n" + generate_gift_info_message(gift)
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Подтвердить оплату", callback_data=f"gift_1_chatid_0_giftid_{gift.id}")],
+        [InlineKeyboardButton("❌ Отмена", callback_data=f"gift_2_chatid_0_giftid_{gift.id}")],
+    ])
+
+    file_data = file.read() if file else None
+    content_type = file.content_type if file else ""
+    filename = file.filename if file else "receipt"
+
+    async def send():
+        async with Bot(TELEGRAM_TOKEN) as bot:
+            if file_data and "image" in content_type:
+                await bot.send_photo(
+                    chat_id=ADMIN_CHAT_ID,
+                    photo=io.BytesIO(file_data),
+                    caption=caption,
+                    reply_markup=keyboard,
+                )
+            elif file_data:
+                await bot.send_document(
+                    chat_id=ADMIN_CHAT_ID,
+                    document=io.BytesIO(file_data),
+                    filename=filename,
+                    caption=caption,
+                    reply_markup=keyboard,
+                )
+            else:
+                await bot.send_message(
+                    chat_id=ADMIN_CHAT_ID,
+                    text=caption,
+                    reply_markup=keyboard,
+                )
 
     try:
         _run_async(send())
