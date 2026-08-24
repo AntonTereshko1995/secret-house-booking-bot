@@ -1414,7 +1414,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     booking = redis_service.get_booking(update)
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        booking.start_booking_date.date() - timedelta(days=2),
+        booking.start_booking_date.date() - timedelta(days=7),
         booking.start_booking_date.date() + timedelta(days=2),
     )
     new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "is_bath_tub_included", False) else CLEANING_HOURS)
@@ -1521,7 +1521,7 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     booking = redis_service.get_booking(update)
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        booking.finish_booking_date.date() - timedelta(days=2),
+        booking.finish_booking_date.date() - timedelta(days=7),
         booking.finish_booking_date.date() + timedelta(days=2),
     )
     start_time = (

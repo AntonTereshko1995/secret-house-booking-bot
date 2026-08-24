@@ -10,7 +10,7 @@ from src.helpers import tariff_helper
 from datetime import timedelta
 from random import choice
 from string import ascii_uppercase
-from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
+from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB, MIN_BOOKING_HOURS
 
 
 def is_valid_user_contact(user_name: str) -> tuple[bool, str]:
@@ -90,12 +90,15 @@ def generate_available_slots(
         for booking in bookings
     ]
 
+    min_duration = timedelta(hours=MIN_BOOKING_HOURS)
     available_slots = [
         slot
         for slot in all_slots
-        if all(
-            not (busy["start"] <= slot < busy["end"]) for busy in extended_busy_slots
-        )
+        if all(not (busy["start"] <= slot < busy["end"]) for busy in extended_busy_slots)
+        # Slot is only valid if there's enough room for min booking + cleaning before next busy window.
+        # busy["start"] = booking.start - cleaning, so busy["start"] == slot + min_duration means
+        # the next booking starts exactly at slot + min_duration + cleaning — that IS a valid slot.
+        and all(not (slot < busy["start"] < slot + min_duration) for busy in extended_busy_slots)
     ]
 
     grouped_slots = {}

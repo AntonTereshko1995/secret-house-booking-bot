@@ -1,7 +1,7 @@
 from datetime import datetime, time, date, timedelta
 from typing import Iterable, List, Tuple
 from matplotlib.dates import relativedelta
-from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
+from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB, MIN_BOOKING_HOURS
 
 
 def get_month_name(month: int):
@@ -127,6 +127,10 @@ def get_free_time_slots(
 
     if not merged and not free and day_start_min < DAY_END_EXCL:
         free.append((day_start_min, DAY_END_EXCL))
+
+    # Drop intervals shorter than the minimum booking duration
+    min_duration_min = MIN_BOOKING_HOURS * 60
+    free = [(s, e) for s, e in free if (e - s) >= min_duration_min]
 
     slots: List[Tuple[time, time]] = []
     for fs, fe in free:
@@ -294,7 +298,9 @@ def _check_day_availability(
     if date_key == today:
         free_slots = [slot for slot in free_slots if slot[0] > now]
 
-    return len(free_slots) > 0
+    # A gap is only useful if it's long enough for a minimum booking
+    min_duration = timedelta(hours=MIN_BOOKING_HOURS)
+    return any((slot[1] - slot[0]) >= min_duration for slot in free_slots)
 
 
 def _find_free_slots(

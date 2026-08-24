@@ -10,7 +10,7 @@ MAX_PERIOD_FOR_GIFT_IN_MONTHS = 3
 PREPAYMENT = 80
 CLEANING_HOURS = 2
 CLEANING_HOURS_BATH_TUB = 3
-MIN_BOOKING_HOURS = 1
+MIN_BOOKING_HOURS = 3
 
 # AMVERA deployment: When AMVERA=1, environment variables are set directly (no .env file)
 # DATABASE_URL format: postgresql://admin:password@host/database

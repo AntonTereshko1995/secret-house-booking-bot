@@ -652,7 +652,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     booking = database_service.get_booking_by_id(draft.selected_booking_id)
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        draft.start_booking_date.date() - timedelta(days=2),
+        draft.start_booking_date.date() - timedelta(days=7),
         draft.start_booking_date.date() + timedelta(days=2),
     )
 
@@ -752,7 +752,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     draft = redis_service.get_change_booking(update)
     feature_booking = database_service.get_booking_by_start_date_period(
-        draft.finish_booking_date.date() - timedelta(days=2),
+        draft.finish_booking_date.date() - timedelta(days=7),
         draft.finish_booking_date.date() + timedelta(days=2),
     )
 

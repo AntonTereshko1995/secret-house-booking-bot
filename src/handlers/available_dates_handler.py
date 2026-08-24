@@ -92,7 +92,11 @@ def parse_callback_data(update: Update):
 def get_booking(month, year):
     today = datetime.today()
     if today.month == month and today.year == year:
-        from_date = datetime(day=today.day, month=month, year=year, hour=0)
+        # Start from the next full hour so past slots aren't shown
+        next_hour = today.replace(minute=0, second=0, microsecond=0)
+        if today.minute > 0 or today.second > 0 or today.microsecond > 0:
+            next_hour += timedelta(hours=1)
+        from_date = next_hour
     else:
         from_date = datetime(day=1, month=month, year=year, hour=0)
     to_date = datetime(
@@ -102,5 +106,8 @@ def get_booking(month, year):
         hour=23,
         minute=59,
     ) + timedelta(days=1)
-    booking = database_service.get_booking_by_start_date_period(from_date.date(), to_date.date())
+    # Query from start of month so bookings that started before today but are
+    # still ongoing (e.g. started Aug 22, ends Aug 24) are included.
+    month_start = datetime(day=1, month=month, year=year).date()
+    booking = database_service.get_booking_by_start_date_period(month_start, to_date.date())
     return (from_date, to_date, booking)

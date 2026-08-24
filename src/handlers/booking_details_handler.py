@@ -1030,7 +1030,7 @@ async def show_reschedule_start_time(update: Update, context: ContextTypes.DEFAU
     start_date = context.user_data.get("reschedule_start_date")
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        start_date - timedelta(days=2),
+        start_date - timedelta(days=7),
         start_date + timedelta(days=2),
     )
     # Exclude current booking from occupied slots
@@ -1189,7 +1189,7 @@ async def show_reschedule_finish_time(update: Update, context: ContextTypes.DEFA
     finish_date = context.user_data.get("reschedule_finish_date")
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        finish_date - timedelta(days=2),
+        finish_date - timedelta(days=7),
         finish_date + timedelta(days=2),
     )
     # Exclude current booking from occupied slots
