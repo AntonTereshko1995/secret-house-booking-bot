@@ -163,30 +163,26 @@ def generate_booking_info_message(
         f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
         f"Стоимость: {booking.price} руб.\n"
-        f"Фотосессия: {bool_to_str(booking.has_photoshoot)}\n"
-        f"Сауна: {bool_to_str(booking.has_sauna)}\n"
-        f"Банный чан: {bool_to_str(booking.has_bath_tub)}\n"
-        f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
-        f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
-        f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
         f"Количество гостей: {booking.number_of_guests}\n"
-        f"Комментарий: {booking.comment if booking.comment else ''}\n"
         f"Всего бронирований: {user_total_bookings}\n"
         f"Завершенных бронирований: {user_completed_bookings}\n"
     )
 
-    # Add incognito questionnaire info for incognito tariffs
-    from src.models.enum.tariff import Tariff
+    if booking.has_photoshoot:
+        message += "Фотосессия: Да\n"
+    if booking.has_sauna:
+        message += "Сауна: Да\n"
+    if booking.has_bath_tub:
+        message += "Банный чан: Да\n"
+    if booking.has_white_bedroom:
+        message += "Белая спальня: Да\n"
+    if booking.has_green_bedroom:
+        message += "Зеленая спальня: Да\n"
+    if booking.has_secret_room:
+        message += "Секретная комната: Да\n"
 
-    is_incognito = booking.tariff in (
-        Tariff.INCOGNITA_DAY,
-        Tariff.INCOGNITA_HOURS,
-        Tariff.INCOGNITA_WORKER,
-    )
-
-    if is_incognito:
+    if booking.wine_preference and booking.wine_preference != "none":
         wine_labels = {
-            "none": "Не нужно вино",
             "white-sweet": "Белое сладкое",
             "white-semi-sweet": "Белое полусладкое",
             "white-dry": "Белое сухое",
@@ -196,27 +192,17 @@ def generate_booking_info_message(
             "red-dry": "Красное сухое",
             "red-semi-dry": "Красное полусухое",
         }
-        wine_text = (
-            wine_labels.get(booking.wine_preference, booking.wine_preference)
-            if booking.wine_preference
-            else "Не указано"
-        )
+        wine_text = wine_labels.get(booking.wine_preference, booking.wine_preference)
         message += f"Вино: {wine_text}\n"
 
-        transfer_text = (
-            booking.transfer_address if booking.transfer_address else "Не нужно"
-        )
-        message += f"Трансфер: {transfer_text}\n"
+    if booking.transfer_address:
+        message += f"Трансфер: {booking.transfer_address}\n"
+        from datetime import timedelta
+        transfer_time = booking.start_date - timedelta(minutes=30)
+        message += f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
 
-        # Add transfer time information if transfer is requested
-        if booking.transfer_address:
-            # Transfer time is 30 minutes before check-in time
-            from datetime import timedelta
-
-            transfer_time = booking.start_date - timedelta(minutes=30)
-            message += (
-                f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
-            )
+    if booking.comment:
+        message += f"Комментарий: {booking.comment}\n"
 
     # Add promocode info if used
     if booking.promocode_id:

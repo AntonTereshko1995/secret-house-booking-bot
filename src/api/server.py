@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from flask import Flask, jsonify, request
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 
-from src.config.config import ADMIN_CHAT_ID, TELEGRAM_TOKEN
+from src.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID, TELEGRAM_TOKEN
 from src.handlers.admin_handler import _create_booking_keyboard
 from src.helpers.string_helper import (
     generate_booking_info_message,
@@ -16,6 +16,7 @@ from src.helpers.string_helper import (
 )
 from src.services.database.booking_repository import BookingRepository
 from src.services.database.gift_repository import GiftRepository
+from src.services.logger_service import LoggerService
 
 flask_app = Flask(__name__)
 
@@ -39,11 +40,15 @@ def receipt():
     file = request.files.get("file")
 
     if not booking_id or not file:
+        LoggerService.warning(__name__, "receipt: missing booking_id or file")
         return jsonify({"error": "Missing booking_id or file"}), 400
 
     booking, user_chat_id = _get_booking_and_chat_id(int(booking_id))
     if not booking:
+        LoggerService.warning(__name__, f"receipt: booking not found id={booking_id}")
         return jsonify({"error": "Booking not found"}), 404
+
+    LoggerService.info(__name__, f"receipt: booking_id={booking_id} file={file.filename}")
 
     caption = generate_booking_info_message(booking, booking.user)
     reply_markup = _create_booking_keyboard(user_chat_id, booking.id, is_payment_by_cash=False)
@@ -75,8 +80,10 @@ def receipt():
     try:
         file_id = _run_async(send())
     except Exception as e:
+        LoggerService.error(__name__, f"receipt: send to telegram failed booking_id={booking_id}", exception=e)
         return jsonify({"error": str(e)}), 500
 
+    LoggerService.info(__name__, f"receipt: sent successfully booking_id={booking_id} file_id={file_id}")
     return jsonify({"file_id": file_id})
 
 
@@ -86,11 +93,15 @@ def new_booking():
     booking_id = data.get("booking_id")
 
     if not booking_id:
+        LoggerService.warning(__name__, "new_booking: missing booking_id")
         return jsonify({"error": "Missing booking_id"}), 400
 
     booking, user_chat_id = _get_booking_and_chat_id(int(booking_id))
     if not booking:
+        LoggerService.warning(__name__, f"new_booking: booking not found id={booking_id}")
         return jsonify({"error": "Booking not found"}), 404
+
+    LoggerService.info(__name__, f"new_booking: notify admin booking_id={booking_id}")
 
     text = f"🆕 Новое бронирование #{booking_id}\n\n"
     text += generate_booking_info_message(booking, booking.user)
@@ -107,6 +118,7 @@ def new_booking():
     try:
         _run_async(send())
     except Exception as e:
+        LoggerService.error(__name__, f"new_booking: send failed booking_id={booking_id}", exception=e)
         return jsonify({"error": str(e)}), 500
 
     return jsonify({"ok": True})
@@ -118,11 +130,15 @@ def gift_notify():
     file = request.files.get("file")
 
     if not gift_id:
+        LoggerService.warning(__name__, "gift_notify: missing gift_id")
         return jsonify({"error": "Missing gift_id"}), 400
 
     gift = GiftRepository().get_gift_by_id(int(gift_id))
     if not gift:
+        LoggerService.warning(__name__, f"gift_notify: gift not found id={gift_id}")
         return jsonify({"error": "Gift not found"}), 404
+
+    LoggerService.info(__name__, f"gift_notify: notify admin gift_id={gift_id}")
 
     caption = "🎁 Новый подарочный сертификат!\n\n" + generate_gift_info_message(gift)
     keyboard = InlineKeyboardMarkup([
@@ -161,6 +177,33 @@ def gift_notify():
     try:
         _run_async(send())
     except Exception as e:
+        LoggerService.error(__name__, f"gift_notify: send failed gift_id={gift_id}", exception=e)
+        return jsonify({"error": str(e)}), 500
+
+    LoggerService.info(__name__, f"gift_notify: sent successfully gift_id={gift_id}")
+    return jsonify({"ok": True})
+
+
+@flask_app.route("/api/notify/inform", methods=["POST"])
+def notify_inform():
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "").strip()
+
+    if not text:
+        return jsonify({"error": "Missing text"}), 400
+
+    if not INFORM_CHAT_ID:
+        LoggerService.warning(__name__, "notify_inform: INFORM_CHAT_ID is not configured")
+        return jsonify({"ok": True})
+
+    async def send():
+        async with Bot(TELEGRAM_TOKEN) as bot:
+            await bot.send_message(chat_id=INFORM_CHAT_ID, text=text)
+
+    try:
+        _run_async(send())
+    except Exception as e:
+        LoggerService.error(__name__, "notify_inform: send failed", exception=e)
         return jsonify({"error": str(e)}), 500
 
     return jsonify({"ok": True})

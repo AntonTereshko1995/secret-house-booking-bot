@@ -37,7 +37,6 @@ from src.models.enum.tariff import Tariff
 from db.models.booking import BookingBase
 from db.models.user import UserBase
 from src.handlers.admin_handler import (
-    get_future_bookings,
     prepare_approve_process,
     check_and_send_booking,
     back_to_booking_list,
@@ -453,6 +452,27 @@ async def handle_price_change_input(update: Update, context: ContextTypes.DEFAUL
     # Notify customer
     await notify_customer_price_change(context, booking, user, old_price)
 
+    # Notify INFORM_CHAT_ID
+    try:
+        user_contact = user.contact if user and user.contact else "N/A"
+        inform_text = (
+            f"Изменение стоимости бронирования!\n"
+            f"Контакт клиента: {user_contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+            f"Старая стоимость: {old_price} руб.\n"
+            f"Новая стоимость: {new_price} руб.\n"
+        )
+        await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=inform_text)
+    except TelegramError as e:
+        LoggerService.error(
+            __name__,
+            "Failed to notify INFORM_CHAT_ID of price change",
+            exception=e,
+            **{"booking_id": booking_id},
+        )
+
     # Confirm to admin
     user_contact = user.contact if user else "N/A"
     message = (
@@ -604,6 +624,27 @@ async def handle_prepayment_change_input(update: Update, context: ContextTypes.D
 
     # Notify customer
     await notify_customer_prepayment_change(context, booking, user, old_prepayment)
+
+    # Notify INFORM_CHAT_ID
+    try:
+        user_contact = user.contact if user and user.contact else "N/A"
+        inform_text = (
+            f"Изменение предоплаты бронирования!\n"
+            f"Контакт клиента: {user_contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+            f"Старая предоплата: {old_prepayment} руб.\n"
+            f"Новая предоплата: {new_prepayment} руб.\n"
+        )
+        await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=inform_text)
+    except TelegramError as e:
+        LoggerService.error(
+            __name__,
+            "Failed to notify INFORM_CHAT_ID of prepayment change",
+            exception=e,
+            **{"booking_id": booking_id},
+        )
 
     # Confirm to admin
     user_contact = user.contact if user else "N/A"
@@ -761,6 +802,28 @@ async def handle_tariff_selection(update: Update, context: ContextTypes.DEFAULT_
 
     # Notify customer
     await notify_customer_tariff_change(context, booking, user, old_tariff)
+
+    # Notify INFORM_CHAT_ID
+    try:
+        user_contact = user.contact if user and user.contact else "N/A"
+        old_tariff_name = tariff_helper.get_name(old_tariff)
+        new_tariff_name = tariff_helper.get_name(new_tariff)
+        inform_text = (
+            f"Изменение тарифа бронирования!\n"
+            f"Контакт клиента: {user_contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Старый тариф: {old_tariff_name}\n"
+            f"Новый тариф: {new_tariff_name}\n"
+        )
+        await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=inform_text)
+    except TelegramError as e:
+        LoggerService.error(
+            __name__,
+            "Failed to notify INFORM_CHAT_ID of tariff change",
+            exception=e,
+            **{"booking_id": booking_id},
+        )
 
     # Confirm to admin
     old_tariff_name = tariff_helper.get_name(old_tariff)
