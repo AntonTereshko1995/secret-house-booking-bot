@@ -16,7 +16,10 @@ from src.helpers.string_helper import (
 )
 from src.services.database.booking_repository import BookingRepository
 from src.services.database.gift_repository import GiftRepository
+from src.services.calendar_service import CalendarService
 from src.services.logger_service import LoggerService
+
+calendar_service = CalendarService()
 
 flask_app = Flask(__name__)
 
@@ -206,6 +209,92 @@ def notify_inform():
         LoggerService.error(__name__, "notify_inform: send failed", exception=e)
         return jsonify({"error": str(e)}), 500
 
+    return jsonify({"ok": True})
+
+
+@flask_app.route("/api/calendar/cancel", methods=["POST"])
+def calendar_cancel():
+    data = request.get_json(silent=True) or {}
+    booking_id = data.get("booking_id")
+    if not booking_id:
+        return jsonify({"error": "Missing booking_id"}), 400
+
+    booking, _ = _get_booking_and_chat_id(int(booking_id))
+    if not booking:
+        LoggerService.warning(__name__, f"calendar_cancel: booking not found id={booking_id}")
+        return jsonify({"error": "Booking not found"}), 404
+
+    if not booking.calendar_event_id:
+        LoggerService.info(__name__, f"calendar_cancel: no event_id, skipping id={booking_id}")
+        return jsonify({"ok": True, "skipped": "no_event_id"})
+
+    try:
+        calendar_service.cancel_event(booking.calendar_event_id)
+    except Exception as e:
+        LoggerService.error(__name__, f"calendar_cancel: failed id={booking_id}", exception=e)
+        return jsonify({"error": str(e)}), 500
+
+    LoggerService.info(__name__, f"calendar_cancel: done id={booking_id}")
+    return jsonify({"ok": True})
+
+
+@flask_app.route("/api/calendar/update-info", methods=["POST"])
+def calendar_update_info():
+    """Update event summary/description after tariff or services change."""
+    data = request.get_json(silent=True) or {}
+    booking_id = data.get("booking_id")
+    if not booking_id:
+        return jsonify({"error": "Missing booking_id"}), 400
+
+    booking, _ = _get_booking_and_chat_id(int(booking_id))
+    if not booking:
+        LoggerService.warning(__name__, f"calendar_update_info: booking not found id={booking_id}")
+        return jsonify({"error": "Booking not found"}), 404
+
+    if not booking.calendar_event_id:
+        LoggerService.info(__name__, f"calendar_update_info: no event_id, skipping id={booking_id}")
+        return jsonify({"ok": True, "skipped": "no_event_id"})
+
+    try:
+        calendar_service.update_event_info(booking.calendar_event_id, booking, booking.user)
+    except Exception as e:
+        LoggerService.error(__name__, f"calendar_update_info: failed id={booking_id}", exception=e)
+        return jsonify({"error": str(e)}), 500
+
+    LoggerService.info(__name__, f"calendar_update_info: done id={booking_id}")
+    return jsonify({"ok": True})
+
+
+@flask_app.route("/api/calendar/reschedule", methods=["POST"])
+def calendar_reschedule():
+    """Move event to new dates after a reschedule."""
+    data = request.get_json(silent=True) or {}
+    booking_id = data.get("booking_id")
+    if not booking_id:
+        return jsonify({"error": "Missing booking_id"}), 400
+
+    booking, _ = _get_booking_and_chat_id(int(booking_id))
+    if not booking:
+        LoggerService.warning(__name__, f"calendar_reschedule: booking not found id={booking_id}")
+        return jsonify({"error": "Booking not found"}), 404
+
+    if not booking.calendar_event_id:
+        LoggerService.info(__name__, f"calendar_reschedule: no event_id, skipping id={booking_id}")
+        return jsonify({"ok": True, "skipped": "no_event_id"})
+
+    try:
+        calendar_service.move_event(
+            booking.calendar_event_id,
+            booking.start_date,
+            booking.end_date,
+            booking=booking,
+            user=booking.user,
+        )
+    except Exception as e:
+        LoggerService.error(__name__, f"calendar_reschedule: failed id={booking_id}", exception=e)
+        return jsonify({"error": str(e)}), 500
+
+    LoggerService.info(__name__, f"calendar_reschedule: done id={booking_id}")
     return jsonify({"ok": True})
 
 
