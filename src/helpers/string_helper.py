@@ -7,7 +7,7 @@ from db.models.gift import GiftBase
 from db.models.booking import BookingBase
 from db.models.user import UserBase
 from src.helpers import tariff_helper
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from random import choice
 from string import ascii_uppercase
 from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB, MIN_BOOKING_HOURS
@@ -75,69 +75,66 @@ def generate_available_slots(
     if len(bookings) == 0:
         return "Весь месяц свободен."
 
-    all_slots = []
-    current_time = from_datetime
-
-    while current_time < to_datetime:
-        all_slots.append(current_time)
-        current_time += time_step
-
-    extended_busy_slots = [
-        {
-            "start": booking.start_date - (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
-            "end": booking.end_date + (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
-        }
+    # Build extended busy intervals (booking ± cleaning), sort and merge overlapping ones
+    raw_busy = sorted(
+        (
+            booking.start_date - (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
+            booking.end_date + (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
+        )
         for booking in bookings
-    ]
-
-    min_duration = timedelta(hours=MIN_BOOKING_HOURS)
-    available_slots = [
-        slot
-        for slot in all_slots
-        if all(not (busy["start"] <= slot < busy["end"]) for busy in extended_busy_slots)
-        # Slot is only valid if there's enough room for min booking + cleaning before next busy window.
-        # busy["start"] = booking.start - cleaning, so busy["start"] == slot + min_duration means
-        # the next booking starts exactly at slot + min_duration + cleaning — that IS a valid slot.
-        and all(not (slot < busy["start"] < slot + min_duration) for busy in extended_busy_slots)
-    ]
-
-    grouped_slots = {}
-    for slot in available_slots:
-        date_str = slot.strftime("%d-%m")
-        if date_str not in grouped_slots:
-            grouped_slots[date_str] = []
-        grouped_slots[date_str].append(slot)
-
-    message = ""
-    for date, times in grouped_slots.items():
-        time_ranges = []
-        start_time = times[0]
-
-        for i in range(1, len(times)):
-            if (times[i] - times[i - 1]) > time_step:
-                end_time = times[i - 1]
-                if start_time == end_time:
-                    time_ranges.append(start_time.strftime("%H:%M"))
-                else:
-                    time_ranges.append(
-                        f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
-                    )
-                start_time = times[i]
-
-        end_time = times[-1]
-        if start_time == end_time:
-            time_ranges.append(start_time.strftime("%H:%M"))
+    )
+    merged_busy: list[list] = []
+    for start, end in raw_busy:
+        if not merged_busy or start > merged_busy[-1][1]:
+            merged_busy.append([start, end])
         else:
-            end_str = (
-                "23:59"
-                if end_time.hour == 23 and end_time.minute == 0
-                else end_time.strftime("%H:%M")
-            )
-            time_ranges.append(f"{start_time.strftime('%H:%M')} - {end_str}")
+            merged_busy[-1][1] = max(merged_busy[-1][1], end)
 
-        message += f"📍 <b>{date}</b>\n{', '.join(time_ranges)}\n\n"
+    # Iterate day by day; free windows are exact gaps between busy intervals
+    message = ""
+    current_day = from_datetime.date()
+    last_day = (to_datetime - timedelta(days=1)).date()
+
+    while current_day <= last_day:
+        day_start = datetime.combine(current_day, time(0, 0))
+        day_end = datetime.combine(current_day, time(23, 59))
+        window_start = max(day_start, from_datetime) if current_day == from_datetime.date() else day_start
+
+        free_windows = _compute_free_windows(window_start, day_end, merged_busy)
+        if free_windows:
+            date_str = current_day.strftime("%d-%m")
+            ranges = [_format_window(ws, we) for ws, we in free_windows]
+            message += f"📍 <b>{date_str}</b>\n{', '.join(ranges)}\n\n"
+
+        current_day += timedelta(days=1)
 
     return message
+
+
+def _compute_free_windows(
+    day_start: datetime,
+    day_end: datetime,
+    merged_busy: list,
+) -> list:
+    """Return list of (start, end) free windows within [day_start, day_end]."""
+    free = []
+    cursor = day_start
+    for bstart, bend in merged_busy:
+        if bend <= cursor:
+            continue
+        if bstart >= day_end:
+            break
+        if cursor < bstart:
+            free.append((cursor, min(bstart, day_end)))
+        cursor = max(cursor, bend)
+    if cursor < day_end:
+        free.append((cursor, day_end))
+    return free
+
+
+def _format_window(start: datetime, end: datetime) -> str:
+    end_str = "23:59" if end.hour == 23 else end.strftime("%H:%M")
+    return f"{start.strftime('%H:%M')} - {end_str}"
 
 
 def generate_booking_info_message(
