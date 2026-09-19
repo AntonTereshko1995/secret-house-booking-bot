@@ -156,6 +156,15 @@ class PricingApiService:
 
     _cached_rates: List[RentalPrice] = []
 
+    def __init__(self) -> None:
+        self._is_sauna_bath_tub_combo_active: bool = False
+
+    @property
+    def is_sauna_bath_tub_combo_active(self) -> bool:
+        if not self._cached_rates:
+            self._cached_rates = self._fetch_from_api()
+        return self._is_sauna_bath_tub_combo_active
+
     def get_rental_prices(self) -> List[RentalPrice]:
         if not self._cached_rates:
             self._cached_rates = self._fetch_from_api()
@@ -163,6 +172,7 @@ class PricingApiService:
 
     def refresh(self) -> None:
         self._cached_rates = []
+        self._is_sauna_bath_tub_combo_active = False
 
     def _fetch_from_api(self) -> List[RentalPrice]:
         url = f"{BACKEND_API_URL}/api/pricing"
@@ -171,6 +181,7 @@ class PricingApiService:
             response.raise_for_status()
             data = response.json()
             is_sale = data.get("isSaleActive", False)
+            self._is_sauna_bath_tub_combo_active = data.get("isSaunaBathTubComboActive", False)
             rates = []
             for record in data.get("tariffs", []):
                 rate = self._api_record_to_rental_price(record)
@@ -179,7 +190,8 @@ class PricingApiService:
             if rates:
                 LoggerService.info(
                     __name__,
-                    f"Loaded {len(rates)} tariff prices from API (isSaleActive={is_sale})",
+                    f"Loaded {len(rates)} tariff prices from API "
+                    f"(isSaleActive={is_sale}, isSaunaBathTubComboActive={self._is_sauna_bath_tub_combo_active})",
                 )
                 return rates
             LoggerService.warning(__name__, "API returned empty tariffs list, using fallback")
@@ -203,6 +215,7 @@ class PricingApiService:
         extra_hour_price = int(record.get("extraHourPrice", 0))
         extra_people_price = int(record.get("extraPeoplePrice", 0))
         photoshoot_price = int(record.get("photoshootPrice", 0))
+        combined_sauna_bath_tub_price = int(record.get("combinedSaunaBathTubPrice", 0))
         raw_multi = record.get("multiDayPrices", {})
 
         # API uses int keys in JSON, RentalPrice.multi_day_prices needs str keys
@@ -226,6 +239,7 @@ class PricingApiService:
             is_photoshoot=meta["is_photoshoot"],
             is_transfer=meta["is_transfer"],
             multi_day_prices=multi_day_prices,
+            combined_sauna_bath_tub_price=combined_sauna_bath_tub_price,
         )
 
     def _get_default_rates(self) -> List[RentalPrice]:

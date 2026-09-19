@@ -26,3 +26,4 @@ class RentalPrice:
     is_transfer: bool
     multi_day_prices: dict
     bath_tub_price: int = 0
+    combined_sauna_bath_tub_price: int = 0

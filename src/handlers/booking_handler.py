@@ -903,6 +903,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Use date-aware pricing calculation
     booking_start_date = booking.start_booking_date.date()
+    is_combo_active = rate_service.get_is_combo_active()
     price = rate_service.calculate_price_for_date(
         booking_date=booking_start_date,
         tariff=booking.tariff,
@@ -913,6 +914,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_photoshoot=booking.is_photoshoot_included,
         count_people=booking.number_of_guests,
         is_bath_tub=getattr(booking, "is_bath_tub_included", False),
+        is_combo_active=is_combo_active,
     )
 
     # Apply promocode discount if available
@@ -938,6 +940,7 @@ async def confirm_pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         booking.number_of_guests,
         extra_hours,
         is_bath_tub=getattr(booking, "is_bath_tub_included", False),
+        is_combo_active=is_combo_active,
     )
     photoshoot_text = ", фото сессия" if booking.is_photoshoot_included else ""
 
@@ -1608,9 +1611,16 @@ async def bath_tub_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    is_combo = rate_service.get_is_combo_active()
+    combo_price = getattr(booking.rental_rate, "combined_sauna_bath_tub_price", 0)
+    if is_combo and booking.is_sauna_included and combo_price > 0:
+        price_line = f"💰 <b>Стоимость (комбо с сауной):</b> {combo_price} руб."
+    else:
+        price_line = f"💰 <b>Стоимость:</b> {booking.rental_rate.bath_tub_price} руб."
+
     message = (
         "🛁 <b>Хотите воспользоваться банным чаном?</b>\n\n"
-        f"💰 <b>Стоимость:</b> {booking.rental_rate.bath_tub_price} руб.\n"
+        f"{price_line}\n"
         f"📌 <b>Для тарифа:</b> {tariff_helper.get_name(booking.tariff)}"
     )
 

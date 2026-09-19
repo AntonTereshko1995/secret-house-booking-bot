@@ -39,6 +39,9 @@ class CalculationRateService:
 
         return 0
 
+    def get_is_combo_active(self) -> bool:
+        return PricingApiService().is_sauna_bath_tub_combo_active
+
     def calculate_price(
         self,
         rental_price: RentalPrice,
@@ -49,6 +52,7 @@ class CalculationRateService:
         count_people: int = 0,
         duration_hours: int = 0,
         is_bath_tub: bool = False,
+        is_combo_active: bool = False,
     ) -> int:
         price = 0
         extra_hours = duration_hours - rental_price.duration_hours
@@ -76,8 +80,14 @@ class CalculationRateService:
         else:
             price = rental_price.price
 
-        if is_sauna and rental_price.sauna_price > 0:
-            price += rental_price.sauna_price
+        combo_price = getattr(rental_price, "combined_sauna_bath_tub_price", 0)
+        if is_combo_active and is_sauna and is_bath_tub and combo_price > 0:
+            price += combo_price
+        else:
+            if is_sauna and rental_price.sauna_price > 0:
+                price += rental_price.sauna_price
+            if is_bath_tub and rental_price.bath_tub_price > 0:
+                price += rental_price.bath_tub_price
         if is_secret_room and rental_price.secret_room_price > 0:
             price += rental_price.secret_room_price
         if is_second_room and rental_price.second_bedroom_price > 0:
@@ -88,8 +98,6 @@ class CalculationRateService:
             price += (
                 count_people - rental_price.max_people
             ) * rental_price.extra_people_price
-        if is_bath_tub and rental_price.bath_tub_price > 0:
-            price += rental_price.bath_tub_price
 
         return price
 
@@ -102,10 +110,17 @@ class CalculationRateService:
         count_people: int = 0,
         extra_hours: int = 0,
         is_bath_tub: bool = False,
+        is_combo_active: bool = False,
     ) -> str:
         categories = f"{rental_price.name}, спальная комната"
-        if is_sauna:
-            categories += ", сауна"
+        combo_price = getattr(rental_price, "combined_sauna_bath_tub_price", 0)
+        if is_combo_active and is_sauna and is_bath_tub and combo_price > 0:
+            categories += ", сауна + банный чан (комбо)"
+        else:
+            if is_sauna:
+                categories += ", сауна"
+            if is_bath_tub:
+                categories += ", банный чан"
         if is_secret_room:
             categories += ", секретная комната"
         if is_second_room:
@@ -115,8 +130,6 @@ class CalculationRateService:
             categories += f", дополнительно {additional_people} чел."
         if extra_hours > 0:
             categories += f", дополнительное время {extra_hours} ч."
-        if is_bath_tub:
-            categories += ", банный чан"
 
         return categories
 
@@ -180,6 +193,7 @@ class CalculationRateService:
         is_photoshoot: bool = False,
         count_people: int = 0,
         is_bath_tub: bool = False,
+        is_combo_active: bool = False,
     ) -> int:
         """Calculate total price including add-ons, considering date-specific rules."""
         # Get base price (considering date rules)
@@ -194,8 +208,14 @@ class CalculationRateService:
 
         # Add services using standard pricing (date rules only affect base price)
         additional_price = 0
-        if is_sauna and rental_price.sauna_price > 0:
-            additional_price += rental_price.sauna_price
+        combo_price = getattr(rental_price, "combined_sauna_bath_tub_price", 0)
+        if is_combo_active and is_sauna and is_bath_tub and combo_price > 0:
+            additional_price += combo_price
+        else:
+            if is_sauna and rental_price.sauna_price > 0:
+                additional_price += rental_price.sauna_price
+            if is_bath_tub and rental_price.bath_tub_price > 0:
+                additional_price += rental_price.bath_tub_price
         if is_secret_room and rental_price.secret_room_price > 0:
             additional_price += rental_price.secret_room_price
         if is_second_room and rental_price.second_bedroom_price > 0:
@@ -206,7 +226,5 @@ class CalculationRateService:
             additional_price += (
                 count_people - rental_price.max_people
             ) * rental_price.extra_people_price
-        if is_bath_tub and rental_price.bath_tub_price > 0:
-            additional_price += rental_price.bath_tub_price
 
         return base_price + additional_price
