@@ -3,7 +3,7 @@ import os
 from datetime import date
 from src.models.enum.tariff import Tariff
 from src.models.rental_price import RentalPrice
-from src.services.file_service import FileService
+from src.services.api_service import PricingApiService
 from src.services.date_pricing_service import DatePricingService
 from typing import List
 from singleton_decorator import singleton
@@ -114,10 +114,14 @@ class CalculationRateService:
 
         return categories
 
+    def refresh(self) -> None:
+        PricingApiService().refresh()
+        self._rates = []
+
     def _try_load_tariffs(self) -> List[RentalPrice]:
         if not self._rates:
-            file_service = FileService()
-            self._rates = file_service.get_tariff_rates()
+            pricing_service = PricingApiService()
+            self._rates = pricing_service.get_rental_prices()
         return self._rates
 
     # Date-aware pricing methods

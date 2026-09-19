@@ -51,6 +51,10 @@ class DatePricingService:
             return effective_rule.description or effective_rule.name
         return None
 
+    def refresh_rules(self) -> List[DatePricingRule]:
+        self._rules = []
+        return self._try_load_rules()
+
     def _try_load_rules(self) -> List[DatePricingRule]:
         """Load date pricing rules using the singleton pattern similar to CalculationRateService."""
         if not self._rules:
