@@ -23,7 +23,7 @@ from src.services.calendar_service import CalendarService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.helpers import string_helper, tariff_helper, date_time_helper
 from src.date_time_picker import calendar_picker, hours_picker
-from src.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID, MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
+from src.config.config import ADMIN_CHAT_ID, INFORM_CHAT_ID, MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
 from src.constants import (
     END,
     MANAGE_BOOKING_DETAIL,
@@ -37,7 +37,6 @@ from src.models.enum.tariff import Tariff
 from db.models.booking import BookingBase
 from db.models.user import UserBase
 from src.handlers.admin_handler import (
-    get_future_bookings,
     prepare_approve_process,
     check_and_send_booking,
     back_to_booking_list,
@@ -116,7 +115,7 @@ async def show_booking_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
         __name__,
         "Admin viewing booking detail",
         update,
-        kwargs={"booking_id": booking_id}
+        **{"booking_id": booking_id}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -177,7 +176,7 @@ async def start_cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYP
         __name__,
         "Admin canceled booking",
         update,
-        kwargs={"booking_id": booking_id, "user_contact": user.contact if user else None}
+        **{"booking_id": booking_id, "user_contact": user.contact if user else None}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -238,7 +237,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
                 __name__,
                 "Failed to notify customer of booking approval",
                 exception=e,
-                kwargs={"booking_id": booking_id, "chat_id": user.chat_id if user else None}
+                **{"booking_id": booking_id, "chat_id": user.chat_id if user else None}
             )
 
     # Update admin message
@@ -264,7 +263,7 @@ async def handle_approve_booking(update: Update, context: ContextTypes.DEFAULT_T
         __name__,
         "Admin approved booking",
         update,
-        kwargs={"booking_id": booking_id, "user_contact": user.contact if user else None}
+        **{"booking_id": booking_id, "user_contact": user.contact if user else None}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -300,7 +299,7 @@ async def handle_complete_booking(update: Update, context: ContextTypes.DEFAULT_
             __name__,
             "Failed to send feedback request",
             exception=e,
-            kwargs={"booking_id": booking_id}
+            **{"booking_id": booking_id}
         )
         feedback_sent = False
 
@@ -335,7 +334,7 @@ async def handle_complete_booking(update: Update, context: ContextTypes.DEFAULT_
         __name__,
         "Admin completed booking",
         update,
-        kwargs={"booking_id": booking_id, "feedback_sent": feedback_sent}
+        **{"booking_id": booking_id, "feedback_sent": feedback_sent}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -351,7 +350,7 @@ async def notify_customer_cancellation(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -374,14 +373,14 @@ async def notify_customer_cancellation(
         LoggerService.info(
             __name__,
             "Customer notified of cancellation",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of cancellation",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -453,6 +452,27 @@ async def handle_price_change_input(update: Update, context: ContextTypes.DEFAUL
     # Notify customer
     await notify_customer_price_change(context, booking, user, old_price)
 
+    # Notify INFORM_CHAT_ID
+    try:
+        user_contact = user.contact if user and user.contact else "N/A"
+        inform_text = (
+            f"Изменение стоимости бронирования!\n"
+            f"Контакт клиента: {user_contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+            f"Старая стоимость: {old_price} руб.\n"
+            f"Новая стоимость: {new_price} руб.\n"
+        )
+        await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=inform_text)
+    except TelegramError as e:
+        LoggerService.error(
+            __name__,
+            "Failed to notify INFORM_CHAT_ID of price change",
+            exception=e,
+            **{"booking_id": booking_id},
+        )
+
     # Confirm to admin
     user_contact = user.contact if user else "N/A"
     message = (
@@ -483,7 +503,7 @@ async def handle_price_change_input(update: Update, context: ContextTypes.DEFAUL
         __name__,
         "Admin changed booking price",
         update,
-        kwargs={"booking_id": booking_id, "old_price": old_price, "new_price": new_price}
+        **{"booking_id": booking_id, "old_price": old_price, "new_price": new_price}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -500,7 +520,7 @@ async def notify_customer_price_change(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -525,14 +545,14 @@ async def notify_customer_price_change(
         LoggerService.info(
             __name__,
             "Customer notified of price change",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of price change",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -605,6 +625,27 @@ async def handle_prepayment_change_input(update: Update, context: ContextTypes.D
     # Notify customer
     await notify_customer_prepayment_change(context, booking, user, old_prepayment)
 
+    # Notify INFORM_CHAT_ID
+    try:
+        user_contact = user.contact if user and user.contact else "N/A"
+        inform_text = (
+            f"Изменение предоплаты бронирования!\n"
+            f"Контакт клиента: {user_contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
+            f"Старая предоплата: {old_prepayment} руб.\n"
+            f"Новая предоплата: {new_prepayment} руб.\n"
+        )
+        await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=inform_text)
+    except TelegramError as e:
+        LoggerService.error(
+            __name__,
+            "Failed to notify INFORM_CHAT_ID of prepayment change",
+            exception=e,
+            **{"booking_id": booking_id},
+        )
+
     # Confirm to admin
     user_contact = user.contact if user else "N/A"
     message = (
@@ -635,7 +676,7 @@ async def handle_prepayment_change_input(update: Update, context: ContextTypes.D
         __name__,
         "Admin changed booking prepayment",
         update,
-        kwargs={"booking_id": booking_id, "old_prepayment": old_prepayment, "new_prepayment": new_prepayment}
+        **{"booking_id": booking_id, "old_prepayment": old_prepayment, "new_prepayment": new_prepayment}
     )
 
     return MANAGE_BOOKING_DETAIL
@@ -652,7 +693,7 @@ async def notify_customer_prepayment_change(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -677,14 +718,14 @@ async def notify_customer_prepayment_change(
         LoggerService.info(
             __name__,
             "Customer notified of prepayment change",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of prepayment change",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -762,6 +803,28 @@ async def handle_tariff_selection(update: Update, context: ContextTypes.DEFAULT_
     # Notify customer
     await notify_customer_tariff_change(context, booking, user, old_tariff)
 
+    # Notify INFORM_CHAT_ID
+    try:
+        user_contact = user.contact if user and user.contact else "N/A"
+        old_tariff_name = tariff_helper.get_name(old_tariff)
+        new_tariff_name = tariff_helper.get_name(new_tariff)
+        inform_text = (
+            f"Изменение тарифа бронирования!\n"
+            f"Контакт клиента: {user_contact}\n"
+            f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
+            f"Старый тариф: {old_tariff_name}\n"
+            f"Новый тариф: {new_tariff_name}\n"
+        )
+        await context.bot.send_message(chat_id=INFORM_CHAT_ID, text=inform_text)
+    except TelegramError as e:
+        LoggerService.error(
+            __name__,
+            "Failed to notify INFORM_CHAT_ID of tariff change",
+            exception=e,
+            **{"booking_id": booking_id},
+        )
+
     # Confirm to admin
     old_tariff_name = tariff_helper.get_name(old_tariff)
     new_tariff_name = tariff_helper.get_name(new_tariff)
@@ -795,7 +858,7 @@ async def handle_tariff_selection(update: Update, context: ContextTypes.DEFAULT_
         __name__,
         "Admin changed booking tariff",
         update,
-        kwargs={
+        **{
             "booking_id": booking_id,
             "old_tariff": old_tariff.name,
             "new_tariff": new_tariff.name
@@ -816,7 +879,7 @@ async def notify_customer_tariff_change(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -843,14 +906,14 @@ async def notify_customer_tariff_change(
         LoggerService.info(
             __name__,
             "Customer notified of tariff change",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of tariff change",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 
@@ -952,7 +1015,7 @@ async def handle_reschedule_start_date(update: Update, context: ContextTypes.DEF
             __name__,
             "Admin selected reschedule start date",
             update,
-            kwargs={"booking_id": booking_id, "start_date": selected_date_obj}
+            **{"booking_id": booking_id, "start_date": selected_date_obj}
         )
         return await show_reschedule_start_time(update, context, booking_id)
     elif is_action:
@@ -1030,12 +1093,15 @@ async def show_reschedule_start_time(update: Update, context: ContextTypes.DEFAU
     start_date = context.user_data.get("reschedule_start_date")
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        start_date - timedelta(days=2),
+        start_date - timedelta(days=7),
         start_date + timedelta(days=2),
     )
     # Exclude current booking from occupied slots
     feature_booking = [b for b in feature_booking if b.id != booking_id]
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, start_date)
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
+    available_slots = date_time_helper.get_free_time_slots(
+        feature_booking, start_date, new_booking_cleaning=new_cleaning,
+    )
 
     message = (
         "⏳ <b>Выберите время начала бронирования.</b>\n"
@@ -1085,7 +1151,7 @@ async def handle_reschedule_start_time(update: Update, context: ContextTypes.DEF
             __name__,
             "Admin selected reschedule start time",
             update,
-            kwargs={"booking_id": booking_id, "start_datetime": start_datetime}
+            **{"booking_id": booking_id, "start_datetime": start_datetime}
         )
         return await show_reschedule_finish_date(update, context, booking_id)
     elif is_action:
@@ -1166,7 +1232,7 @@ async def handle_reschedule_finish_date(update: Update, context: ContextTypes.DE
             __name__,
             "Admin selected reschedule finish date",
             update,
-            kwargs={"booking_id": booking_id, "finish_date": selected_date_obj}
+            **{"booking_id": booking_id, "finish_date": selected_date_obj}
         )
         return await show_reschedule_finish_time(update, context, booking_id)
     elif is_action:
@@ -1186,7 +1252,7 @@ async def show_reschedule_finish_time(update: Update, context: ContextTypes.DEFA
     finish_date = context.user_data.get("reschedule_finish_date")
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        finish_date - timedelta(days=2),
+        finish_date - timedelta(days=7),
         finish_date + timedelta(days=2),
     )
     # Exclude current booking from occupied slots
@@ -1196,7 +1262,10 @@ async def show_reschedule_finish_time(update: Update, context: ContextTypes.DEFA
         if start_datetime.date() != finish_date
         else (start_datetime + timedelta(hours=MIN_BOOKING_HOURS)).time()
     )
-    available_slots = date_time_helper.get_free_time_slots(feature_booking, finish_date, start_time=start_time)
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
+    available_slots = date_time_helper.get_free_time_slots(
+        feature_booking, finish_date, start_time=start_time, new_booking_cleaning=new_cleaning,
+    )
 
     message = (
         "⏳ <b>Выберите время завершения бронирования.</b>\n"
@@ -1250,34 +1319,25 @@ async def handle_reschedule_finish_time(update: Update, context: ContextTypes.DE
             )
             return await show_reschedule_start_date_calendar(update, context, booking_id, error_message)
 
-        # Check for overlapping bookings
-        created_bookings = database_service.get_booking_by_start_date_period(start_datetime, finish_datetime)
-        is_any_booking = any(b.id != booking.id for b in created_bookings)
+        # Check for overlapping bookings with cleaning buffer
+        cleaning_h = CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS
+        check_start = start_datetime - timedelta(hours=cleaning_h)
+        check_end = finish_datetime + timedelta(hours=cleaning_h)
+        nearby_bookings = database_service.get_booking_by_start_date_period(
+            check_start.date() - timedelta(days=1),
+            check_end.date() + timedelta(days=1),
+        )
+        is_any_booking = any(
+            b.id != booking.id and b.start_date < check_end and b.end_date > check_start
+            for b in nearby_bookings
+        )
         if is_any_booking:
             error_message = (
                 "❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Выбранные дата и время недоступны.</b>\n"
                 "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
-                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
+                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{cleaning_h} часа</b>.\n\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования."
-            )
-            return await show_reschedule_start_date_calendar(update, context, booking_id, error_message)
-
-        # Validate duration
-        selected_duration = finish_datetime - start_datetime
-        duration_booking_hours = date_time_helper.seconds_to_hours(selected_duration.total_seconds())
-        rental_price = calculation_rate_service.get_by_tariff(booking.tariff)
-        booking_duration_hours = max(
-            (booking.end_date - booking.start_date).total_seconds() / 3600,
-            rental_price.duration_hours,
-        )
-        if duration_booking_hours > booking_duration_hours:
-            error_message = (
-                "❌ <b>Ошибка!</b>\n\n"
-                "⏳ <b>Максимальная продолжительность тарифа превышена.</b>\n"
-                f"🕒 Длительность <b>{rental_price.name}</b>: {rental_price.duration_hours} ч.\n\n"
-                "🔄 Пожалуйста, повторите попытку и выберите доступный вариант.\n\n"
-                "📅 Выберите новую дату начала бронирования."
             )
             return await show_reschedule_start_date_calendar(update, context, booking_id, error_message)
 
@@ -1286,7 +1346,7 @@ async def handle_reschedule_finish_time(update: Update, context: ContextTypes.DE
             __name__,
             "Admin selected reschedule finish time",
             update,
-            kwargs={"booking_id": booking_id, "finish_datetime": finish_datetime}
+            **{"booking_id": booking_id, "finish_datetime": finish_datetime}
         )
         return await show_reschedule_confirm(update, context, booking_id)
     elif is_action:
@@ -1415,7 +1475,7 @@ async def handle_reschedule_confirm(update: Update, context: ContextTypes.DEFAUL
         __name__,
         "Admin rescheduled booking",
         update,
-        kwargs={
+        **{
             "booking_id": booking_id,
             "old_start": old_start_date,
             "new_start": start_datetime,
@@ -1438,7 +1498,7 @@ async def notify_customer_reschedule(
         LoggerService.warning(
             __name__,
             "Cannot notify customer - no chat_id or user is None",
-            kwargs={"booking_id": booking.id, "user_id": user.id if user else None}
+            **{"booking_id": booking.id, "user_id": user.id if user else None}
         )
         return
 
@@ -1462,14 +1522,14 @@ async def notify_customer_reschedule(
         LoggerService.info(
             __name__,
             "Customer notified of reschedule",
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
     except TelegramError as e:
         LoggerService.error(
             __name__,
             "Failed to notify customer of reschedule",
             exception=e,
-            kwargs={"booking_id": booking.id, "chat_id": user.chat_id}
+            **{"booking_id": booking.id, "chat_id": user.chat_id}
         )
 
 

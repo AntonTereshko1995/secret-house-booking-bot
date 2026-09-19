@@ -25,3 +25,4 @@ class RentalPrice:
     is_photoshoot: bool
     is_transfer: bool
     multi_day_prices: dict
+    bath_tub_price: int = 0

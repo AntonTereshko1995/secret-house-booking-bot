@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secret-house-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: secret_house
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d secret_house"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - a_default
+
+  bot:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ENV=debug
+      - REDIS_URL=secret-house-redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql://admin:password@postgres/secret_house
+    env_file:
+      - src/config/.env.debug
+    networks:
+      - a_default
+
+volumes:
+  postgres_data:
+
+networks:
+  a_default:
+    external: true

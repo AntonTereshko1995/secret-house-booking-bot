@@ -1,25 +1,25 @@
 import os
 import time
 import sys
+import threading
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.logger_service import LoggerService
 import logging
-from flask import Flask
 from telegram import BotCommand, BotCommandScopeChatAdministrators, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, filters
+from telegram.ext import AIORateLimiter, Application, CallbackQueryHandler, CommandHandler, ContextTypes, filters
 from telegram.error import BadRequest
 from src.handlers import menu_handler, admin_handler, feedback_handler, booking_details_handler, promocode_handler
 from src.config.config import TELEGRAM_TOKEN, ADMIN_CHAT_ID, INFORM_CHAT_ID
 from src.services import job_service
 from src.services.callback_recovery_service import CallbackRecoveryService
 from src.services.redis import RedisPersistence
+from src.api.server import run as run_http_server
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-app = Flask(__name__)
 
 
 async def set_commands(application: Application):
@@ -53,7 +53,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
                 __name__,
                 "Callback query expired - attempting recovery",
                 update,
-                kwargs={"error": str(context.error)}
+                **{"error": str(context.error)}
             )
 
             # Attempt recovery if update is valid
@@ -86,6 +86,7 @@ if __name__ == "__main__":
         .token(TELEGRAM_TOKEN)
         .post_init(set_commands)
         .persistence(persistence)
+        .rate_limiter(AIORateLimiter(max_retries=3))
         .build()
     )
 
@@ -138,5 +139,9 @@ if __name__ == "__main__":
     os.environ["TZ"] = "Europe/Minsk"
     if hasattr(time, 'tzset'):
         time.tzset()
+
+    http_thread = threading.Thread(target=run_http_server, daemon=True)
+    http_thread.start()
+    logger.info("HTTP server started on port 8080")
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)

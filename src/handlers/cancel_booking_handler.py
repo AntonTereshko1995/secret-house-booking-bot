@@ -80,7 +80,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User contact saved to database",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
                 else:
                     user_name = update.effective_user.username or cleaned_contact
@@ -90,14 +90,14 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User not found by chat_id, created new user",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to save user contact to database",
                     exception=e,
-                    kwargs={"contact": cleaned_contact},
+                    **{"contact": cleaned_contact},
                 )
 
             return await choose_booking_message(update, context)
@@ -121,7 +121,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     redis_service.update_cancel_booking_field(update, "selected_booking_id", int(data))
     LoggerService.info(
-        __name__, "Choose booking", update, kwargs={"booking_id": data}
+        __name__, "Choose booking", update, **{"booking_id": data}
     )
     return await confirm_message(update, context)
 

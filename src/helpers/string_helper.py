@@ -7,10 +7,10 @@ from db.models.gift import GiftBase
 from db.models.booking import BookingBase
 from db.models.user import UserBase
 from src.helpers import tariff_helper
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from random import choice
 from string import ascii_uppercase
-from src.config.config import CLEANING_HOURS
+from src.config.config import CLEANING_HOURS, CLEANING_HOURS_BATH_TUB, MIN_BOOKING_HOURS
 
 
 def is_valid_user_contact(user_name: str) -> tuple[bool, str]:
@@ -75,66 +75,66 @@ def generate_available_slots(
     if len(bookings) == 0:
         return "Весь месяц свободен."
 
-    all_slots = []
-    current_time = from_datetime
-
-    while current_time < to_datetime:
-        all_slots.append(current_time)
-        current_time += time_step
-
-    extended_busy_slots = [
-        {
-            "start": booking.start_date - cleaning_time,
-            "end": booking.end_date + cleaning_time,
-        }
-        for booking in bookings
-    ]
-
-    available_slots = [
-        slot
-        for slot in all_slots
-        if all(
-            not (busy["start"] <= slot < busy["end"]) for busy in extended_busy_slots
+    # Build extended busy intervals (booking ± cleaning), sort and merge overlapping ones
+    raw_busy = sorted(
+        (
+            booking.start_date - (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
+            booking.end_date + (timedelta(hours=CLEANING_HOURS_BATH_TUB) if getattr(booking, "has_bath_tub", False) else cleaning_time),
         )
-    ]
-
-    grouped_slots = {}
-    for slot in available_slots:
-        date_str = slot.strftime("%d-%m")
-        if date_str not in grouped_slots:
-            grouped_slots[date_str] = []
-        grouped_slots[date_str].append(slot)
-
-    message = ""
-    for date, times in grouped_slots.items():
-        time_ranges = []
-        start_time = times[0]
-
-        for i in range(1, len(times)):
-            if (times[i] - times[i - 1]) > time_step:
-                end_time = times[i - 1]
-                if start_time == end_time:
-                    time_ranges.append(start_time.strftime("%H:%M"))
-                else:
-                    time_ranges.append(
-                        f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
-                    )
-                start_time = times[i]
-
-        end_time = times[-1]
-        if start_time == end_time:
-            time_ranges.append(start_time.strftime("%H:%M"))
+        for booking in bookings
+    )
+    merged_busy: list[list] = []
+    for start, end in raw_busy:
+        if not merged_busy or start > merged_busy[-1][1]:
+            merged_busy.append([start, end])
         else:
-            end_str = (
-                "23:59"
-                if end_time.hour == 23 and end_time.minute == 0
-                else end_time.strftime("%H:%M")
-            )
-            time_ranges.append(f"{start_time.strftime('%H:%M')} - {end_str}")
+            merged_busy[-1][1] = max(merged_busy[-1][1], end)
 
-        message += f"📍 <b>{date}</b>\n{', '.join(time_ranges)}\n\n"
+    # Iterate day by day; free windows are exact gaps between busy intervals
+    message = ""
+    current_day = from_datetime.date()
+    last_day = (to_datetime - timedelta(days=1)).date()
+
+    while current_day <= last_day:
+        day_start = datetime.combine(current_day, time(0, 0))
+        day_end = datetime.combine(current_day, time(23, 59))
+        window_start = max(day_start, from_datetime) if current_day == from_datetime.date() else day_start
+
+        free_windows = _compute_free_windows(window_start, day_end, merged_busy)
+        if free_windows:
+            date_str = current_day.strftime("%d-%m")
+            ranges = [_format_window(ws, we) for ws, we in free_windows]
+            message += f"📍 <b>{date_str}</b>\n{', '.join(ranges)}\n\n"
+
+        current_day += timedelta(days=1)
 
     return message
+
+
+def _compute_free_windows(
+    day_start: datetime,
+    day_end: datetime,
+    merged_busy: list,
+) -> list:
+    """Return list of (start, end) free windows within [day_start, day_end]."""
+    free = []
+    cursor = day_start
+    for bstart, bend in merged_busy:
+        if bend <= cursor:
+            continue
+        if bstart >= day_end:
+            break
+        if cursor < bstart:
+            free.append((cursor, min(bstart, day_end)))
+        cursor = max(cursor, bend)
+    if cursor < day_end:
+        free.append((cursor, day_end))
+    return free
+
+
+def _format_window(start: datetime, end: datetime) -> str:
+    end_str = "23:59" if end.hour == 23 else end.strftime("%H:%M")
+    return f"{start.strftime('%H:%M')} - {end_str}"
 
 
 def generate_booking_info_message(
@@ -143,39 +143,43 @@ def generate_booking_info_message(
     is_additional_payment_by_cash=False,
 ) -> str:
     # Handle case when user is None
-    user_contact = user.contact if user and user.contact else "N/A"
+    # For web bookings user.contact lacks '@'; user_name was set from data.telegram (with '@')
+    # For bot bookings user.contact is what the user typed; user_name is their Telegram account name
+    if booking.source == "web":
+        raw_contact = (user.user_name or user.contact) if user else None
+    else:
+        raw_contact = user.contact if user else None
+    user_contact = raw_contact if raw_contact else "N/A"
     user_total_bookings = user.total_bookings if user else 0
     user_completed_bookings = user.completed_bookings if user else 0
     
+    source_label = "🌐 Веб" if booking.source == "web" else "📱 Телеграм"
     message = (
         f"Пользователь: {user_contact}\n"
         f"Дата начала: {booking.start_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"Дата завершения: {booking.end_date.strftime('%d.%m.%Y %H:%M')}\n"
         f"Тариф: {tariff_helper.get_name(booking.tariff)}\n"
         f"Стоимость: {booking.price} руб.\n"
-        f"Фотосессия: {bool_to_str(booking.has_photoshoot)}\n"
-        f"Сауна: {bool_to_str(booking.has_sauna)}\n"
-        f"Белая спальня: {bool_to_str(booking.has_white_bedroom)}\n"
-        f"Зеленая спальня: {bool_to_str(booking.has_green_bedroom)}\n"
-        f"Секретная комната: {bool_to_str(booking.has_secret_room)}\n"
         f"Количество гостей: {booking.number_of_guests}\n"
-        f"Комментарий: {booking.comment if booking.comment else ''}\n"
         f"Всего бронирований: {user_total_bookings}\n"
         f"Завершенных бронирований: {user_completed_bookings}\n"
     )
 
-    # Add incognito questionnaire info for incognito tariffs
-    from src.models.enum.tariff import Tariff
+    if booking.has_photoshoot:
+        message += "Фотосессия: Да\n"
+    if booking.has_sauna:
+        message += "Сауна: Да\n"
+    if booking.has_bath_tub:
+        message += "Банный чан: Да\n"
+    if booking.has_white_bedroom:
+        message += "Белая спальня: Да\n"
+    if booking.has_green_bedroom:
+        message += "Зеленая спальня: Да\n"
+    if booking.has_secret_room:
+        message += "Секретная комната: Да\n"
 
-    is_incognito = booking.tariff in (
-        Tariff.INCOGNITA_DAY,
-        Tariff.INCOGNITA_HOURS,
-        Tariff.INCOGNITA_WORKER,
-    )
-
-    if is_incognito:
+    if booking.wine_preference and booking.wine_preference != "none":
         wine_labels = {
-            "none": "Не нужно вино",
             "white-sweet": "Белое сладкое",
             "white-semi-sweet": "Белое полусладкое",
             "white-dry": "Белое сухое",
@@ -185,27 +189,17 @@ def generate_booking_info_message(
             "red-dry": "Красное сухое",
             "red-semi-dry": "Красное полусухое",
         }
-        wine_text = (
-            wine_labels.get(booking.wine_preference, booking.wine_preference)
-            if booking.wine_preference
-            else "Не указано"
-        )
+        wine_text = wine_labels.get(booking.wine_preference, booking.wine_preference)
         message += f"Вино: {wine_text}\n"
 
-        transfer_text = (
-            booking.transfer_address if booking.transfer_address else "Не нужно"
-        )
-        message += f"Трансфер: {transfer_text}\n"
+    if booking.transfer_address:
+        message += f"Трансфер: {booking.transfer_address}\n"
+        from datetime import timedelta
+        transfer_time = booking.start_date - timedelta(minutes=30)
+        message += f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
 
-        # Add transfer time information if transfer is requested
-        if booking.transfer_address:
-            # Transfer time is 30 minutes before check-in time
-            from datetime import timedelta
-
-            transfer_time = booking.start_date - timedelta(minutes=30)
-            message += (
-                f"🕐 Время трансфера: {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
-            )
+    if booking.comment:
+        message += f"Комментарий: {booking.comment}\n"
 
     # Add promocode info if used
     if booking.promocode_id:
@@ -223,6 +217,7 @@ def generate_booking_info_message(
         )
     else:
         message += f"Предоплата: {booking.prepayment_price}\n"
+    message += f"Источник: {source_label}\n"
     return message
 
 
@@ -234,6 +229,7 @@ def generate_gift_info_message(gift: GiftBase) -> str:
         f"Тариф: {tariff_helper.get_name(gift.tariff)}\n"
         f"Стоимость: {gift.price} руб.\n"
         f"Сауна: {bool_to_str(gift.has_sauna)}\n"
+        f"Банный чан: {bool_to_str(gift.has_bath_tub)}\n"
         f"Дополнительная спальня: {bool_to_str(gift.has_additional_bedroom)}\n"
         f"Секретная комната: {bool_to_str(gift.has_secret_room)}\n"
         f"Код: {gift.code}\n"

@@ -19,7 +19,7 @@ from telegram.ext import ContextTypes, CallbackQueryHandler
 from src.handlers import admin_handler, menu_handler
 from src.helpers import date_time_helper, string_helper, tariff_helper
 from src.date_time_picker import calendar_picker, hours_picker
-from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS
+from src.config.config import MIN_BOOKING_HOURS, PERIOD_IN_MONTHS, CLEANING_HOURS, CLEANING_HOURS_BATH_TUB
 from dateutil.relativedelta import relativedelta
 from typing import Optional
 from src.constants import (
@@ -104,7 +104,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User contact saved to database",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
                 else:
                     user_name = update.effective_user.username or cleaned_contact
@@ -114,14 +114,14 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User not found by chat_id, created new user",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to save user contact to database",
                     exception=e,
-                    kwargs={"contact": cleaned_contact},
+                    **{"contact": cleaned_contact},
                 )
 
             return await choose_booking_message(update, context)
@@ -175,7 +175,7 @@ async def choose_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_change_booking_field(update, "booking_has_white_bedroom", booking.has_white_bedroom)
     redis_service.update_change_booking_field(update, "booking_has_green_bedroom", booking.has_green_bedroom)
 
-    LoggerService.info(__name__, "Choose booking", update, kwargs={"booking_id": booking.id})
+    LoggerService.info(__name__, "Choose booking", update, **{"booking_id": booking.id})
     return await start_date_message(update, context)
 
 
@@ -216,12 +216,12 @@ async def enter_start_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select start date",
             update,
-            kwargs={"start_date": selected_date.date()},
+            **{"start_date": selected_date.date()},
         )
         return await start_time_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select start date", update, kwargs={"start_date": "cancel"}
+            __name__, "select start date", update, **{"start_date": "cancel"}
         )
         return await back_navigation(update, context)
     elif is_next_month or is_prev_month:
@@ -284,12 +284,12 @@ async def enter_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select start time",
             update,
-            kwargs={"start_time": start_booking_date.time()},
+            **{"start_time": start_booking_date.time()},
         )
         return await finish_date_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select start time", update, kwargs={"start_time": "back"}
+            __name__, "select start time", update, **{"start_time": "back"}
         )
         return await start_date_message(update, context)
     return CHANGE_BOOKING_DATE
@@ -314,12 +314,12 @@ async def enter_finish_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select finish date",
             update,
-            kwargs={"finish_date": selected_date.date()},
+            **{"finish_date": selected_date.date()},
         )
         return await finish_time_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select finish date", update, kwargs={"finish_date": "back"}
+            __name__, "select finish date", update, **{"finish_date": "back"}
         )
         return await start_time_message(update, context)
     elif is_next_month or is_prev_month:
@@ -383,13 +383,10 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             __name__,
             "select finish time",
             update,
-            kwargs={"finish_time": finish_booking_date.time()},
+            **{"finish_time": finish_booking_date.time()},
         )
 
         booking = database_service.get_booking_by_id(draft.selected_booking_id)
-        created_bookings = database_service.get_booking_by_start_date_period(
-            draft.start_booking_date, finish_booking_date
-        )
 
         if (
             booking.tariff == Tariff.WORKER or booking.tariff == Tariff.INCOGNITA_WORKER
@@ -408,13 +405,23 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 update, context, error_message=error_message
             )
 
-        is_any_booking = any(b.id != booking.id for b in created_bookings)
+        cleaning_h = CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS
+        check_start = draft.start_booking_date - timedelta(hours=cleaning_h)
+        check_end = finish_booking_date + timedelta(hours=cleaning_h)
+        nearby_bookings = database_service.get_booking_by_start_date_period(
+            check_start.date() - timedelta(days=1),
+            check_end.date() + timedelta(days=1),
+        )
+        is_any_booking = any(
+            b.id != booking.id and b.start_date < check_end and b.end_date > check_start
+            for b in nearby_bookings
+        )
         if is_any_booking:
             error_message = (
                 "❌ <b>Ошибка!</b>\n\n"
                 "⏳ <b>Выбранные дата и время недоступны.</b>\n"
                 "⚠️ Дата начала и конца бронирования пересекается с другим бронированием.\n\n"
-                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{CLEANING_HOURS} часа</b>.\n\n"
+                f"🧹 После каждого клиента нам нужно подготовить дом. Уборка занимает <b>{cleaning_h} часа</b>.\n\n"
                 "🔄 Пожалуйста, выберите новую дату начала бронирования."
             )
             LoggerService.info(
@@ -448,7 +455,7 @@ async def enter_finish_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await confirm_message(update, context)
     elif is_action:
         LoggerService.info(
-            __name__, "select finish time", update, kwargs={"finish_time": "back"}
+            __name__, "select finish time", update, **{"finish_time": "back"}
         )
         return await finish_date_message(update, context)
     return CHANGE_BOOKING_DATE
@@ -485,6 +492,7 @@ async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_photoshoot=booking.has_photoshoot,
         is_secret_room=booking.has_secret_room,
         is_second_room=booking.has_green_bedroom or booking.has_white_bedroom,
+        is_bath_tub=booking.has_bath_tub,
     )
 
     updated_booking = database_service.update_booking(
@@ -644,7 +652,7 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     booking = database_service.get_booking_by_id(draft.selected_booking_id)
 
     feature_booking = database_service.get_booking_by_start_date_period(
-        draft.start_booking_date.date() - timedelta(days=2),
+        draft.start_booking_date.date() - timedelta(days=7),
         draft.start_booking_date.date() + timedelta(days=2),
     )
 
@@ -652,8 +660,10 @@ async def start_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if draft and draft.selected_booking_id:
         feature_booking = [b for b in feature_booking if b.id != draft.selected_booking_id]
 
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
     available_slots = date_time_helper.get_free_time_slots(
-        feature_booking, draft.start_booking_date.date()
+        feature_booking, draft.start_booking_date.date(),
+        new_booking_cleaning=new_cleaning,
     )
 
     special_date_info = get_special_date_info_for_day(draft.start_booking_date.date())
@@ -742,7 +752,7 @@ async def finish_date_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     draft = redis_service.get_change_booking(update)
     feature_booking = database_service.get_booking_by_start_date_period(
-        draft.finish_booking_date.date() - timedelta(days=2),
+        draft.finish_booking_date.date() - timedelta(days=7),
         draft.finish_booking_date.date() + timedelta(days=2),
     )
 
@@ -755,8 +765,11 @@ async def finish_time_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         if draft.start_booking_date.date() != draft.finish_booking_date.date()
         else (draft.start_booking_date + timedelta(hours=MIN_BOOKING_HOURS)).time()
     )
+    booking = database_service.get_booking_by_id(draft.selected_booking_id)
+    new_cleaning = timedelta(hours=CLEANING_HOURS_BATH_TUB if getattr(booking, "has_bath_tub", False) else CLEANING_HOURS)
     available_slots = date_time_helper.get_free_time_slots(
-        feature_booking, draft.finish_booking_date.date(), start_time=start_time
+        feature_booking, draft.finish_booking_date.date(), start_time=start_time,
+        new_booking_cleaning=new_cleaning,
     )
 
     special_date_info = get_special_date_info_for_day(draft.finish_booking_date.date())
@@ -817,6 +830,7 @@ async def confirm_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         is_photoshoot=booking.has_photoshoot,
         is_secret_room=booking.has_secret_room,
         is_second_room=booking.has_green_bedroom or booking.has_white_bedroom,
+        is_bath_tub=booking.has_bath_tub,
     )
 
     message = (

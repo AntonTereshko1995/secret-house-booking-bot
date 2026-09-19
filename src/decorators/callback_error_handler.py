@@ -33,7 +33,7 @@ def safe_callback_query(recovery_function=None):
                         __name__,
                         "Callback query expired (likely bot restart)",
                         update,
-                        kwargs={"error": str(e)}
+                        **{"error": str(e)}
                     )
 
                     # Try to answer with alert popup

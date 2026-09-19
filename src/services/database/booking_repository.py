@@ -41,6 +41,7 @@ class BookingRepository(BaseRepository):
         wine_preference: str = None,
         transfer_address: str = None,
         prepayment_price: float = None,
+        has_bath_tub: bool = False,
     ) -> BookingBase:
         """Add a new booking to the database."""
         # Always store as naive Minsk time (+3): strip tzinfo to prevent SQLAlchemy
@@ -63,11 +64,13 @@ class BookingRepository(BaseRepository):
                     has_white_bedroom=has_white_bedroom,
                     has_green_bedroom=has_green_bedroom,
                     has_secret_room=has_secret_room,
+                    has_bath_tub=has_bath_tub,
                     number_of_guests=number_of_guests,
                     comment=comment,
                     price=price,
                     wine_preference=wine_preference,
                     transfer_address=transfer_address,
+                    source="telegram",
                 )
 
                 if gift_id:
@@ -460,6 +463,7 @@ class BookingRepository(BaseRepository):
         prepayment: float = None,
         prepayment_price: float = None,
         tariff: Tariff = None,
+        feedback_submitted: bool = None,
     ) -> BookingBase:
         """Update booking fields and return with eagerly loaded user."""
         with self.Session() as session:
@@ -499,6 +503,8 @@ class BookingRepository(BaseRepository):
                     booking.prepayment_price = prepayment
                 if tariff is not None:
                     booking.tariff = tariff
+                if feedback_submitted is not None:
+                    booking.feedback_submitted = feedback_submitted
 
                 session.commit()
                 session.refresh(booking)

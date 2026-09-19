@@ -107,6 +107,7 @@ class DatabaseService:
         has_additional_bedroom: bool,
         price: float,
         code: str,
+        has_bath_tub: bool = False,
     ) -> GiftBase:
         """Add a new gift certificate to the database."""
         return self.gift_repository.add_gift(
@@ -117,6 +118,7 @@ class DatabaseService:
             has_additional_bedroom,
             price,
             code,
+            has_bath_tub=has_bath_tub,
         )
 
     def update_gift(
@@ -203,6 +205,7 @@ class DatabaseService:
         wine_preference: str = None,
         transfer_address: str = None,
         prepayment_price: float = None,
+        has_bath_tub: bool = False,
     ) -> BookingBase:
         """Add a new booking to the database."""
         return self.booking_repository.add_booking(
@@ -223,6 +226,7 @@ class DatabaseService:
             wine_preference,
             transfer_address,
             prepayment_price,
+            has_bath_tub=has_bath_tub,
         )
 
     def get_booking_by_start_date_user(
@@ -310,6 +314,7 @@ class DatabaseService:
         prepayment: float = None,
         prepayment_price: float = None,
         tariff: Tariff = None,
+        feedback_submitted: bool = None,
     ) -> BookingBase:
         """Update booking fields."""
         return self.booking_repository.update_booking(
@@ -325,6 +330,7 @@ class DatabaseService:
             prepayment,
             prepayment_price,
             tariff,
+            feedback_submitted,
         )
 
     # Statistics methods

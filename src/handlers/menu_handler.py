@@ -369,7 +369,7 @@ def _capture_and_store_user_chat_id(update: Update) -> None:
             __name__,
             "Failed to store chat_id",
             exception=e,
-            kwargs={"chat_id": chat_id},
+            **{"chat_id": chat_id},
         )
 
 

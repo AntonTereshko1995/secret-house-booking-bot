@@ -95,7 +95,7 @@ class UserService(BaseDatabaseService):
                     LoggerService.info(
                         __name__,
                         f"Removing chat_id {chat_id} from user {existing_user.id}",
-                        kwargs={"old_user_id": existing_user.id},
+                        **{"old_user_id": existing_user.id},
                     )
                     existing_user.chat_id = None
 
@@ -106,7 +106,7 @@ class UserService(BaseDatabaseService):
                 LoggerService.info(
                     __name__,
                     "Updated chat_id for user",
-                    kwargs={"user_id": user.id, "chat_id": chat_id, "contact": contact},
+                    **{"user_id": user.id, "chat_id": chat_id, "contact": contact},
                 )
                 return user
 

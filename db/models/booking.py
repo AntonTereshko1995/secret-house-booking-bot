@@ -25,6 +25,7 @@ class BookingBase(Base):
     has_white_bedroom: Mapped[bool] = mapped_column(Boolean, default=False)
     has_green_bedroom: Mapped[bool] = mapped_column(Boolean, default=False)
     has_secret_room: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_bath_tub: Mapped[bool] = mapped_column(Boolean, default=False)
     is_canceled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_date_changed: Mapped[bool] = mapped_column(Boolean, default=False)
     number_of_guests: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -41,6 +42,8 @@ class BookingBase(Base):
     promocode_id: Mapped[int] = mapped_column(ForeignKey("promocode.id"), nullable=True)
     wine_preference: Mapped[str] = mapped_column(String, nullable=True)
     transfer_address: Mapped[str] = mapped_column(String, nullable=True)
+    receipt_file_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    source: Mapped[str | None] = mapped_column(String, nullable=True)  # "web" | "telegram"
     user = relationship("UserBase")
     gift = relationship("GiftBase")
     promocode = relationship("PromocodeBase")

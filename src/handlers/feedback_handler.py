@@ -28,6 +28,8 @@ from src.services.navigation_service import NavigationService
 from src.services.database_service import DatabaseService
 from src.config.config import ADMIN_CHAT_ID
 from datetime import date, timedelta
+import asyncio
+from telegram.error import TimedOut, NetworkError
 
 redis_service = RedisSessionService()
 navigation_service = NavigationService()
@@ -94,7 +96,7 @@ async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         __name__,
         "Feedback conversation started",
         update,
-        kwargs={"booking_id": booking_id},
+        **{"booking_id": booking_id},
     )
 
     # Show Q1
@@ -128,7 +130,7 @@ async def handle_q1_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "expectations_rating", rating)
 
     LoggerService.info(
-        __name__, "Q1 rating received", update, kwargs={"rating": rating}
+        __name__, "Q1 rating received", update, **{"rating": rating}
     )
 
     await show_question_2(update, context)
@@ -161,7 +163,7 @@ async def handle_q2_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "comfort_rating", rating)
 
     LoggerService.info(
-        __name__, "Q2 rating received", update, kwargs={"rating": rating}
+        __name__, "Q2 rating received", update, **{"rating": rating}
     )
 
     await show_question_3(update, context)
@@ -194,7 +196,7 @@ async def handle_q3_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "cleanliness_rating", rating)
 
     LoggerService.info(
-        __name__, "Q3 rating received", update, kwargs={"rating": rating}
+        __name__, "Q3 rating received", update, **{"rating": rating}
     )
 
     await show_question_4(update, context)
@@ -227,7 +229,7 @@ async def handle_q4_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "host_support_rating", rating)
 
     LoggerService.info(
-        __name__, "Q4 rating received", update, kwargs={"rating": rating}
+        __name__, "Q4 rating received", update, **{"rating": rating}
     )
 
     await show_question_5(update, context)
@@ -261,7 +263,7 @@ async def handle_q5_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "location_rating", rating)
 
     LoggerService.info(
-        __name__, "Q5 rating received", update, kwargs={"rating": rating}
+        __name__, "Q5 rating received", update, **{"rating": rating}
     )
 
     await show_question_6(update, context)
@@ -294,7 +296,7 @@ async def handle_q6_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "recommendation_rating", rating)
 
     LoggerService.info(
-        __name__, "Q6 rating received", update, kwargs={"rating": rating}
+        __name__, "Q6 rating received", update, **{"rating": rating}
     )
 
     # Transition to text questions
@@ -442,16 +444,25 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
         f"<b>9. Публичный отзыв:</b>\n{feedback_data.public_review}"
     )
 
-    # Send to ADMIN_CHAT_ID
-    await context.bot.send_message(
-        chat_id=ADMIN_CHAT_ID, text=message, parse_mode="HTML"
-    )
+    # Send to ADMIN_CHAT_ID with retry on transient network errors
+    for attempt in range(3):
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_CHAT_ID, text=message, parse_mode="HTML"
+            )
+            break
+        except (TimedOut, NetworkError) as e:
+            if attempt == 2:
+                LoggerService.error(
+                    __name__, f"Failed to send feedback to admin after 3 attempts: {e}", update
+                )
+                raise
+            await asyncio.sleep(2 ** attempt)
 
     # Mark feedback as submitted in database
     promocode_name = None
     if booking:
-        booking.feedback_submitted = True
-        database_service.update_booking(booking)
+        database_service.update_booking(booking.id, feedback_submitted=True)
 
         # Create feedback promocode valid for 3 months
         promocode_name = f"ОТЗЫВ-{feedback_data.booking_id}"
@@ -470,7 +481,7 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
                 __name__,
                 "Feedback promocode created",
                 update,
-                kwargs={
+                **{
                     "booking_id": feedback_data.booking_id,
                     "promocode": promocode_name,
                     "expiry_date": str(expiry_date)
@@ -481,21 +492,21 @@ async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_T
                 __name__,
                 "Failed to create feedback promocode",
                 exception=e,
-                kwargs={"booking_id": feedback_data.booking_id}
+                **{"booking_id": feedback_data.booking_id}
             )
 
         LoggerService.info(
             __name__,
             "Booking marked as feedback submitted",
             update,
-            kwargs={"booking_id": feedback_data.booking_id},
+            **{"booking_id": feedback_data.booking_id},
         )
 
     LoggerService.info(
         __name__,
         "Feedback sent to admin",
         update,
-        kwargs={"booking_id": feedback_data.booking_id, "user_contact": user_contact},
+        **{"booking_id": feedback_data.booking_id, "user_contact": user_contact},
     )
 
     return promocode_name

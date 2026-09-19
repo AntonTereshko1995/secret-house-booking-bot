@@ -21,6 +21,7 @@ class BookingDraft:
     is_green_room_included: bool = False
     is_additional_bedroom_included: bool = False
     is_secret_room_included: bool = False
+    is_bath_tub_included: bool = False
     number_of_guests: Optional[int] = None
     price: Optional[float] = None
     booking_comment: Optional[str] = None

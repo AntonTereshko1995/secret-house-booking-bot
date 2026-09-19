@@ -48,6 +48,7 @@ class CalculationRateService:
         is_photoshoot: bool = False,
         count_people: int = 0,
         duration_hours: int = 0,
+        is_bath_tub: bool = False,
     ) -> int:
         price = 0
         extra_hours = duration_hours - rental_price.duration_hours
@@ -87,6 +88,8 @@ class CalculationRateService:
             price += (
                 count_people - rental_price.max_people
             ) * rental_price.extra_people_price
+        if is_bath_tub and rental_price.bath_tub_price > 0:
+            price += rental_price.bath_tub_price
 
         return price
 
@@ -98,6 +101,7 @@ class CalculationRateService:
         is_second_room: bool,
         count_people: int = 0,
         extra_hours: int = 0,
+        is_bath_tub: bool = False,
     ) -> str:
         categories = f"{rental_price.name}, спальная комната"
         if is_sauna:
@@ -111,6 +115,8 @@ class CalculationRateService:
             categories += f", дополнительно {additional_people} чел."
         if extra_hours > 0:
             categories += f", дополнительное время {extra_hours} ч."
+        if is_bath_tub:
+            categories += ", банный чан"
 
         return categories
 
@@ -173,6 +179,7 @@ class CalculationRateService:
         is_second_room: bool = False,
         is_photoshoot: bool = False,
         count_people: int = 0,
+        is_bath_tub: bool = False,
     ) -> int:
         """Calculate total price including add-ons, considering date-specific rules."""
         # Get base price (considering date rules)
@@ -199,5 +206,7 @@ class CalculationRateService:
             additional_price += (
                 count_people - rental_price.max_people
             ) * rental_price.extra_people_price
+        if is_bath_tub and rental_price.bath_tub_price > 0:
+            additional_price += rental_price.bath_tub_price
 
         return base_price + additional_price

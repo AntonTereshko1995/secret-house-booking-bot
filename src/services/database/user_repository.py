@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from src.services.database.base import BaseRepository
 from src.services.logger_service import LoggerService
 from db.models.user import UserBase
+from db.models.booking import BookingBase
 from singleton_decorator import singleton
 from sqlalchemy import and_, select
 
@@ -103,7 +104,7 @@ class UserRepository(BaseRepository):
                             LoggerService.info(
                                 __name__,
                                 "Removing chat_id from different user in update_user_contact",
-                                kwargs={
+                                **{
                                     "removed_from_user_id": existing_user_with_chat.id,
                                     "chat_id": chat_id,
                                     "assigned_to_user": user.id,
@@ -118,7 +119,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Found user by contact, added chat_id",
-                            kwargs={"user_id": user.id, "chat_id": chat_id, "contact": contact},
+                            **{"user_id": user.id, "chat_id": chat_id, "contact": contact},
                         )
                         return user
                     else:
@@ -130,7 +131,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Created new user with contact",
-                            kwargs={"user_id": user.id, "chat_id": chat_id, "contact": contact},
+                            **{"user_id": user.id, "chat_id": chat_id, "contact": contact},
                         )
                         return user
 
@@ -144,31 +145,41 @@ class UserRepository(BaseRepository):
                     )
                 )
                 if existing_user:
-                    # Merge data from existing_user into user (keep the one with chat_id)
-                    user.has_bookings = max(user.has_bookings or 0, existing_user.has_bookings or 0)
-                    user.total_bookings = (user.total_bookings or 0) + (existing_user.total_bookings or 0)
-                    user.completed_bookings = (user.completed_bookings or 0) + (existing_user.completed_bookings or 0)
+                    # Keep existing_user (who owns the bookings), transfer chat_id to it.
+                    # This avoids changing booking.user_id for existing bookings.
 
-                    # Delete the duplicate user first to avoid UNIQUE constraint violation
-                    session.delete(existing_user)
-                    session.flush()  # Flush delete before setting contact
+                    # Merge stats into existing_user
+                    existing_user.has_bookings = max(existing_user.has_bookings or 0, user.has_bookings or 0)
+                    existing_user.total_bookings = (existing_user.total_bookings or 0) + (user.total_bookings or 0)
+                    existing_user.completed_bookings = (existing_user.completed_bookings or 0) + (user.completed_bookings or 0)
+                    # Clear chat_id on the duplicate first to avoid unique constraint violation on autoflush
+                    user.chat_id = None
+                    existing_user.chat_id = chat_id
+                    existing_user.contact = contact
 
-                    # Now set contact after duplicate is deleted
-                    user.contact = contact
+                    # Reassign any bookings that belong to user (the bot-side duplicate) to existing_user
+                    session.query(BookingBase).filter(
+                        BookingBase.user_id == user.id
+                    ).update({"user_id": existing_user.id})
+                    session.flush()
+
+                    # Delete the bot-side duplicate (it had chat_id but no admin bookings)
+                    session.delete(user)
+                    session.flush()
                     session.commit()
-                    session.refresh(user)
+                    session.refresh(existing_user)
 
                     LoggerService.info(
                         __name__,
-                        "Contact found for another user, merged data and deleted duplicate",
-                        kwargs={
-                            "deleted_user_id": existing_user.id,
-                            "kept_user_id": user.id,
+                        "Contact found for another user, merged chat_id into existing user",
+                        **{
+                            "deleted_user_id": user.id,
+                            "kept_user_id": existing_user.id,
                             "chat_id": chat_id,
                             "contact": contact,
                         },
                     )
-                    return user
+                    return existing_user
 
                 user.contact = contact
                 session.commit()
@@ -177,7 +188,7 @@ class UserRepository(BaseRepository):
                 LoggerService.info(
                     __name__,
                     "Updated user contact",
-                    kwargs={"chat_id": chat_id, "contact": contact},
+                    **{"chat_id": chat_id, "contact": contact},
                 )
                 return user
 
@@ -205,7 +216,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Updated user_name for existing user",
-                            kwargs={
+                            **{
                                 "user_id": user.id,
                                 "chat_id": chat_id,
                                 "old_user_name": user.user_name,
@@ -218,7 +229,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "User already has this chat_id",
-                            kwargs={
+                            **{
                                 "user_id": user.id,
                                 "chat_id": chat_id,
                                 "user_name": user_name,
@@ -249,7 +260,7 @@ class UserRepository(BaseRepository):
                                 LoggerService.info(
                                     __name__,
                                     "Removing chat_id from different user",
-                                    kwargs={
+                                    **{
                                         "removed_from_user_id": existing_user_with_chat.id,
                                         "chat_id": chat_id,
                                         "assigned_to_user": user.id,
@@ -264,7 +275,7 @@ class UserRepository(BaseRepository):
                                 LoggerService.info(
                                     __name__,
                                     "Reactivated deactivated user",
-                                    kwargs={
+                                    **{
                                         "user_id": user.id,
                                         "user_name": user_name,
                                         "new_chat_id": chat_id,
@@ -275,7 +286,7 @@ class UserRepository(BaseRepository):
                             LoggerService.info(
                                 __name__,
                                 "Updated chat_id for user",
-                                kwargs={
+                                **{
                                     "user_id": user.id,
                                     "chat_id": chat_id,
                                     "user_name": user_name,
@@ -296,7 +307,7 @@ class UserRepository(BaseRepository):
                             LoggerService.info(
                                 __name__,
                                 "Created new user with chat_id",
-                                kwargs={
+                                **{
                                     "user_id": user.id,
                                     "chat_id": chat_id,
                                     "user_name": user_name,
@@ -317,7 +328,7 @@ class UserRepository(BaseRepository):
                         LoggerService.info(
                             __name__,
                             "Created new user without user_name",
-                            kwargs={
+                            **{
                                 "user_id": user.id,
                                 "chat_id": chat_id,
                             },

@@ -1116,11 +1116,15 @@ async def approve_booking(
             f"🕐 <b>Время трансфера:</b> {transfer_time.strftime('%d.%m.%Y %H:%M')}\n"
         )
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=confirmation_text,
-        parse_mode="HTML",
-    )
+    if chat_id:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=confirmation_text,
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
 
     text = f"Подтверждено ✅\n\n{string_helper.generate_booking_info_message(booking, user)}"
     message = update.callback_query.message
@@ -1136,13 +1140,17 @@ async def cancel_booking(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, booking_id: int
 ):
     booking = database_service.update_booking(booking_id, is_canceled=True)
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="⚠️ <b>Внимание!</b> ⚠️\n"
-        "❌ <b>Ваше бронирование отменено.</b>\n"
-        "📞 Администратор свяжется с вами для уточнения деталей.",
-        parse_mode="HTML",
-    )
+    if chat_id:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="⚠️ <b>Внимание!</b> ⚠️\n"
+                "❌ <b>Ваше бронирование отменено.</b>\n"
+                "📞 Администратор свяжется с вами для уточнения деталей.",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
     user = database_service.get_user_by_id(booking.user_id)
 
     text = f"Отмена.\n\n {string_helper.generate_booking_info_message(booking, user)}"
@@ -1157,20 +1165,29 @@ async def cancel_booking(
 async def approve_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
-    gift = database_service.update_gift(gift_id, is_paymented=True, is_done=True)
-    await context.bot.send_message(chat_id=chat_id, text=f"{gift.code}")
+    gift = database_service.update_gift(gift_id, is_paymented=True)
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="🎉 <b>Отличные новости!</b> 🎉\n"
-        "✅ <b>Ваш подарочный сертификат подтвержден администратором.</b>\n"
-        "📩 <b>В течение нескольких часов мы отправим вам электронный сертификат.</b>\n"
-        "🔑 <b>Мы также отправили код сертификата — укажите его при бронировании.</b>",
-        parse_mode="HTML",
-    )
-    await update.callback_query.edit_message_caption(
-        f"Подтверждено \n\n{string_helper.generate_gift_info_message(gift)}"
-    )
+    # Only notify the user if there's a real Telegram chat_id (not a web purchase)
+    if chat_id:
+        try:
+            await context.bot.send_message(chat_id=chat_id, text=f"{gift.code}")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="🎉 <b>Отличные новости!</b> 🎉\n"
+                "✅ <b>Ваш подарочный сертификат подтвержден администратором.</b>\n"
+                "📩 <b>В течение нескольких часов мы отправим вам электронный сертификат.</b>\n"
+                "🔑 <b>Мы также отправили код сертификата — укажите его при бронировании.</b>",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
+    text = f"Подтверждено ✅\n\n{string_helper.generate_gift_info_message(gift)}"
+    message = update.callback_query.message
+    if message.caption:
+        await message.edit_caption(text)
+    else:
+        await message.edit_text(text)
     return END
 
 
@@ -1178,16 +1195,25 @@ async def cancel_gift(
     update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, gift_id: int
 ):
     gift = database_service.get_gift_by_id(gift_id)
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="⚠️ <b>Внимание!</b> ⚠️\n"
-        "❌ <b>Ваша покупка подарочного сертификата была отменена.</b>\n"
-        "📞 Администратор свяжется с вами для уточнения деталей.\n",
-        parse_mode="HTML",
-    )
-    await update.callback_query.edit_message_caption(
-        f"Отмена.\n\n {string_helper.generate_gift_info_message(gift)}"
-    )
+
+    if chat_id:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="⚠️ <b>Внимание!</b> ⚠️\n"
+                "❌ <b>Ваша покупка подарочного сертификата была отменена.</b>\n"
+                "📞 Администратор свяжется с вами для уточнения деталей.\n",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
+    text = f"Отмена ❌\n\n{string_helper.generate_gift_info_message(gift)}"
+    message = update.callback_query.message
+    if message.caption:
+        await message.edit_caption(text)
+    else:
+        await message.edit_text(text)
     return END
 
 
@@ -1211,6 +1237,8 @@ async def prepare_approve_process(
         is_prepaymented=True,
         calendar_event_id=calendar_event_id,
     )
+    if booking.gift_id:
+        database_service.update_gift(booking.gift_id, is_done=True)
     await inform_message(update, context, booking, user)
     return (booking, user)
 
@@ -1233,7 +1261,7 @@ async def send_booking_details(
         LoggerService.warning(
             __name__,
             "Cannot send booking details: user or chat_id is missing",
-            kwargs={
+            **{
                 "booking_id": booking.id,
                 "user_id": booking.user_id if booking.user else None,
                 "has_user": booking.user is not None,
@@ -1256,6 +1284,7 @@ async def send_booking_details(
             "Маршрут Google map:\n"
             "https://maps.app.goo.gl/Hsf9Xw69N8tqHyqt5",
         )
+        await asyncio.sleep(1)
 
         # Отправка контактов администратора
         await context.bot.send_message(
@@ -1263,6 +1292,7 @@ async def send_booking_details(
             text="Если Вам нужна будет какая-то помощь или будут вопросы как добраться до дома, то Вы можете связаться с администратором.\n\n"
             f"{ADMINISTRATION_CONTACT}",
         )
+        await asyncio.sleep(1)
 
         # Отправка фото с инструкциями
         photo = file_service.get_image("key.jpg")
@@ -1274,12 +1304,14 @@ async def send_booking_details(
             "Попрошу это сделать в первые 30 мин. Вашего пребывания в The Secret House. Администратор заберет договор и деньги."
             "Договор и ручка будут лежать в дома на острове на кухне. Вложите деньги и договор с розовый конверт.\n\n"
             "Информация для оплаты (BSB-Bank):\n"
-            f"по номеру карты {BANK_CARD_NUMBER}",
+            f"по номеру карты {BANK_CARD_NUMBER}\n"
+            f"Сумма к оплате: {booking.price - booking.prepayment_price:.2f} руб.",
             photo=photo,
         )
 
         # Отправка инструкций по сауне (если есть)
         if booking.has_sauna:
+            await asyncio.sleep(1)
             await context.bot.send_message(
                 chat_id=booking.user.chat_id,
                 text="Инструкция по включению сауны:\n"
@@ -1290,10 +1322,30 @@ async def send_booking_details(
                 "5. После использования выключите рубильник.\n",
             )
 
+        # Отправка инструкций по банному чану (если есть)
+        if booking.has_bath_tub:
+            await asyncio.sleep(1)
+            await context.bot.send_message(
+                chat_id=booking.user.chat_id,
+                text="🛁 <b>Банный чан</b>\n\n"
+                "<b>Правила использования:</b>\n"
+                "• Температура: Оптимально 38–40°C (можно горячее).\n"
+                "• Время сеанса: 15–20 минут за заход, делайте перерывы и пейте воду.\n"
+                "• Алкоголь и купание в горячем чане несовместимы.\n\n"
+                "<b>Запуск чана:</b>\n"
+                "1. Полить приготовленную бумагу, щепу и полено розжигом. Убрать розжиг и больше ни в коем случае не пользоваться!\n"
+                "2. При помощи газового баллона с пистолетом разжечь до полного возгорания (занимает от 3 до 7 мин).\n"
+                "3. Положить в огонь ещё 3 полена.\n"
+                "4. После полного возгорания в течение часа-двух постепенно подкладывать дрова.\n"
+                "5. Пользоваться перчатками и кочергой!\n"
+                "6. Открывать крышку чана непосредственно перед купанием. После — закрыть.",
+                parse_mode="HTML",
+            )
+
         LoggerService.info(
             __name__,
             "All booking details sent successfully",
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details_complete",
@@ -1305,7 +1357,7 @@ async def send_booking_details(
             __name__,
             "Failed to send booking details to user",
             exception=e,
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_booking_details",
@@ -1356,7 +1408,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
         LoggerService.info(
             __name__,
             "Feedback request sent successfully",
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "message_id": message.message_id,
@@ -1371,7 +1423,7 @@ async def send_feedback(context: ContextTypes.DEFAULT_TYPE, booking: BookingBase
             __name__,
             "Failed to send feedback request to user",
             exception=e,
-            kwargs={
+            **{
                 "chat_id": booking.user.chat_id,
                 "booking_id": booking.id,
                 "action": "send_feedback",
@@ -1473,7 +1525,7 @@ async def handle_promo_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     LoggerService.info(
-        __name__, "Promo name set", update, kwargs={"promo_name": promo_name}
+        __name__, "Promo name set", update, **{"promo_name": promo_name}
     )
     return CREATE_PROMO_DATE_FROM
 
@@ -1523,7 +1575,7 @@ async def handle_promo_date_from(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     LoggerService.info(
-        __name__, "Promo date_from set", update, kwargs={"date_from": date_from}
+        __name__, "Promo date_from set", update, **{"date_from": date_from}
     )
     return CREATE_PROMO_DATE_TO
 
@@ -1576,7 +1628,7 @@ async def handle_promo_date_to(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
     LoggerService.info(
-        __name__, "Promo date_to set", update, kwargs={"date_to": date_to}
+        __name__, "Promo date_to set", update, **{"date_to": date_to}
     )
     return CREATE_PROMO_DISCOUNT
 
@@ -1643,7 +1695,7 @@ async def handle_promo_discount(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     LoggerService.info(
-        __name__, "Promo discount set", update, kwargs={"discount": discount}
+        __name__, "Promo discount set", update, **{"discount": discount}
     )
     return CREATE_PROMO_TARIFF
 
@@ -1697,7 +1749,7 @@ async def handle_promo_tariff_selection(
             __name__,
             "Promocode created successfully",
             update,
-            kwargs={"promocode_id": promocode.id, "name": promocode.name},
+            **{"promocode_id": promocode.id, "promocode_name": promocode.name},
         )
 
     except Exception as e:
@@ -1894,7 +1946,7 @@ async def handle_delete_promocode_callback(
                 __name__,
                 "Promocode deactivated via button",
                 update,
-                kwargs={"promocode_id": promocode_id},
+                **{"promocode_id": promocode_id},
             )
         else:
             await query.edit_message_text(

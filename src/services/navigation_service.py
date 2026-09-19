@@ -128,7 +128,7 @@ class NavigationService:
                 LoggerService.info(
                     __name__,
                     "Cannot edit message - query expired or message deleted",
-                    kwargs={"error": str(e)}
+                    **{"error": str(e)}
                 )
                 # Don't raise - this is expected after bot restart
             elif "no text in the message" in error_msg:
@@ -136,7 +136,7 @@ class NavigationService:
                 LoggerService.info(
                     __name__,
                     "Cannot edit message text - message contains media, sending new message instead",
-                    kwargs={"error": str(e)}
+                    **{"error": str(e)}
                 )
                 try:
                     await callback_query.message.reply_text(
@@ -177,7 +177,7 @@ class NavigationService:
                 LoggerService.info(
                     __name__,
                     "Callback query already expired - cannot answer",
-                    kwargs={"error": str(e)}
+                    **{"error": str(e)}
                 )
                 return False
             else:

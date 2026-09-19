@@ -61,7 +61,7 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User contact saved to database",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
                 else:
                     user_name = update.effective_user.username or cleaned_contact
@@ -71,14 +71,14 @@ async def check_user_contact(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         __name__,
                         "User not found by chat_id, created new user",
                         update,
-                        kwargs={"chat_id": chat_id, "contact": cleaned_contact},
+                        **{"chat_id": chat_id, "contact": cleaned_contact},
                     )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to save user contact to database",
                     exception=e,
-                    kwargs={"contact": cleaned_contact},
+                    **{"contact": cleaned_contact},
                 )
 
             return await display_bookings(update, context)
@@ -118,6 +118,7 @@ async def display_bookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💰 <b>Стоимость:</b> {booking.price} руб.\n"
                 f"✔ <b>Количество гостей:</b> {booking.number_of_guests}\n"
                 f"✔ <b>Сауна:</b> {string_helper.bool_to_str(booking.has_sauna)}\n"
+                f"✔ <b>Банный чан:</b> {string_helper.bool_to_str(booking.has_bath_tub)}\n"
                 f"✔ <b>Фотосессия:</b> {string_helper.bool_to_str(booking.has_photoshoot)}\n"
                 f"✔ <b>Белая спалня:</b> {string_helper.bool_to_str(booking.has_white_bedroom)}\n"
                 f"✔ <b>Зеленая спальня:</b> {string_helper.bool_to_str(booking.has_green_bedroom)}\n"
