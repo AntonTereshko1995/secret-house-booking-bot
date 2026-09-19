@@ -27,6 +27,7 @@ async def send_prices(update: Update, context: CallbackContext):
     LoggerService.info(__name__, "send prices", update)
 
     calculation_service = CalculationRateService()
+    calculation_service.refresh()
 
     # Get tariff data for each tariff type
     day_tariff = calculation_service.get_by_tariff(Tariff.DAY)

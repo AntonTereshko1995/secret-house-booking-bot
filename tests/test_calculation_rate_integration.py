@@ -13,6 +13,7 @@ from models.date_pricing_rule import DatePricingRule
 from models.enum.tariff import Tariff
 from models.rental_price import RentalPrice
 from services.calculation_rate_service import CalculationRateService
+from services.date_pricing_service import DatePricingService
 
 
 class TestCalculationRateServiceIntegration:
@@ -58,22 +59,31 @@ class TestCalculationRateServiceIntegration:
             ),
         ]
 
+        def mock_price_override(target_date, duration_hours):
+            for rule in test_rules:
+                if rule.applies_to_date(target_date):
+                    return rule.get_price_for_duration(duration_hours)
+            return None
+
         with (
-            patch("services.calculation_rate_service.FileService") as mock_file_service,
+            patch("services.calculation_rate_service.PricingApiService") as mock_bps,
             patch(
-                "services.date_pricing_service.FileService"
-            ) as mock_date_file_service,
+                "services.calculation_rate_service.DatePricingService"
+            ) as mock_date_service,
         ):
-            mock_file_service.return_value.get_tariff_rates.return_value = [
+            mock_bps.return_value.get_rental_prices.return_value = [
                 standard_rental_price
             ]
-            mock_date_file_service.return_value.get_date_pricing_rules.return_value = (
-                test_rules
+            mock_date_service.return_value.get_price_override.side_effect = (
+                mock_price_override
             )
 
+            # Reset CalculationRateService singleton cache so mock takes effect
+            CalculationRateService()._rates = []
+
             yield {
-                "file_service": mock_file_service,
-                "date_file_service": mock_date_file_service,
+                "file_service": mock_bps,
+                "date_service": mock_date_service,
                 "standard_price": standard_rental_price,
                 "rules": test_rules,
             }
