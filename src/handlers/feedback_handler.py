@@ -277,8 +277,7 @@ async def show_question_5(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="<b>Вопрос 5 из 9</b>\n\n"
-        "Как бы вы оценили расположение дома и его окружающую территорию "
-        "(удобство добираться, близость к лесу, озеру, состояние территории вокруг дома и т.д.)?\n\n"
+        "Как бы вы оценили расположение дома и его окружающую территорию?\n\n"
         "Оцените от 1 до 10:",
         reply_markup=reply_markup,
     )
@@ -347,24 +346,24 @@ async def show_question_7(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def show_question_8(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Q8: Что следует улучшить?"""
+    """Q8: Есть ли что-то, что, по вашему мнению, следует улучшить?"""
     redis_service.update_feedback_field(update, "current_question", 8)
 
     await update.message.reply_text(
         text="<b>Вопрос 8 из 9</b>\n\n"
-        "Есть ли что-то, что, по вашему мнению, следует улучшить в доме или его окружающей территории?\n\n"
+        "Есть ли что-то, что, по вашему мнению, следует улучшить?\n\n"
         "Напишите ваш ответ:",
         parse_mode="HTML",
     )
 
 
 async def show_question_9(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Q9: Публичный отзыв"""
+    """Q9: Напишите, пожалуйста, ваш отзыв, которым мы поделимся с другими гостями."""
     redis_service.update_feedback_field(update, "current_question", 9)
 
     await update.message.reply_text(
         text="<b>Вопрос 9 из 9</b>\n\n"
-        "Напишите пожалуйста ваш отзыв, которым мы поделимся с другими гостями:\n\n"
+        "Напишите, пожалуйста, ваш отзыв, которым мы поделимся с другими гостями.\n\n"
         "Напишите ваш ответ:",
         parse_mode="HTML",
     )
