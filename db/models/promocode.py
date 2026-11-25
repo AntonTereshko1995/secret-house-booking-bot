@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.base import Base
-from sqlalchemy import Boolean, Date, DateTime, Float, String, JSON, Integer
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, String, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -23,6 +23,12 @@ class PromocodeBase(Base):
         JSON, nullable=True
     )  # null = ALL, or [1,2,3] = specific tariff values
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_single_use: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     def __repr__(self) -> str:

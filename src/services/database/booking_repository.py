@@ -8,10 +8,15 @@ from src.services.database.base import BaseRepository
 from src.services.logger_service import LoggerService
 from src.services.database.user_repository import UserRepository
 from db.models.booking import BookingBase
+from db.models.promocode import PromocodeBase
 from src.models.enum.tariff import Tariff
 from singleton_decorator import singleton
 from sqlalchemy import and_, distinct, func, or_, select
 from sqlalchemy.orm import joinedload
+
+
+class PromocodeAlreadyUsedError(ValueError):
+    """Raised when a single-use promocode has already been used."""
 
 
 @singleton
@@ -54,6 +59,14 @@ class BookingRepository(BaseRepository):
         user = self.user_service.get_or_create_user(user_contact)
         with self.Session() as session:
             try:
+                promo = None
+                if promocode_id:
+                    promo = session.get(PromocodeBase, promocode_id)
+                    if promo is None:
+                        raise ValueError("Промокод не найден")
+                    if not promo.is_active:
+                        raise PromocodeAlreadyUsedError("Промокод уже использован")
+
                 new_booking = BookingBase(
                     user_id=user.id,
                     start_date=start_date,
@@ -83,6 +96,12 @@ class BookingRepository(BaseRepository):
                     new_booking.prepayment_price = prepayment_price
 
                 session.add(new_booking)
+
+                # Single-use promocodes are consumed in the same transaction so
+                # two parallel bookings cannot both use the same code.
+                if promo is not None and promo.is_single_use:
+                    promo.is_active = False
+
                 session.commit()
 
                 # Increment user booking counters
@@ -90,6 +109,9 @@ class BookingRepository(BaseRepository):
 
                 print(f"Booking added: {new_booking}")
                 return new_booking
+            except PromocodeAlreadyUsedError:
+                session.rollback()
+                raise
             except Exception as e:
                 print(f"Error adding booking: {e}")
                 session.rollback()

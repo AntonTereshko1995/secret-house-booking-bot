@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.services.database.base import BaseRepository
 from src.services.logger_service import LoggerService
 from db.models.promocode import PromocodeBase
+from db.models.user import UserBase
 from src.models.enum.tariff import Tariff
 from src.models.enum.promocode_type import PromocodeType
 from src.config.config import PERIOD_IN_MONTHS
@@ -114,7 +115,11 @@ class PromocodeRepository(BaseRepository):
             return None
 
     def validate_promocode(
-        self, name: str, booking_date: date, tariff: Tariff
+        self,
+        name: str,
+        booking_date: date,
+        tariff: Tariff,
+        contact: Optional[str] = None,
     ) -> tuple[bool, str, Optional[PromocodeBase]]:
         """
         Validates promocode against booking parameters.
@@ -132,6 +137,20 @@ class PromocodeRepository(BaseRepository):
 
                 if not promo:
                     return (False, "❌ Промокод не найден", None)
+
+                # Personal (reward) promocodes are tied to the user who left the
+                # review. If the booking contact differs from that user, reject.
+                if promo.user_id is not None and contact is not None:
+                    owner = session.scalar(
+                        select(UserBase).where(UserBase.id == promo.user_id)
+                    )
+                    if owner is None or owner.contact != contact:
+                        return (
+                            False,
+                            "Этот промокод именной: он действует только для контакта, "
+                            "с которого оставлен отзыв",
+                            None,
+                        )
 
                 today = date.today()
 

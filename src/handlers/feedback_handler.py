@@ -26,13 +26,14 @@ from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
 from src.services.navigation_service import NavigationService
 from src.services.database_service import DatabaseService
-from src.config.config import ADMIN_CHAT_ID
-from datetime import date, timedelta
-import asyncio
-from telegram.error import TimedOut, NetworkError
+from src.services.review_api_service import ReviewApiService
+from src.services.review_window import review_eligibility, minsk_today
+from datetime import datetime
 
 redis_service = RedisSessionService()
 navigation_service = NavigationService()
+review_api_service = ReviewApiService()
+database_service = DatabaseService()
 
 
 def get_handler():
@@ -86,6 +87,31 @@ async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Extract booking_id from callback_data
     booking_id = int(update.callback_query.data.split("_")[-1])
     chat_id = update.effective_chat.id
+
+    # Early refusal: do not ask nine questions if the booking is not eligible.
+    # The API remains the source of truth and re-checks everything on submit.
+    booking = database_service.get_booking_by_id(booking_id)
+    can_review, _ = review_eligibility(booking)
+    if not can_review:
+        if booking is None:
+            message = "Бронирование не найдено."
+        elif booking.feedback_submitted:
+            message = "Вы уже оставили отзыв для этого бронирования."
+        elif booking.is_canceled or not booking.is_prepaymented:
+            message = "Отзыв для этого бронирования недоступен."
+        else:
+            message = "Период для отзыва об этом бронировании истёк."
+        await navigation_service.safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
+        )
+        LoggerService.info(
+            __name__,
+            "Feedback not available",
+            update,
+            **{"booking_id": booking_id, "reason": message},
+        )
+        return ConversationHandler.END
 
     # Initialize Redis with booking_id and chat_id
     redis_service.init_feedback(update)
