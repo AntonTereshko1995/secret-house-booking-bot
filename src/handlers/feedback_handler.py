@@ -1,14 +1,19 @@
-import sys
+import asyncio
 import os
+import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from datetime import datetime
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackQueryHandler,
-    MessageHandler,
-    filters,
     ContextTypes,
     ConversationHandler,
+    MessageHandler,
+    filters,
 )
+
 from src.constants import (
     END,
     FEEDBACK_Q1,
@@ -21,18 +26,18 @@ from src.constants import (
     FEEDBACK_Q8,
     FEEDBACK_Q9,
 )
-from src.services.redis import RedisSessionService
-from src.services.logger_service import LoggerService
 from src.decorators.callback_error_handler import safe_callback_query
-from src.services.navigation_service import NavigationService
 from src.services.database_service import DatabaseService
-from src.config.config import ADMIN_CHAT_ID
-from datetime import date, timedelta
-import asyncio
-from telegram.error import TimedOut, NetworkError
+from src.services.logger_service import LoggerService
+from src.services.navigation_service import NavigationService
+from src.services.redis import RedisSessionService
+from src.services.review_api_service import ReviewApiService
+from src.services.review_window import review_eligibility
 
 redis_service = RedisSessionService()
 navigation_service = NavigationService()
+review_api_service = ReviewApiService()
+database_service = DatabaseService()
 
 
 def get_handler():
@@ -85,9 +90,34 @@ async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Extract booking_id from callback_data
     booking_id = int(update.callback_query.data.split("_")[-1])
-    chat_id = update.effective_chat.id
+
+    # Early refusal: do not ask nine questions if the booking is not eligible.
+    # The API remains the source of truth and re-checks everything on submit.
+    booking = database_service.get_booking_by_id(booking_id)
+    can_review, _ = review_eligibility(booking)
+    if not can_review:
+        if booking is None:
+            message = "Бронирование не найдено."
+        elif booking.feedback_submitted:
+            message = "Вы уже оставили отзыв для этого бронирования."
+        elif booking.is_canceled or not booking.is_prepaymented:
+            message = "Отзыв для этого бронирования недоступен."
+        else:
+            message = "Период для отзыва об этом бронировании истёк."
+        await navigation_service.safe_edit_message_text(
+            callback_query=update.callback_query,
+            text=message,
+        )
+        LoggerService.info(
+            __name__,
+            "Feedback not available",
+            update,
+            booking_id=booking_id, reason=message,
+        )
+        return ConversationHandler.END
 
     # Initialize Redis with booking_id and chat_id
+    chat_id = update.effective_chat.id
     redis_service.init_feedback(update)
     redis_service.update_feedback_field(update, "booking_id", booking_id)
     redis_service.update_feedback_field(update, "chat_id", chat_id)
@@ -96,7 +126,7 @@ async def start_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         __name__,
         "Feedback conversation started",
         update,
-        **{"booking_id": booking_id},
+        booking_id=booking_id,
     )
 
     # Show Q1
@@ -130,7 +160,7 @@ async def handle_q1_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "expectations_rating", rating)
 
     LoggerService.info(
-        __name__, "Q1 rating received", update, **{"rating": rating}
+        __name__, "Q1 rating received", update, rating=rating
     )
 
     await show_question_2(update, context)
@@ -163,7 +193,7 @@ async def handle_q2_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "comfort_rating", rating)
 
     LoggerService.info(
-        __name__, "Q2 rating received", update, **{"rating": rating}
+        __name__, "Q2 rating received", update, rating=rating
     )
 
     await show_question_3(update, context)
@@ -196,7 +226,7 @@ async def handle_q3_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "cleanliness_rating", rating)
 
     LoggerService.info(
-        __name__, "Q3 rating received", update, **{"rating": rating}
+        __name__, "Q3 rating received", update, rating=rating
     )
 
     await show_question_4(update, context)
@@ -229,7 +259,7 @@ async def handle_q4_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "host_support_rating", rating)
 
     LoggerService.info(
-        __name__, "Q4 rating received", update, **{"rating": rating}
+        __name__, "Q4 rating received", update, rating=rating
     )
 
     await show_question_5(update, context)
@@ -247,8 +277,7 @@ async def show_question_5(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await navigation_service.safe_edit_message_text(
         callback_query=update.callback_query,
         text="<b>Вопрос 5 из 9</b>\n\n"
-        "Как бы вы оценили расположение дома и его окружающую территорию "
-        "(удобство добираться, близость к лесу, озеру, состояние территории вокруг дома и т.д.)?\n\n"
+        "Как бы вы оценили расположение дома и его окружающую территорию?\n\n"
         "Оцените от 1 до 10:",
         reply_markup=reply_markup,
     )
@@ -263,7 +292,7 @@ async def handle_q5_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "location_rating", rating)
 
     LoggerService.info(
-        __name__, "Q5 rating received", update, **{"rating": rating}
+        __name__, "Q5 rating received", update, rating=rating
     )
 
     await show_question_6(update, context)
@@ -296,7 +325,7 @@ async def handle_q6_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
     redis_service.update_feedback_field(update, "recommendation_rating", rating)
 
     LoggerService.info(
-        __name__, "Q6 rating received", update, **{"rating": rating}
+        __name__, "Q6 rating received", update, rating=rating
     )
 
     # Transition to text questions
@@ -317,24 +346,24 @@ async def show_question_7(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def show_question_8(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Q8: Что следует улучшить?"""
+    """Q8: Есть ли что-то, что, по вашему мнению, следует улучшить?"""
     redis_service.update_feedback_field(update, "current_question", 8)
 
     await update.message.reply_text(
         text="<b>Вопрос 8 из 9</b>\n\n"
-        "Есть ли что-то, что, по вашему мнению, следует улучшить в доме или его окружающей территории?\n\n"
+        "Есть ли что-то, что, по вашему мнению, следует улучшить?\n\n"
         "Напишите ваш ответ:",
         parse_mode="HTML",
     )
 
 
 async def show_question_9(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Q9: Публичный отзыв"""
+    """Q9: Напишите, пожалуйста, ваш отзыв, которым мы поделимся с другими гостями."""
     redis_service.update_feedback_field(update, "current_question", 9)
 
     await update.message.reply_text(
         text="<b>Вопрос 9 из 9</b>\n\n"
-        "Напишите пожалуйста ваш отзыв, которым мы поделимся с другими гостями:\n\n"
+        "Напишите, пожалуйста, ваш отзыв, которым мы поделимся с другими гостями.\n\n"
         "Напишите ваш ответ:",
         parse_mode="HTML",
     )
@@ -376,8 +405,9 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
         redis_service.update_feedback_field(update, "public_review", text)
         LoggerService.info(__name__, "Q9 answer received", update)
 
-        # Send to admin and get promocode
-        promocode_name = await send_feedback_to_admin(update, context)
+        # Submit the review to the API: it stores the review, mints the
+        # personal single-use promo code and notifies the admin chat.
+        result = await submit_review_to_api(update)
 
         # Thank user and show menu button
         keyboard = [
@@ -385,20 +415,34 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        # Build message with promocode
-        thank_you_message = (
-            "Спасибо за ваш отзыв! 🌟\n"
-            "Ваше мнение очень важно для нас.\n\n"
-        )
+        if result is not None:
+            promo_code = result.get("rewardPromoCode")
+            valid_until = result.get("validUntil")
+            valid_until_text = "3 месяца"
+            if valid_until:
+                try:
+                    valid_until_text = datetime.strptime(
+                        valid_until, "%Y-%m-%d"
+                    ).strftime("%d.%m.%Y")
+                except ValueError:
+                    valid_until_text = str(valid_until)
 
-        if promocode_name:
-            thank_you_message += (
-                f"🎁 <b>Ваш промокод на 10% скидку:</b> <code>{promocode_name}</code>\n\n"
-                "Промокод действителен <b>3 месяца</b> и применим ко всем тарифам.\n"
+            thank_you_message = (
+                "Спасибо за ваш отзыв! 🌟\n"
+                "Ваше мнение очень важно для нас.\n\n"
+                f"🎁 <b>Ваш промокод на 10% скидку:</b> <code>{promo_code}</code>\n\n"
+                f"Промокод действителен до <b>{valid_until_text}</b> и применим "
+                "ко всем тарифам.\n"
                 "Используйте его при следующем бронировании! 🏡"
             )
+            # Answers are no longer needed once the review is saved.
+            redis_service.clear_feedback(update)
         else:
-            thank_you_message += "После получения фидбека мы дарим Вам <b>10% скидки</b> для следующей поездки."
+            thank_you_message = (
+                "Не удалось отправить ваш отзыв. Попробуйте позже — "
+                "ваши ответы сохранены."
+            )
+            # On an API error the answers stay in Redis so nothing is lost.
 
         await update.message.reply_text(
             thank_you_message,
@@ -406,110 +450,65 @@ async def handle_text_response(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=reply_markup,
         )
 
-        # Clean up Redis
-        redis_service.clear_feedback(update)
-
         return f"FEEDBACK_{END}"
 
     # Fallback
     return f"FEEDBACK_{END}"
 
 
-async def send_feedback_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Send complete feedback to ADMIN_CHAT_ID and create feedback promocode"""
-    feedback_data = redis_service.get_feedback(update)
+async def submit_review_to_api(update: Update) -> dict | None:
+    """Submit the collected review to the backend API.
 
+    The bot no longer creates the promo code itself and no longer sends the
+    review text to the admin chat: the API stores the review, mints the
+    personal single-use promo code and notifies the admin chat.
+    """
+    feedback_data = redis_service.get_feedback(update)
     if not feedback_data:
         LoggerService.error(__name__, "No feedback data to send", update)
         return None
 
-    # Get user contact from database
-    database_service = DatabaseService()
     booking = database_service.get_booking_by_id(feedback_data.booking_id)
-    user = database_service.get_user_by_id(booking.user_id)
-    user_contact = user.contact
-
-    # Format message for admin
-    message = (
-        "📊 <b>Новый отзыв клиента</b>\n\n"
-        f"<b>Пользователь:</b> {user_contact}\n\n"
-        f"<b>1. Ожидания от отдыха:</b> {feedback_data.expectations_rating}/10\n"
-        f"<b>2. Уровень комфорта:</b> {feedback_data.comfort_rating}/10\n"
-        f"<b>3. Чистота и уборка:</b> {feedback_data.cleanliness_rating}/10\n"
-        f"<b>4. Общение и поддержка:</b> {feedback_data.host_support_rating}/10\n"
-        f"<b>5. Расположение дома:</b> {feedback_data.location_rating}/10\n"
-        f"<b>6. Рекомендация друзьям:</b> {feedback_data.recommendation_rating}/10\n\n"
-        f"<b>7. Что понравилось:</b>\n{feedback_data.liked_most}\n\n"
-        f"<b>8. Что улучшить:</b>\n{feedback_data.improvements}\n\n"
-        f"<b>9. Публичный отзыв:</b>\n{feedback_data.public_review}"
-    )
-
-    # Send to ADMIN_CHAT_ID with retry on transient network errors
-    for attempt in range(3):
-        try:
-            await context.bot.send_message(
-                chat_id=ADMIN_CHAT_ID, text=message, parse_mode="HTML"
-            )
-            break
-        except (TimedOut, NetworkError) as e:
-            if attempt == 2:
-                LoggerService.error(
-                    __name__, f"Failed to send feedback to admin after 3 attempts: {e}", update
-                )
-                raise
-            await asyncio.sleep(2 ** attempt)
-
-    # Mark feedback as submitted in database
-    promocode_name = None
-    if booking:
-        database_service.update_booking(booking.id, feedback_submitted=True)
-
-        # Create feedback promocode valid for 3 months
-        promocode_name = f"ОТЗЫВ-{feedback_data.booking_id}"
-        today = date.today()
-        expiry_date = today + timedelta(days=90)  # 3 months
-
-        try:
-            promocode = database_service.add_promocode(
-                name=promocode_name,
-                date_from=today,
-                date_to=expiry_date,
-                discount_percentage=10.0,
-                applicable_tariffs=None  # Applies to all tariffs
-            )
-            LoggerService.info(
-                __name__,
-                "Feedback promocode created",
-                update,
-                **{
-                    "booking_id": feedback_data.booking_id,
-                    "promocode": promocode_name,
-                    "expiry_date": str(expiry_date)
-                },
-            )
-        except Exception as e:
-            LoggerService.error(
-                __name__,
-                "Failed to create feedback promocode",
-                exception=e,
-                **{"booking_id": feedback_data.booking_id}
-            )
-
-        LoggerService.info(
+    if not booking:
+        LoggerService.error(
             __name__,
-            "Booking marked as feedback submitted",
+            "Booking not found for review submission",
             update,
-            **{"booking_id": feedback_data.booking_id},
+            booking_id=feedback_data.booking_id,
         )
+        return None
+
+    payload = {
+        "bookingPublicId": str(booking.public_id),
+        "ratingExpectations": feedback_data.expectations_rating,
+        "ratingComfort": feedback_data.comfort_rating,
+        "ratingCleanliness": feedback_data.cleanliness_rating,
+        "ratingCommunication": feedback_data.host_support_rating,
+        "ratingLocation": feedback_data.location_rating,
+        "ratingRecommendation": feedback_data.recommendation_rating,
+        "likedMost": feedback_data.liked_most,
+        "improvement": feedback_data.improvements,
+        "publicReview": feedback_data.public_review,
+    }
+
+    # submit_review uses blocking `requests`: run it off the event loop.
+    result = await asyncio.to_thread(review_api_service.submit_review, payload)
+    if result is None:
+        LoggerService.error(
+            __name__,
+            "API rejected review submission",
+            update,
+            booking_id=feedback_data.booking_id,
+        )
+        return None
 
     LoggerService.info(
         __name__,
-        "Feedback sent to admin",
+        "Review submitted to API",
         update,
-        **{"booking_id": feedback_data.booking_id, "user_contact": user_contact},
+        booking_id=feedback_data.booking_id, promocode=result.get("rewardPromoCode"),
     )
-
-    return promocode_name
+    return result
 
 
 @safe_callback_query()

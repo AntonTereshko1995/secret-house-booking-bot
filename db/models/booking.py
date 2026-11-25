@@ -1,5 +1,6 @@
 import sys
 import os
+from uuid import UUID, uuid4
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from db.models.decorator.type_decorator import IntEnumType
@@ -7,6 +8,7 @@ from src.models.enum.tariff import Tariff
 from datetime import datetime
 from db.models.base import Base
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -16,6 +18,9 @@ from src.config.config import PREPAYMENT
 class BookingBase(Base):
     __tablename__ = "booking"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    public_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), default=uuid4, unique=True, nullable=False
+    )
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
     start_date: Mapped[datetime] = mapped_column(DateTime, unique=False, nullable=False)
     end_date: Mapped[datetime] = mapped_column(DateTime, unique=False, nullable=False)

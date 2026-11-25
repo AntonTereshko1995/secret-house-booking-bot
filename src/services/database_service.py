@@ -167,10 +167,12 @@ class DatabaseService:
         return self.promocode_repository.get_promocode_by_id(promocode_id)
 
     def validate_promocode(
-        self, name: str, booking_date: date, tariff: Tariff
+        self, name: str, booking_date: date, tariff: Tariff, contact: Optional[str] = None
     ) -> tuple[bool, str, Optional[PromocodeBase]]:
         """Validate promocode against booking parameters."""
-        return self.promocode_repository.validate_promocode(name, booking_date, tariff)
+        return self.promocode_repository.validate_promocode(
+            name, booking_date, tariff, contact
+        )
 
     def list_active_promocodes(self) -> list[PromocodeBase]:
         """Get all active promocodes."""

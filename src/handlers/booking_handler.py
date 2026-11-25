@@ -10,6 +10,7 @@ from matplotlib.dates import relativedelta
 from db.models.booking import BookingBase
 from src.date_time_picker import calendar_picker, hours_picker
 from src.services.database_service import DatabaseService
+from src.services.database.booking_repository import PromocodeAlreadyUsedError
 from src.config.config import (
     MIN_BOOKING_HOURS,
     PERIOD_IN_MONTHS,
@@ -802,7 +803,8 @@ async def handle_promocode_input(update: Update, context: ContextTypes.DEFAULT_T
 
     # Validate against booking start_date and tariff
     is_valid, message_text, promo = database_service.validate_promocode(
-        promo_code, booking.start_booking_date.date(), booking.tariff
+        promo_code, booking.start_booking_date.date(), booking.tariff,
+        contact=booking.user_contact,
     )
 
     if is_valid:
@@ -2204,7 +2206,19 @@ async def send_approving_to_admin(
             )
         return BOOKING
 
-    booking = save_booking_information(update, chat_id, is_cash)
+    try:
+        booking = save_booking_information(update, chat_id, is_cash)
+    except PromocodeAlreadyUsedError as e:
+        if update.message:
+            await update.message.reply_text(
+                text=f"❌ {e}\n\n"
+                "Промокод уже был использован и больше не действует.\n"
+                "Пожалуйста, начните бронирование заново без этого кода или "
+                "введите другой промокод.",
+                parse_mode="HTML",
+            )
+        return BOOKING
+
     if not booking and update.message:
         await update.message.reply_text(
             text="❌ <b>Ошибка!</b>\n\n"
