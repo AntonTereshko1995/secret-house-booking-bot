@@ -1,18 +1,22 @@
 import asyncio
-import sys
 import os
+import sys
+
 import pytz
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import logging
-from src.services.logger_service import LoggerService
-from src.handlers import admin_handler
 from datetime import date, time, timedelta
+
+from singleton_decorator import singleton
 from telegram import Update
 from telegram.ext import Application, CallbackContext, JobQueue
-from singleton_decorator import singleton
-from src.services.database_service import DatabaseService
+
+from src.handlers import admin_handler
 from src.services.chat_validation_service import ChatValidationService
+from src.services.database_service import DatabaseService
+from src.services.logger_service import LoggerService
+from src.services.review_window import review_eligibility
 
 logging.basicConfig(level=logging.INFO)
 database_service = DatabaseService()
@@ -69,7 +73,7 @@ class JobService:
         LoggerService.info(
             __name__,
             f"Found {len(bookings)} bookings for {tomorrow}",
-            **{"bookings_count": len(bookings), "date": str(tomorrow)},
+            bookings_count=len(bookings), date=str(tomorrow),
         )
 
         for booking in bookings:
@@ -78,22 +82,14 @@ class JobService:
                 LoggerService.info(
                     __name__,
                     "Successfully sent booking details to user",
-                    **{
-                        "chat_id": booking.user.chat_id,
-                        "booking_id": booking.id,
-                        "action": "send_booking_details",
-                    },
+                    chat_id=booking.user.chat_id, booking_id=booking.id, action="send_booking_details",
                 )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to send booking details to user",
                     exception=e,
-                    **{
-                        "chat_id": booking.user.chat_id if booking.user else None,
-                        "booking_id": booking.id,
-                        "action": "send_booking_details",
-                    },
+                    chat_id=booking.user.chat_id if booking.user else None, booking_id=booking.id, action="send_booking_details",
                 )
             await asyncio.sleep(2)
 
@@ -105,14 +101,14 @@ class JobService:
             LoggerService.info(
                 __name__,
                 f"No completed bookings found for period {seven_days_ago} - {today}",
-                **{"from_date": str(seven_days_ago), "to_date": str(today)},
+                from_date=str(seven_days_ago), to_date=str(today),
             )
             return
 
         LoggerService.info(
             __name__,
             f"Found {len(bookings)} completed bookings for period {seven_days_ago} - {today}",
-            **{"bookings_count": len(bookings), "from_date": str(seven_days_ago), "to_date": str(today)},
+            bookings_count=len(bookings), from_date=str(seven_days_ago), to_date=str(today),
         )
 
         for booking in bookings:
@@ -120,7 +116,24 @@ class JobService:
                 LoggerService.warning(
                     __name__,
                     "Skipping feedback: user has no chat_id",
-                    **{"booking_id": booking.id, "action": "send_feedback"},
+                    booking_id=booking.id, action="send_feedback",
+                )
+                database_service.update_booking(booking.id, is_done=True)
+                continue
+            if booking.feedback_submitted:
+                LoggerService.info(
+                    __name__,
+                    "Skipping feedback: review already submitted",
+                    booking_id=booking.id, action="send_feedback",
+                )
+                database_service.update_booking(booking.id, is_done=True)
+                continue
+            can_review, _ = review_eligibility(booking)
+            if not can_review:
+                LoggerService.info(
+                    __name__,
+                    "Skipping feedback: review window is closed",
+                    booking_id=booking.id, action="send_feedback",
                 )
                 database_service.update_booking(booking.id, is_done=True)
                 continue
@@ -130,22 +143,14 @@ class JobService:
                 LoggerService.info(
                     __name__,
                     "Successfully sent feedback request to user",
-                    **{
-                        "chat_id": booking.user.chat_id,
-                        "booking_id": booking.id,
-                        "action": "send_feedback",
-                    },
+                    chat_id=booking.user.chat_id, booking_id=booking.id, action="send_feedback",
                 )
             except Exception as e:
                 LoggerService.error(
                     __name__,
                     "Failed to send feedback request to user",
                     exception=e,
-                    **{
-                        "chat_id": booking.user.chat_id,
-                        "booking_id": booking.id,
-                        "action": "send_feedback",
-                    },
+                    chat_id=booking.user.chat_id, booking_id=booking.id, action="send_feedback",
                 )
             await asyncio.sleep(2)
 
@@ -157,14 +162,14 @@ class JobService:
 
             if not chat_ids:
                 LoggerService.info(
-                    __name__, "No chat IDs to validate", **{"chat_count": 0}
+                    __name__, "No chat IDs to validate", chat_count=0
                 )
                 return
 
             LoggerService.info(
                 __name__,
                 "Starting weekly chat validation",
-                **{"total_chats": len(chat_ids)},
+                total_chats=len(chat_ids),
             )
 
             # Validate all chat IDs
@@ -182,26 +187,21 @@ class JobService:
                         LoggerService.info(
                             __name__,
                             "Deactivated user with invalid chat_id",
-                            **{"chat_id": invalid_chat_id},
+                            chat_id=invalid_chat_id,
                         )
                 except Exception as e:
                     LoggerService.error(
                         __name__,
                         "Failed to deactivate user",
                         exception=e,
-                        **{"chat_id": invalid_chat_id},
+                        chat_id=invalid_chat_id,
                     )
 
             # Log summary
             LoggerService.info(
                 __name__,
                 "Weekly chat cleanup completed",
-                **{
-                    "total_checked": results["total_checked"],
-                    "valid": results["valid"],
-                    "invalid": results["invalid"],
-                    "deactivated": deactivated_count,
-                },
+                total_checked=results["total_checked"], valid=results["valid"], invalid=results["invalid"], deactivated=deactivated_count,
             )
 
         except Exception as e:
@@ -215,16 +215,13 @@ class JobService:
                 LoggerService.info(
                     __name__,
                     "Expired promocodes cleanup completed",
-                    **{
-                        "deactivated_count": count,
-                        "date": str(date.today()),
-                    },
+                    deactivated_count=count, date=str(date.today()),
                 )
             else:
                 LoggerService.info(
                     __name__,
                     "No expired promocodes to clean up",
-                    **{"date": str(date.today())},
+                    date=str(date.today()),
                 )
 
         except Exception as e:
